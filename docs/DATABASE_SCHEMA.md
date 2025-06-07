@@ -33,6 +33,11 @@ CREATE TABLE users (
     profile_photo_url TEXT,
     bio TEXT,
     
+    -- Internationalization
+    preferred_language VARCHAR(10) DEFAULT 'en' CHECK (preferred_language IN ('en', 'sn', 'nd')),
+    locale VARCHAR(10) DEFAULT 'en-US',
+    timezone VARCHAR(50) DEFAULT 'UTC',
+    
     -- Privacy and preferences
     privacy_settings JSONB DEFAULT '{}',
     notification_preferences JSONB DEFAULT '{}',
@@ -880,6 +885,87 @@ CREATE TABLE error_logs (
     resolved BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );
+```
+
+### 13. Internationalization Support
+
+```sql
+-- Language support table
+CREATE TABLE languages (
+    code VARCHAR(10) PRIMARY KEY, -- ISO 639-1 codes (en, sn, nd)
+    name VARCHAR(100) NOT NULL,
+    native_name VARCHAR(100) NOT NULL,
+    direction VARCHAR(3) DEFAULT 'ltr' CHECK (direction IN ('ltr', 'rtl')),
+    enabled BOOLEAN DEFAULT TRUE,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Insert supported languages
+INSERT INTO languages (code, name, native_name, sort_order) VALUES
+('en', 'English', 'English', 1),
+('sn', 'Shona', 'chiShona', 2),
+('nd', 'Ndebele', 'isiNdebele', 3);
+
+-- Translation keys for dynamic content
+CREATE TABLE translation_keys (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key_name VARCHAR(255) UNIQUE NOT NULL, -- e.g., 'relationship.father'
+    namespace VARCHAR(100) NOT NULL, -- e.g., 'genealogy', 'common', 'forms'
+    description TEXT,
+    context TEXT, -- Additional context for translators
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Translations for each language
+CREATE TABLE translations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    translation_key_id UUID NOT NULL REFERENCES translation_keys(id) ON DELETE CASCADE,
+    language_code VARCHAR(10) NOT NULL REFERENCES languages(code) ON DELETE CASCADE,
+    translation_text TEXT NOT NULL,
+    is_approved BOOLEAN DEFAULT FALSE,
+    translator_notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(translation_key_id, language_code)
+);
+
+-- Localized content for user-generated content
+CREATE TABLE localized_content (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    entity_type VARCHAR(50) NOT NULL, -- 'person', 'event', 'place', etc.
+    entity_id UUID NOT NULL,
+    field_name VARCHAR(100) NOT NULL, -- 'name', 'description', 'notes', etc.
+    language_code VARCHAR(10) NOT NULL REFERENCES languages(code),
+    content TEXT NOT NULL,
+    is_primary BOOLEAN DEFAULT FALSE, -- Primary language for this content
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    INDEX(entity_type, entity_id, field_name),
+    INDEX(language_code)
+);
+
+-- Cultural and regional preferences
+CREATE TABLE cultural_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    language_code VARCHAR(10) NOT NULL REFERENCES languages(code),
+    region_code VARCHAR(10), -- ISO 3166-1 codes (ZW, US, etc.)
+    date_format VARCHAR(50) DEFAULT 'DD/MM/YYYY',
+    time_format VARCHAR(50) DEFAULT '24h',
+    number_format JSONB DEFAULT '{"decimal": ".", "thousand": ","}',
+    currency_code VARCHAR(3) DEFAULT 'USD',
+    calendar_system VARCHAR(20) DEFAULT 'gregorian',
+    cultural_preferences JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Insert default cultural settings
+INSERT INTO cultural_settings (language_code, region_code, date_format, currency_code) VALUES
+('en', 'US', 'MM/DD/YYYY', 'USD'),
+('en', 'ZW', 'DD/MM/YYYY', 'USD'),
+('sn', 'ZW', 'DD/MM/YYYY', 'USD'),
+('nd', 'ZW', 'DD/MM/YYYY', 'USD');
 ```
 
 ## MongoDB Schema (Historical Records)

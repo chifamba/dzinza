@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { useTranslation } from 'react-i18next';
 import { 
   Plus, 
   User, 
@@ -29,6 +30,7 @@ interface FamilyMember {
 }
 
 const FamilyTree = () => {
+  const { t } = useTranslation('familyTree');
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([
@@ -165,8 +167,8 @@ const FamilyTree = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 font-display">Family Tree</h1>
-              <p className="text-gray-600 mt-2">Explore and build your family history</p>
+              <h1 className="text-3xl font-bold text-gray-900 font-display">{t('title')}</h1>
+              <p className="text-gray-600 mt-2">{t('subtitle')}</p>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
@@ -174,7 +176,7 @@ const FamilyTree = () => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search family members..."
+                    placeholder={t('search.placeholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dzinza-500 focus:border-transparent"
@@ -187,15 +189,15 @@ const FamilyTree = () => {
               <div className="flex items-center space-x-2">
                 <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-dzinza-600 border border-gray-300 rounded-lg">
                   <Share className="h-4 w-4" />
-                  <span>Share</span>
+                  <span>{t('actions.share')}</span>
                 </button>
                 <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-dzinza-600 border border-gray-300 rounded-lg">
                   <Download className="h-4 w-4" />
-                  <span>Export</span>
+                  <span>{t('actions.export')}</span>
                 </button>
                 <button className="flex items-center space-x-2 px-4 py-2 bg-dzinza-600 text-white rounded-lg hover:bg-dzinza-700">
                   <Plus className="h-4 w-4" />
-                  <span>Add Person</span>
+                  <span>{t('actions.addPerson')}</span>
                 </button>
               </div>
             </div>
@@ -215,7 +217,7 @@ const FamilyTree = () => {
                 transition={{ duration: 0.6 }}
                 className="text-center"
               >
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">You</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">{t('generations.you')}</h2>
                 <Droppable droppableId="generation-0" direction="horizontal">
                   {(provided) => (
                     <div
@@ -239,7 +241,7 @@ const FamilyTree = () => {
                 transition={{ duration: 0.6, delay: 0.2 }}
                 className="text-center"
               >
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Parents</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">{t('generations.parents')}</h2>
                 <Droppable droppableId="generation-1" direction="horizontal">
                   {(provided) => (
                     <div
@@ -263,7 +265,7 @@ const FamilyTree = () => {
                 transition={{ duration: 0.6, delay: 0.4 }}
                 className="text-center"
               >
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Grandparents</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">{t('generations.grandparents')}</h2>
                 <Droppable droppableId="generation-2" direction="horizontal">
                   {(provided) => (
                     <div
@@ -289,7 +291,7 @@ const FamilyTree = () => {
               >
                 <button className="flex items-center space-x-2 mx-auto px-6 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-dzinza-400 hover:text-dzinza-600 transition-colors">
                   <Plus className="h-5 w-5" />
-                  <span>Add Great-Grandparents</span>
+                  <span>{t('actions.addGreatGrandparents')}</span>
                 </button>
               </motion.div>
             </div>
@@ -305,7 +307,7 @@ const FamilyTree = () => {
             className="w-80 bg-white rounded-xl shadow-lg p-6"
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">Person Details</h3>
+              <h3 className="text-xl font-semibold text-gray-900">{t('sidebar.personDetails')}</h3>
               <button
                 onClick={() => setSelectedMember(null)}
                 className="text-gray-400 hover:text-gray-600"
@@ -329,17 +331,17 @@ const FamilyTree = () => {
                   </div>
                 )}
                 <button className="mt-2 text-sm text-dzinza-600 hover:text-dzinza-700">
-                  Change Photo
+                  {t('sidebar.changePhoto')}
                 </button>
               </div>
 
               {/* Basic Info */}
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Basic Information</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">{t('sidebar.basicInformation')}</h4>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Full Name
+                      {t('sidebar.fields.fullName')}
                     </label>
                     <input
                       type="text"
@@ -349,7 +351,7 @@ const FamilyTree = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Relationship
+                      {t('sidebar.fields.relationship')}
                     </label>
                     <input
                       type="text"
@@ -360,7 +362,7 @@ const FamilyTree = () => {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Birth Year
+                        {t('sidebar.fields.birthYear')}
                       </label>
                       <input
                         type="number"
@@ -370,7 +372,7 @@ const FamilyTree = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Death Year
+                        {t('sidebar.fields.deathYear')}
                       </label>
                       <input
                         type="number"
@@ -381,7 +383,7 @@ const FamilyTree = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Location
+                      {t('sidebar.fields.location')}
                     </label>
                     <input
                       type="text"
@@ -395,13 +397,13 @@ const FamilyTree = () => {
               {/* Action Buttons */}
               <div className="space-y-3">
                 <button className="w-full bg-dzinza-600 text-white py-2 px-4 rounded-md hover:bg-dzinza-700 transition-colors">
-                  Save Changes
+                  {t('sidebar.actions.saveChanges')}
                 </button>
                 <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 transition-colors">
-                  View Full Profile
+                  {t('sidebar.actions.viewFullProfile')}
                 </button>
                 <button className="w-full text-red-600 hover:text-red-700 transition-colors">
-                  Remove Person
+                  {t('sidebar.actions.removePerson')}
                 </button>
               </div>
             </div>

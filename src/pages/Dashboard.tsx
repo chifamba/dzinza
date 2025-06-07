@@ -1,6 +1,6 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { 
   TreePine, 
   Users, 
@@ -16,17 +16,19 @@ import {
 } from 'lucide-react';
 
 const Dashboard = () => {
+  const { t } = useTranslation('dashboard');
+
   const quickStats = [
-    { label: 'Family Members', value: '247', icon: Users, color: 'text-genealogy-600', bg: 'bg-genealogy-50' },
-    { label: 'DNA Matches', value: '1,432', icon: Dna, color: 'text-dzinza-600', bg: 'bg-dzinza-50' },
-    { label: 'Records Found', value: '89', icon: Search, color: 'text-accent-600', bg: 'bg-accent-50' },
-    { label: 'Photos Enhanced', value: '23', icon: Camera, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: t('stats.familyMembers'), value: '247', icon: Users, color: 'text-genealogy-600', bg: 'bg-genealogy-50' },
+    { label: t('stats.dnaMatches'), value: '1,432', icon: Dna, color: 'text-dzinza-600', bg: 'bg-dzinza-50' },
+    { label: t('stats.recordsFound'), value: '89', icon: Search, color: 'text-accent-600', bg: 'bg-accent-50' },
+    { label: t('stats.photosEnhanced'), value: '23', icon: Camera, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
 
   const recentActivity = [
     {
       type: 'match',
-      title: 'New DNA Match Found',
+      title: t('activities.dnaMatch', { name: 'Sarah Thompson' }),
       description: 'Sarah Thompson - 3rd cousin match (127 cM shared)',
       time: '2 hours ago',
       icon: Dna,
@@ -35,7 +37,7 @@ const Dashboard = () => {
     {
       type: 'record',
       title: 'Historical Record Discovery',
-      description: 'Found birth certificate for John Smith (1892)',
+      description: t('activities.foundRecord', { name: 'John Smith' }),
       time: '1 day ago',
       icon: Search,
       color: 'text-accent-600'
@@ -43,7 +45,7 @@ const Dashboard = () => {
     {
       type: 'collaboration',
       title: 'Family Tree Update',
-      description: 'Mary Johnson added 3 new family members',
+      description: t('activities.addedPerson', { name: 'Mary Johnson' }),
       time: '2 days ago',
       icon: TreePine,
       color: 'text-genealogy-600'
@@ -51,7 +53,7 @@ const Dashboard = () => {
     {
       type: 'photo',
       title: 'Photo Enhancement Complete',
-      description: 'Restored 1950s family portrait',
+      description: t('activities.enhancedPhoto', { name: '1950s family portrait' }),
       time: '3 days ago',
       icon: Camera,
       color: 'text-purple-600'
@@ -60,24 +62,24 @@ const Dashboard = () => {
 
   const suggestions = [
     {
-      title: 'Complete Your Profile',
+      title: t('suggestions.birthRecord', { name: 'John Smith' }),
       description: 'Add more details to improve matching accuracy',
       progress: 65,
-      action: 'Complete Now',
+      action: t('suggestions.action'),
       icon: Users
     },
     {
-      title: 'Upload DNA Results',
+      title: t('suggestions.censusRecord', { year: '1920', name: 'Mary Smith' }),
       description: 'Upload results from other testing companies',
       progress: 0,
-      action: 'Upload Now',
+      action: t('suggestions.action'),
       icon: Dna
     },
     {
-      title: 'Invite Family Members',
+      title: t('suggestions.marriageRecord'),
       description: 'Collaborate with relatives on your research',
       progress: 30,
-      action: 'Send Invites',
+      action: t('suggestions.action'),
       icon: Users
     }
   ];
@@ -95,10 +97,10 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 font-display">
-                Welcome back, John
+                {t('welcome', { name: 'John' })}
               </h1>
               <p className="text-gray-600 mt-2">
-                Here's what's happening with your family research
+                {t('overview')}
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -110,7 +112,7 @@ const Dashboard = () => {
               </button>
               <button className="bg-dzinza-600 text-white px-4 py-2 rounded-lg hover:bg-dzinza-700 transition-colors flex items-center space-x-2">
                 <Plus className="h-4 w-4" />
-                <span>Add Person</span>
+                <span>{t('quickActions.addFamilyMembers')}</span>
               </button>
             </div>
           </div>
@@ -152,7 +154,7 @@ const Dashboard = () => {
               className="bg-white rounded-xl shadow-sm p-6"
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
+                <h2 className="text-xl font-semibold text-gray-900">{t('sections.recentActivity')}</h2>
                 <button className="text-dzinza-600 hover:text-dzinza-700 text-sm font-medium">
                   View All
                 </button>
@@ -184,7 +186,7 @@ const Dashboard = () => {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="bg-white rounded-xl shadow-sm p-6"
             >
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">{t('sections.quickActions')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Link
                   to="/family-tree"
@@ -193,8 +195,8 @@ const Dashboard = () => {
                   <div className="flex items-center space-x-3">
                     <TreePine className="h-8 w-8 text-genealogy-600 group-hover:scale-110 transition-transform" />
                     <div>
-                      <h3 className="font-medium text-gray-900">Build Family Tree</h3>
-                      <p className="text-sm text-gray-600">Add new family members</p>
+                      <h3 className="font-medium text-gray-900">{t('quickActions.buildFamilyTree')}</h3>
+                      <p className="text-sm text-gray-600">{t('quickActions.addFamilyMembers')}</p>
                     </div>
                   </div>
                 </Link>
@@ -205,8 +207,8 @@ const Dashboard = () => {
                   <div className="flex items-center space-x-3">
                     <Dna className="h-8 w-8 text-dzinza-600 group-hover:scale-110 transition-transform" />
                     <div>
-                      <h3 className="font-medium text-gray-900">View DNA Matches</h3>
-                      <p className="text-sm text-gray-600">Discover new relatives</p>
+                      <h3 className="font-medium text-gray-900">{t('quickActions.viewDnaMatches')}</h3>
+                      <p className="text-sm text-gray-600">{t('quickActions.discoverRelatives')}</p>
                     </div>
                   </div>
                 </Link>
@@ -217,8 +219,8 @@ const Dashboard = () => {
                   <div className="flex items-center space-x-3">
                     <Search className="h-8 w-8 text-accent-600 group-hover:scale-110 transition-transform" />
                     <div>
-                      <h3 className="font-medium text-gray-900">Search Records</h3>
-                      <p className="text-sm text-gray-600">Find historical documents</p>
+                      <h3 className="font-medium text-gray-900">{t('quickActions.searchRecords')}</h3>
+                      <p className="text-sm text-gray-600">{t('quickActions.findDocuments')}</p>
                     </div>
                   </div>
                 </Link>
@@ -229,8 +231,8 @@ const Dashboard = () => {
                   <div className="flex items-center space-x-3">
                     <Camera className="h-8 w-8 text-purple-600 group-hover:scale-110 transition-transform" />
                     <div>
-                      <h3 className="font-medium text-gray-900">Enhance Photos</h3>
-                      <p className="text-sm text-gray-600">Restore old photos</p>
+                      <h3 className="font-medium text-gray-900">{t('quickActions.enhancePhotos')}</h3>
+                      <p className="text-sm text-gray-600">{t('quickActions.restorePhotos')}</p>
                     </div>
                   </div>
                 </Link>
@@ -247,7 +249,7 @@ const Dashboard = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="bg-white rounded-xl shadow-sm p-6"
             >
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Research Suggestions</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">{t('sections.researchSuggestions')}</h2>
               <div className="space-y-4">
                 {suggestions.map((suggestion, index) => {
                   const Icon = suggestion.icon;
@@ -289,7 +291,7 @@ const Dashboard = () => {
               className="bg-white rounded-xl shadow-sm p-6"
             >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Family Tree</h2>
+                <h2 className="text-xl font-semibold text-gray-900">{t('sections.familyTreePreview')}</h2>
                 <Link
                   to="/family-tree"
                   className="text-dzinza-600 hover:text-dzinza-700 text-sm font-medium"

@@ -141,6 +141,152 @@ Content-Type: multipart/form-data
 **Form Data:**
 - `photo`: Image file (JPEG, PNG, max 5MB)
 
+## Internationalization
+
+### Get Supported Languages
+```http
+GET /i18n/languages
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "code": "en",
+      "name": "English",
+      "nativeName": "English",
+      "direction": "ltr",
+      "enabled": true
+    },
+    {
+      "code": "sn",
+      "name": "Shona",
+      "nativeName": "chiShona",
+      "direction": "ltr",
+      "enabled": true
+    },
+    {
+      "code": "nd",
+      "name": "Ndebele",
+      "nativeName": "isiNdebele",
+      "direction": "ltr",
+      "enabled": true
+    }
+  ]
+}
+```
+
+### Get Translations
+```http
+GET /i18n/translations/{languageCode}
+Authorization: Bearer {accessToken} (optional)
+```
+
+**Query Parameters:**
+- `namespace`: Filter by namespace (optional, comma-separated)
+- `keys`: Specific translation keys (optional, comma-separated)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "language": "sn",
+    "translations": {
+      "common": {
+        "welcome": "Mauya",
+        "save": "Chengetedza",
+        "cancel": "Dzosera",
+        "loading": "Kufema..."
+      },
+      "genealogy": {
+        "relationships": {
+          "father": "Baba",
+          "mother": "Amai",
+          "son": "Mwanakomana",
+          "daughter": "Mwanasikana"
+        }
+      }
+    }
+  }
+}
+```
+
+### Update User Language Preference
+```http
+PUT /users/language
+Authorization: Bearer {accessToken}
+```
+
+**Request Body:**
+```json
+{
+  "preferredLanguage": "sn",
+  "locale": "sn-ZW",
+  "timezone": "Africa/Harare"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "preferredLanguage": "sn",
+    "locale": "sn-ZW",
+    "timezone": "Africa/Harare",
+    "updatedAt": "2025-06-07T10:30:00Z"
+  }
+}
+```
+
+### Get Cultural Settings
+```http
+GET /i18n/cultural-settings/{languageCode}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "languageCode": "sn",
+    "regionCode": "ZW",
+    "dateFormat": "DD/MM/YYYY",
+    "timeFormat": "24h",
+    "numberFormat": {
+      "decimal": ".",
+      "thousand": ","
+    },
+    "currencyCode": "USD",
+    "calendarSystem": "gregorian",
+    "culturalPreferences": {
+      "familyHierarchy": "traditional",
+      "nameDisplay": "formal"
+    }
+  }
+}
+```
+
+### Submit Translation Suggestion
+```http
+POST /i18n/translations/suggest
+Authorization: Bearer {accessToken}
+```
+
+**Request Body:**
+```json
+{
+  "translationKeyId": "550e8400-e29b-41d4-a716-446655440000",
+  "languageCode": "sn",
+  "suggestedTranslation": "Mudzimu",
+  "context": "Referring to ancestral spirits in genealogy context",
+  "translatorNotes": "Traditional term used in Shona culture"
+}
+```
+
 ## Family Trees
 
 ### Get User's Trees

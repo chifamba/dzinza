@@ -169,7 +169,123 @@ test('family tree visual regression', async ({ page }) => {
 });
 ```
 
-### 5. Performance Tests
+### 5. Internationalization (i18n) Tests
+
+**Purpose:** Ensure multi-language support works correctly across all features.
+
+**Framework:** Jest + React Testing Library + i18next-testing
+
+**Coverage Areas:**
+- Translation key coverage
+- Language switching functionality
+- Text rendering in different languages
+- Cultural formatting (dates, numbers)
+- RTL/LTR text direction handling
+
+**Examples:**
+```typescript
+// Translation coverage test
+describe('Translation Coverage', () => {
+  const languages = ['en', 'sn', 'nd'];
+  const namespaces = ['common', 'genealogy', 'forms', 'navigation'];
+
+  languages.forEach(lang => {
+    namespaces.forEach(namespace => {
+      it(`should have complete translations for ${lang}/${namespace}`, async () => {
+        const enTranslations = await import(`../locales/en/${namespace}.json`);
+        const langTranslations = await import(`../locales/${lang}/${namespace}.json`);
+        
+        const enKeys = flattenObject(enTranslations);
+        const langKeys = flattenObject(langTranslations);
+        
+        Object.keys(enKeys).forEach(key => {
+          expect(langKeys).toHaveProperty(key);
+          expect(langKeys[key]).toBeTruthy();
+        });
+      });
+    });
+  });
+});
+
+// Language switching test
+describe('Language Switching', () => {
+  it('should switch language and persist preference', async () => {
+    render(<App />);
+    
+    // Switch to Shona
+    const languageSelector = screen.getByRole('combobox', { name: /language/i });
+    fireEvent.change(languageSelector, { target: { value: 'sn' } });
+    
+    // Verify UI updates
+    await waitFor(() => {
+      expect(screen.getByText('Mauya')).toBeInTheDocument(); // Welcome in Shona
+    });
+    
+    // Verify persistence
+    expect(localStorage.getItem('dzinza_user_language')).toBe('sn');
+  });
+});
+
+// Cultural formatting test
+describe('Cultural Formatting', () => {
+  it('should format dates according to language locale', () => {
+    const testDate = new Date('2023-12-25');
+    
+    // English format (US)
+    expect(formatDate(testDate, 'en-US')).toBe('December 25, 2023');
+    
+    // English format (Zimbabwe)
+    expect(formatDate(testDate, 'en-ZW')).toBe('25 December 2023');
+    
+    // Shona format
+    expect(formatDate(testDate, 'sn-ZW')).toBe('25 Zvita 2023');
+  });
+});
+
+// Component rendering in different languages
+describe('Multilingual Component Rendering', () => {
+  const languages = ['en', 'sn', 'nd'];
+  
+  languages.forEach(lang => {
+    it(`should render FamilyTree component in ${lang}`, async () => {
+      const { rerender } = render(
+        <I18nextProvider i18n={createI18nInstance(lang)}>
+          <FamilyTree treeId="123" />
+        </I18nextProvider>
+      );
+      
+      // Wait for translations to load
+      await waitFor(() => {
+        expect(screen.getByRole('heading')).toBeInTheDocument();
+      });
+      
+      // Verify no missing translation keys (should not show key names)
+      const content = screen.getByTestId('family-tree-content');
+      expect(content.textContent).not.toMatch(/^[a-zA-Z]+\.[a-zA-Z.]+$/);
+    });
+  });
+});
+
+// Relationship terms test
+describe('Genealogy Terms Translation', () => {
+  it('should translate family relationships correctly', () => {
+    const relationships = {
+      en: { father: 'Father', mother: 'Mother', son: 'Son' },
+      sn: { father: 'Baba', mother: 'Amai', son: 'Mwanakomana' },
+      nd: { father: 'Ubaba', mother: 'Umama', son: 'Indodana' }
+    };
+
+    Object.entries(relationships).forEach(([lang, terms]) => {
+      const i18n = createI18nInstance(lang);
+      Object.entries(terms).forEach(([key, expected]) => {
+        expect(i18n.t(`genealogy.relationships.${key}`)).toBe(expected);
+      });
+    });
+  });
+});
+```
+
+### 6. Performance Tests
 
 **Purpose:** Ensure application performance meets requirements.
 

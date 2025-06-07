@@ -14,9 +14,18 @@ Welcome to the Dzinza Genealogy Platform documentation. This directory contains 
 - [API Documentation](./API_DOCUMENTATION.md) - REST API endpoints and usage
 - [System Architecture](./SYSTEM_ARCHITECTURE.md) - Overall system design and components
 
+### Agent Rules & Guidelines
+- [Agent Rules System](./AGENT_RULES.md) - Hierarchical rule system for AI agents
+- [Core Principles](./CORE_PRINCIPLES.md) - Fundamental principles guiding all decisions
+- [Decision Framework](./DECISION_FRAMEWORK.md) - Framework for resolving conflicts and making decisions
+- [Agent Quick Reference](./AGENT_QUICK_REFERENCE.md) - Quick lookup guide for agents
+
 ### Development
 - [Implementation Plan](./IMPLEMENTATION_PLAN.md) - Detailed development roadmap
 - [Development Guidelines](./DEVELOPMENT_GUIDELINES.md) - Coding standards and best practices
+- [Development Rules](./DEVELOPMENT_RULES.md) - Project standards and technology guidelines
+- [Code Standards](./CODE_STANDARDS.md) - Implementation guidelines and coding standards
+- [Internationalization](./INTERNATIONALIZATION.md) - Multi-language support guidelines
 - [Testing Strategy](./TESTING_STRATEGY.md) - Testing approach and frameworks
 
 ### Deployment & Operations

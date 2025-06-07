@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { 
   Menu, 
   X, 
@@ -11,17 +12,19 @@ import {
   Camera,
   Dna
 } from 'lucide-react';
+import LanguageSelector from './LanguageSelector';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { t } = useTranslation('common');
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: Home },
-    { path: '/family-tree', label: 'Family Tree', icon: TreePine },
-    { path: '/dna-matching', label: 'DNA Matching', icon: Dna },
-    { path: '/records', label: 'Records', icon: Search },
-    { path: '/photos', label: 'Photos', icon: Camera },
+    { path: '/dashboard', label: t('navigation.dashboard'), icon: Home },
+    { path: '/family-tree', label: t('navigation.familyTree'), icon: TreePine },
+    { path: '/dna-matching', label: t('navigation.dnaMatching'), icon: Dna },
+    { path: '/records', label: t('navigation.records'), icon: Search },
+    { path: '/photos', label: t('navigation.photos'), icon: Camera },
   ];
 
   return (
@@ -66,8 +69,9 @@ const Navbar = () => {
             })}
             
             <div className="flex items-center space-x-4">
+              <LanguageSelector />
               <button className="bg-dzinza-600 text-white px-4 py-2 rounded-md hover:bg-dzinza-700 transition-colors duration-300">
-                Sign In
+                {t('navigation.login')}
               </button>
             </div>
           </div>
@@ -117,8 +121,11 @@ const Navbar = () => {
           })}
           
           <div className="pt-4 border-t border-gray-200">
+            <div className="mb-3">
+              <LanguageSelector className="w-full" />
+            </div>
             <button className="w-full bg-dzinza-600 text-white px-4 py-2 rounded-md hover:bg-dzinza-700 transition-colors duration-300">
-              Sign In
+              {t('navigation.login')}
             </button>
           </div>
         </div>

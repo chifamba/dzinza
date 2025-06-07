@@ -1,6 +1,7 @@
-import React from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import Navbar from './components/Navbar';
 import LandingPage from './pages/LandingPage';
 import FamilyTree from './pages/FamilyTree';
@@ -8,8 +9,16 @@ import DNAMatching from './pages/DNAMatching';
 import HistoricalRecords from './pages/HistoricalRecords';
 import PhotoEnhancement from './pages/PhotoEnhancement';
 import Dashboard from './pages/Dashboard';
+import { initializeLanguage } from './i18n/utils/languagePersistence';
+import './i18n';
 
 function App() {
+  const { i18n } = useTranslation();
+
+  useEffect(() => {
+    initializeLanguage(i18n);
+  }, [i18n]);
+
   return (
     <Router>
       <div className="min-h-screen bg-gray-50 font-body">

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { 
   Dna, 
   Users, 
@@ -36,6 +37,7 @@ interface EthnicityData {
 }
 
 const DNAMatching = () => {
+  const { t } = useTranslation(['dnaMatching', 'common']);
   const [selectedMatch, setSelectedMatch] = useState<DNAMatch | null>(null);
   const [activeTab, setActiveTab] = useState<'matches' | 'ethnicity' | 'migration'>('matches');
 
@@ -139,8 +141,8 @@ const DNAMatching = () => {
             <div className="flex items-center space-x-2">
               <h3 className="font-semibold text-gray-900">{match.name}</h3>
               {match.isNew && (
-                <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                  New
+              <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                  {t('dnaMatching:matches.newMatch')}
                 </span>
               )}
             </div>
@@ -196,8 +198,8 @@ const DNAMatching = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 font-display">DNA Matching</h1>
-              <p className="text-gray-600 mt-2">Discover relatives and explore your genetic ancestry</p>
+              <h1 className="text-3xl font-bold text-gray-900 font-display">{t('dnaMatching:title')}</h1>
+              <p className="text-gray-600 mt-2">{t('dnaMatching:subtitle')}</p>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
@@ -205,7 +207,7 @@ const DNAMatching = () => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search matches..."
+                    placeholder={t('dnaMatching:search.placeholder')}
                     className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dzinza-500 focus:border-transparent"
                   />
                 </div>
@@ -214,7 +216,7 @@ const DNAMatching = () => {
                 </button>
               </div>
               <button className="bg-dzinza-600 text-white px-4 py-2 rounded-lg hover:bg-dzinza-700 transition-colors">
-                Upload DNA Data
+                {t('dnaMatching:actions.uploadData')}
               </button>
             </div>
           </div>
@@ -226,9 +228,9 @@ const DNAMatching = () => {
         <div className="mb-8">
           <nav className="flex space-x-8">
             {[
-              { id: 'matches', label: 'DNA Matches', icon: Users },
-              { id: 'ethnicity', label: 'Ethnicity Estimate', icon: Globe },
-              { id: 'migration', label: 'Migration Patterns', icon: TrendingUp }
+              { id: 'matches', label: t('dnaMatching:tabs.matches'), icon: Users },
+              { id: 'ethnicity', label: t('dnaMatching:tabs.ethnicity'), icon: Globe },
+              { id: 'migration', label: t('dnaMatching:tabs.migration'), icon: TrendingUp }
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -262,7 +264,7 @@ const DNAMatching = () => {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-gray-900">1,432</p>
-                      <p className="text-sm text-gray-600">Total Matches</p>
+                      <p className="text-sm text-gray-600">{t('dnaMatching:stats.totalMatches', { count: 1432 })}</p>
                     </div>
                   </div>
                 </div>
@@ -273,7 +275,7 @@ const DNAMatching = () => {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-gray-900">23</p>
-                      <p className="text-sm text-gray-600">Close Matches</p>
+                      <p className="text-sm text-gray-600">{t('dnaMatching:stats.closeFamily', { count: 23 })}</p>
                     </div>
                   </div>
                 </div>
@@ -284,7 +286,7 @@ const DNAMatching = () => {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-gray-900">8</p>
-                      <p className="text-sm text-gray-600">New This Week</p>
+                      <p className="text-sm text-gray-600">{t('dnaMatching:stats.newThisWeek', { count: 8 })}</p>
                     </div>
                   </div>
                 </div>
@@ -295,7 +297,7 @@ const DNAMatching = () => {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-gray-900">47</p>
-                      <p className="text-sm text-gray-600">Countries</p>
+                      <p className="text-sm text-gray-600">{t('dnaMatching:stats.countries', { count: 47 })}</p>
                     </div>
                   </div>
                 </div>
@@ -323,7 +325,7 @@ const DNAMatching = () => {
                 className="w-80 bg-white rounded-xl shadow-lg p-6"
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-gray-900">Match Details</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">{t('dnaMatching:sidebar.title')}</h3>
                   <button
                     onClick={() => setSelectedMatch(null)}
                     className="text-gray-400 hover:text-gray-600"
@@ -354,23 +356,23 @@ const DNAMatching = () => {
 
                   {/* DNA Details */}
                   <div>
-                    <h5 className="font-semibold text-gray-900 mb-3">DNA Details</h5>
+                    <h5 className="font-semibold text-gray-900 mb-3">{t('dnaMatching:sidebar.dnaDetails')}</h5>
                     <div className="space-y-3">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Shared DNA:</span>
+                        <span className="text-gray-600">{t('dnaMatching:matches.sharedDNA')}:</span>
                         <span className="font-medium">{selectedMatch.sharedDNA} cM</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Confidence:</span>
+                        <span className="text-gray-600">{t('dnaMatching:matches.confidence')}:</span>
                         <span className="font-medium">{selectedMatch.confidence}%</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Tree Size:</span>
-                        <span className="font-medium">{selectedMatch.treeSize} people</span>
+                        <span className="text-gray-600">{t('dnaMatching:matches.treeSize')}:</span>
+                        <span className="font-medium">{selectedMatch.treeSize} {t('dnaMatching:sidebar.people')}</span>
                       </div>
                       {selectedMatch.location && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Location:</span>
+                          <span className="text-gray-600">{t('dnaMatching:sidebar.location')}:</span>
                           <span className="font-medium">{selectedMatch.location}</span>
                         </div>
                       )}
@@ -381,13 +383,13 @@ const DNAMatching = () => {
                   <div className="space-y-3">
                     <button className="w-full bg-dzinza-600 text-white py-2 px-4 rounded-md hover:bg-dzinza-700 transition-colors flex items-center justify-center space-x-2">
                       <Mail className="h-4 w-4" />
-                      <span>Send Message</span>
+                      <span>{t('dnaMatching:sidebar.sendMessage')}</span>
                     </button>
                     <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 transition-colors">
-                      View Family Tree
+                      {t('dnaMatching:sidebar.viewTree')}
                     </button>
                     <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 transition-colors">
-                      Compare DNA
+                      {t('dnaMatching:sidebar.compareDNA')}
                     </button>
                   </div>
                 </div>
@@ -405,7 +407,7 @@ const DNAMatching = () => {
           >
             {/* Pie Chart */}
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">Ethnicity Breakdown</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-6">{t('dnaMatching:ethnicity.breakdown')}</h3>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -430,7 +432,7 @@ const DNAMatching = () => {
 
             {/* Ethnicity List */}
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">Regional Breakdown</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-6">{t('dnaMatching:ethnicity.regionalBreakdown')}</h3>
               <div className="space-y-4">
                 {ethnicityData.map((item, index) => (
                   <div key={index} className="flex items-center justify-between">
@@ -469,7 +471,7 @@ const DNAMatching = () => {
             transition={{ duration: 0.6 }}
             className="bg-white rounded-xl shadow-sm p-6"
           >
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">Family Migration Patterns</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-6">{t('dnaMatching:migration.patterns')}</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={migrationData}>

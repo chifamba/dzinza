@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { 
   Search, 
   Filter, 
@@ -31,6 +32,7 @@ interface HistoricalRecord {
 }
 
 const HistoricalRecords = () => {
+  const { t } = useTranslation(['historicalRecords', 'common']);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRecord, setSelectedRecord] = useState<HistoricalRecord | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'birth' | 'marriage' | 'death' | 'immigration' | 'census'>('all');
@@ -104,12 +106,12 @@ const HistoricalRecords = () => {
   ];
 
   const recordTypes = [
-    { id: 'all', label: 'All Records', icon: FileText, count: records.length },
-    { id: 'birth', label: 'Birth Records', icon: Users, count: records.filter(r => r.type === 'Birth Record').length },
-    { id: 'marriage', label: 'Marriage Records', icon: Users, count: records.filter(r => r.type === 'Marriage Record').length },
-    { id: 'death', label: 'Death Records', icon: Users, count: records.filter(r => r.type === 'Death Record').length },
-    { id: 'immigration', label: 'Immigration', icon: Globe, count: records.filter(r => r.type === 'Immigration').length },
-    { id: 'census', label: 'Census Records', icon: BookOpen, count: records.filter(r => r.type === 'Census Record').length }
+    { id: 'all', label: t('historicalRecords:filters.all'), icon: FileText, count: records.length },
+    { id: 'birth', label: t('historicalRecords:filters.birth'), icon: Users, count: records.filter(r => r.type === 'Birth Record').length },
+    { id: 'marriage', label: t('historicalRecords:filters.marriage'), icon: Users, count: records.filter(r => r.type === 'Marriage Record').length },
+    { id: 'death', label: t('historicalRecords:filters.death'), icon: Users, count: records.filter(r => r.type === 'Death Record').length },
+    { id: 'immigration', label: t('historicalRecords:filters.immigration'), icon: Globe, count: records.filter(r => r.type === 'Immigration').length },
+    { id: 'census', label: t('historicalRecords:filters.census'), icon: BookOpen, count: records.filter(r => r.type === 'Census Record').length }
   ];
 
   const filteredRecords = activeFilter === 'all' 
@@ -201,11 +203,11 @@ const HistoricalRecords = () => {
       <div className="flex space-x-2">
         <button className="flex-1 bg-dzinza-600 text-white py-2 px-4 rounded-md hover:bg-dzinza-700 transition-colors text-sm flex items-center justify-center space-x-1">
           <Eye className="h-4 w-4" />
-          <span>View</span>
+          <span>{t('historicalRecords:actions.view')}</span>
         </button>
         <button className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 transition-colors text-sm flex items-center justify-center space-x-1">
           <Download className="h-4 w-4" />
-          <span>Save</span>
+          <span>{t('historicalRecords:actions.save')}</span>
         </button>
       </div>
     </motion.div>
@@ -218,16 +220,16 @@ const HistoricalRecords = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 font-display">Historical Records</h1>
-              <p className="text-gray-600 mt-2">Search through billions of historical documents and records</p>
+              <h1 className="text-3xl font-bold text-gray-900 font-display">{t('historicalRecords:title')}</h1>
+              <p className="text-gray-600 mt-2">{t('historicalRecords:subtitle')}</p>
             </div>
             <div className="flex items-center space-x-4">
               <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-dzinza-600 border border-gray-300 rounded-lg">
                 <Share className="h-4 w-4" />
-                <span>Share Search</span>
+                <span>{t('historicalRecords:actions.shareSearch')}</span>
               </button>
               <button className="bg-dzinza-600 text-white px-4 py-2 rounded-lg hover:bg-dzinza-700 transition-colors">
-                Advanced Search
+                {t('historicalRecords:actions.advancedSearch')}
               </button>
             </div>
           </div>
@@ -240,13 +242,13 @@ const HistoricalRecords = () => {
           <div className="w-64 space-y-6">
             {/* Search */}
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Search Records</h3>
+              <h3 className="font-semibold text-gray-900 mb-4">{t('historicalRecords:search.title')}</h3>
               <div className="space-y-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search by name or keyword..."
+                    placeholder={t('historicalRecords:search.placeholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dzinza-500 focus:border-transparent"
@@ -255,36 +257,36 @@ const HistoricalRecords = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     type="text"
-                    placeholder="First name"
+                    placeholder={t('historicalRecords:search.firstName')}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-dzinza-500 focus:border-transparent"
                   />
                   <input
                     type="text"
-                    placeholder="Last name"
+                    placeholder={t('historicalRecords:search.lastName')}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-dzinza-500 focus:border-transparent"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     type="text"
-                    placeholder="Birth year"
+                    placeholder={t('historicalRecords:search.birthYear')}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-dzinza-500 focus:border-transparent"
                   />
                   <input
                     type="text"
-                    placeholder="Location"
+                    placeholder={t('historicalRecords:search.location')}
                     className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-dzinza-500 focus:border-transparent"
                   />
                 </div>
                 <button className="w-full bg-dzinza-600 text-white py-2 px-4 rounded-md hover:bg-dzinza-700 transition-colors text-sm">
-                  Search
+                  {t('historicalRecords:search.searchButton')}
                 </button>
               </div>
             </div>
 
             {/* Record Types Filter */}
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Record Types</h3>
+              <h3 className="font-semibold text-gray-900 mb-4">{t('historicalRecords:filters.title')}</h3>
               <div className="space-y-2">
                 {recordTypes.map((type) => {
                   const Icon = type.icon;
@@ -313,18 +315,18 @@ const HistoricalRecords = () => {
 
             {/* Quick Stats */}
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Search Statistics</h3>
+              <h3 className="font-semibold text-gray-900 mb-4">{t('historicalRecords:stats.title')}</h3>
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Total Records Found:</span>
+                  <span className="text-gray-600">{t('historicalRecords:stats.totalFound')}:</span>
                   <span className="font-medium">{filteredRecords.length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">High Relevance:</span>
+                  <span className="text-gray-600">{t('historicalRecords:stats.highRelevance')}:</span>
                   <span className="font-medium">{filteredRecords.filter(r => r.relevance > 90).length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Starred Records:</span>
+                  <span className="text-gray-600">{t('historicalRecords:stats.starred')}:</span>
                   <span className="font-medium">{filteredRecords.filter(r => r.isStarred).length}</span>
                 </div>
               </div>
@@ -337,17 +339,17 @@ const HistoricalRecords = () => {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">
-                  Search Results ({filteredRecords.length})
+                  {t('historicalRecords:results.title', { count: filteredRecords.length })}
                 </h2>
                 <p className="text-gray-600 text-sm mt-1">
-                  Records matching your search criteria
+                  {t('historicalRecords:results.subtitle')}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
                 <select className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-dzinza-500 focus:border-transparent">
-                  <option>Sort by Relevance</option>
-                  <option>Sort by Date</option>
-                  <option>Sort by Location</option>
+                  <option>{t('historicalRecords:sorting.relevance')}</option>
+                  <option>{t('historicalRecords:sorting.date')}</option>
+                  <option>{t('historicalRecords:sorting.location')}</option>
                 </select>
                 <button className="p-2 text-gray-600 hover:text-dzinza-600 border border-gray-300 rounded-lg">
                   <Filter className="h-4 w-4" />
@@ -370,9 +372,9 @@ const HistoricalRecords = () => {
             {filteredRecords.length === 0 && (
               <div className="text-center py-12">
                 <Archive className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No records found</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('historicalRecords:results.noRecords')}</h3>
                 <p className="text-gray-600">
-                  Try adjusting your search criteria or filters to find more results.
+                  {t('historicalRecords:results.noRecordsSubtitle')}
                 </p>
               </div>
             )}
@@ -418,35 +420,35 @@ const HistoricalRecords = () => {
 
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Record Details</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">{t('historicalRecords:modal.recordDetails')}</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center space-x-2">
                     <FileText className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-600">Type:</span>
+                    <span className="text-gray-600">{t('historicalRecords:modal.type')}:</span>
                     <span className="font-medium">{selectedRecord.type}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Calendar className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-600">Date:</span>
+                    <span className="text-gray-600">{t('historicalRecords:modal.date')}:</span>
                     <span className="font-medium">{new Date(selectedRecord.date).toLocaleDateString()}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <MapPin className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-600">Location:</span>
+                    <span className="text-gray-600">{t('historicalRecords:modal.location')}:</span>
                     <span className="font-medium">{selectedRecord.location}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Archive className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-600">Source:</span>
+                    <span className="text-gray-600">{t('historicalRecords:modal.source')}:</span>
                     <span className="font-medium">{selectedRecord.source}</span>
                   </div>
                 </div>
               </div>
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Match Information</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">{t('historicalRecords:modal.matchInfo')}</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center space-x-2">
-                    <span className="text-gray-600">Relevance Score:</span>
+                    <span className="text-gray-600">{t('historicalRecords:modal.relevanceScore')}:</span>
                     <span className="font-bold text-dzinza-600">{selectedRecord.relevance}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -460,22 +462,22 @@ const HistoricalRecords = () => {
             </div>
 
             <div className="mb-6">
-              <h4 className="font-semibold text-gray-900 mb-3">Description</h4>
+              <h4 className="font-semibold text-gray-900 mb-3">{t('historicalRecords:modal.description')}</h4>
               <p className="text-gray-700 leading-relaxed">{selectedRecord.description}</p>
             </div>
 
             <div className="flex space-x-4">
               <button className="flex-1 bg-dzinza-600 text-white py-3 px-6 rounded-lg hover:bg-dzinza-700 transition-colors flex items-center justify-center space-x-2">
                 <Download className="h-5 w-5" />
-                <span>Download Record</span>
+                <span>{t('historicalRecords:modal.download')}</span>
               </button>
               <button className="flex-1 border border-gray-300 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2">
                 <Share className="h-5 w-5" />
-                <span>Share</span>
+                <span>{t('historicalRecords:modal.share')}</span>
               </button>
               <button className="px-6 py-3 text-dzinza-600 hover:text-dzinza-700 transition-colors flex items-center space-x-2">
                 <Star className={`h-5 w-5 ${selectedRecord.isStarred ? 'fill-current' : ''}`} />
-                <span>{selectedRecord.isStarred ? 'Starred' : 'Star'}</span>
+                <span>{selectedRecord.isStarred ? t('historicalRecords:modal.starred') : t('historicalRecords:modal.star')}</span>
               </button>
             </div>
           </motion.div>

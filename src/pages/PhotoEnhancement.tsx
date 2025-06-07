@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { 
   Upload, 
   Download, 
@@ -41,13 +42,14 @@ interface ProcessingStep {
 }
 
 const PhotoEnhancement = () => {
+  const { t } = useTranslation(['photoEnhancement', 'common']);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [processingSteps, setProcessingSteps] = useState<ProcessingStep[]>([
-    { id: '1', name: 'Image Analysis', status: 'completed', progress: 100 },
-    { id: '2', name: 'Noise Reduction', status: 'processing', progress: 75 },
-    { id: '3', name: 'Detail Enhancement', status: 'pending', progress: 0 },
-    { id: '4', name: 'Color Restoration', status: 'pending', progress: 0 },
-    { id: '5', name: 'Final Processing', status: 'pending', progress: 0 }
+    { id: '1', name: t('processing.imageAnalysis'), status: 'completed', progress: 100 },
+    { id: '2', name: t('processing.noiseReduction'), status: 'processing', progress: 75 },
+    { id: '3', name: t('processing.detailEnhancement'), status: 'pending', progress: 0 },
+    { id: '4', name: t('processing.colorRestoration'), status: 'pending', progress: 0 },
+    { id: '5', name: t('processing.finalProcessing'), status: 'pending', progress: 0 }
   ]);
   const [activeTab, setActiveTab] = useState<'enhance' | 'history' | 'gallery'>('enhance');
   const [selectedTool, setSelectedTool] = useState<'auto' | 'colorize' | 'restore' | 'enhance'>('auto');
@@ -89,32 +91,32 @@ const PhotoEnhancement = () => {
   const enhancementTools = [
     {
       id: 'auto',
-      name: 'Auto Enhance',
-      description: 'AI-powered automatic enhancement',
+      name: t('tools.autoEnhance.name'),
+      description: t('tools.autoEnhance.description'),
       icon: Zap,
       color: 'text-dzinza-600',
       bgColor: 'bg-dzinza-50'
     },
     {
       id: 'colorize',
-      name: 'Colorization',
-      description: 'Add realistic colors to B&W photos',
+      name: t('tools.colorization.name'),
+      description: t('tools.colorization.description'),
       icon: Palette,
       color: 'text-accent-600',
       bgColor: 'bg-accent-50'
     },
     {
       id: 'restore',
-      name: 'Restoration',
-      description: 'Repair damage and improve quality',
+      name: t('tools.restoration.name'),
+      description: t('tools.restoration.description'),
       icon: Wand2,
       color: 'text-genealogy-600',
       bgColor: 'bg-genealogy-50'
     },
     {
       id: 'enhance',
-      name: 'Detail Enhancement',
-      description: 'Sharpen and enhance details',
+      name: t('tools.detailEnhancement.name'),
+      description: t('tools.detailEnhancement.description'),
       icon: Eye,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
@@ -181,20 +183,20 @@ const PhotoEnhancement = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 font-display">Photo Enhancement</h1>
-              <p className="text-gray-600 mt-2">Restore, colorize, and enhance your family photos using AI</p>
+              <h1 className="text-3xl font-bold text-gray-900 font-display">{t('title')}</h1>
+              <p className="text-gray-600 mt-2">{t('subtitle')}</p>
             </div>
             <div className="flex items-center space-x-4">
               <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-dzinza-600 border border-gray-300 rounded-lg">
                 <History className="h-4 w-4" />
-                <span>Processing Queue</span>
+                <span>{t('header.processingQueue')}</span>
               </button>
               <button 
                 onClick={() => fileInputRef.current?.click()}
                 className="bg-dzinza-600 text-white px-4 py-2 rounded-lg hover:bg-dzinza-700 transition-colors flex items-center space-x-2"
               >
                 <Upload className="h-4 w-4" />
-                <span>Upload Photo</span>
+                <span>{t('header.uploadPhoto')}</span>
               </button>
               <input
                 ref={fileInputRef}
@@ -213,9 +215,9 @@ const PhotoEnhancement = () => {
         <div className="mb-8">
           <nav className="flex space-x-8">
             {[
-              { id: 'enhance', label: 'Enhancement Studio', icon: Wand2 },
-              { id: 'history', label: 'Enhancement History', icon: History },
-              { id: 'gallery', label: 'Gallery', icon: ImageIcon }
+              { id: 'enhance', label: t('tabs.enhancementStudio'), icon: Wand2 },
+              { id: 'history', label: t('tabs.enhancementHistory'), icon: History },
+              { id: 'gallery', label: t('tabs.gallery'), icon: ImageIcon }
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -243,7 +245,7 @@ const PhotoEnhancement = () => {
             <div className="space-y-6">
               {/* Enhancement Tools */}
               <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Enhancement Tools</h3>
+                <h3 className="font-semibold text-gray-900 mb-4">{t('tools.title')}</h3>
                 <div className="space-y-3">
                   {enhancementTools.map((tool) => {
                     const Icon = tool.icon;
@@ -274,11 +276,11 @@ const PhotoEnhancement = () => {
 
               {/* Settings */}
               <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Settings</h3>
+                <h3 className="font-semibold text-gray-900 mb-4">{t('settings.title')}</h3>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Enhancement Level
+                      {t('settings.enhancementLevel')}
                     </label>
                     <input
                       type="range"
@@ -288,24 +290,24 @@ const PhotoEnhancement = () => {
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                     />
                     <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>Subtle</span>
-                      <span>Dramatic</span>
+                      <span>{t('settings.subtle')}</span>
+                      <span>{t('settings.dramatic')}</span>
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Output Quality
+                      {t('settings.outputQuality')}
                     </label>
                     <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-dzinza-500 focus:border-transparent">
-                      <option>HD (1080p)</option>
-                      <option>4K (2160p)</option>
-                      <option>Original Resolution</option>
+                      <option>{t('settings.hdQuality')}</option>
+                      <option>{t('settings.fourKQuality')}</option>
+                      <option>{t('settings.originalResolution')}</option>
                     </select>
                   </div>
                   <div className="flex items-center space-x-2">
                     <input type="checkbox" id="preserve-original" className="rounded" />
                     <label htmlFor="preserve-original" className="text-sm text-gray-700">
-                      Preserve original
+                      {t('settings.preserveOriginal')}
                     </label>
                   </div>
                 </div>
@@ -314,7 +316,7 @@ const PhotoEnhancement = () => {
               {/* Processing Status */}
               {selectedImage && (
                 <div className="bg-white rounded-xl shadow-sm p-6">
-                  <h3 className="font-semibold text-gray-900 mb-4">Processing Status</h3>
+                  <h3 className="font-semibold text-gray-900 mb-4">{t('processing.title')}</h3>
                   <div className="space-y-3">
                     {processingSteps.map((step) => (
                       <div key={step.id} className="flex items-center justify-between">
@@ -342,11 +344,11 @@ const PhotoEnhancement = () => {
                     <div className="relative">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                          <h4 className="text-sm font-medium text-gray-700 mb-3">Original</h4>
+                          <h4 className="text-sm font-medium text-gray-700 mb-3">{t('workspace.original')}</h4>
                           <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-[4/3]">
                             <img
                               src={selectedImage}
-                              alt="Original"
+                              alt={t('workspace.original')}
                               className="w-full h-full object-cover"
                             />
                             <div className="absolute top-2 right-2 flex space-x-1">
@@ -360,11 +362,11 @@ const PhotoEnhancement = () => {
                           </div>
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-gray-700 mb-3">Enhanced Preview</h4>
+                          <h4 className="text-sm font-medium text-gray-700 mb-3">{t('workspace.enhancedPreview')}</h4>
                           <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-[4/3] border-2 border-dashed border-gray-300 flex items-center justify-center">
                             <div className="text-center">
                               <Wand2 className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                              <p className="text-gray-500 text-sm">Click "Start Enhancement" to begin</p>
+                              <p className="text-gray-500 text-sm">{t('workspace.startPrompt')}</p>
                             </div>
                           </div>
                         </div>
@@ -376,11 +378,11 @@ const PhotoEnhancement = () => {
                       <div className="flex items-center space-x-4">
                         <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-dzinza-600 border border-gray-300 rounded-lg">
                           <RotateCcw className="h-4 w-4" />
-                          <span>Reset</span>
+                          <span>{t('controls.reset')}</span>
                         </button>
                         <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-dzinza-600 border border-gray-300 rounded-lg">
                           <Settings className="h-4 w-4" />
-                          <span>Adjust</span>
+                          <span>{t('controls.adjust')}</span>
                         </button>
                       </div>
                       <div className="flex items-center space-x-3">
@@ -389,15 +391,15 @@ const PhotoEnhancement = () => {
                           className="bg-dzinza-600 text-white px-6 py-2 rounded-lg hover:bg-dzinza-700 transition-colors flex items-center space-x-2"
                         >
                           <Wand2 className="h-4 w-4" />
-                          <span>Start Enhancement</span>
+                          <span>{t('controls.startEnhancement')}</span>
                         </button>
                         <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-dzinza-600 border border-gray-300 rounded-lg">
                           <Download className="h-4 w-4" />
-                          <span>Download</span>
+                          <span>{t('controls.download')}</span>
                         </button>
                         <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-dzinza-600 border border-gray-300 rounded-lg">
                           <Share className="h-4 w-4" />
-                          <span>Share</span>
+                          <span>{t('controls.share')}</span>
                         </button>
                       </div>
                     </div>
@@ -405,16 +407,16 @@ const PhotoEnhancement = () => {
                 ) : (
                   <div className="text-center py-16">
                     <ImageIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Upload a photo to get started</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">{t('workspace.uploadPrompt.title')}</h3>
                     <p className="text-gray-600 mb-6">
-                      Drag and drop your family photos here, or click the upload button above
+                      {t('workspace.uploadPrompt.description')}
                     </p>
                     <button 
                       onClick={() => fileInputRef.current?.click()}
                       className="bg-dzinza-600 text-white px-6 py-3 rounded-lg hover:bg-dzinza-700 transition-colors flex items-center space-x-2 mx-auto"
                     >
                       <Upload className="h-5 w-5" />
-                      <span>Choose Photo</span>
+                      <span>{t('workspace.uploadPrompt.choosePhoto')}</span>
                     </button>
                   </div>
                 )}
@@ -438,21 +440,21 @@ const PhotoEnhancement = () => {
                     <div>
                       <img
                         src={enhancement.before}
-                        alt="Before"
+                        alt={t('history.before')}
                         className="w-full h-32 object-cover"
                       />
                       <div className="p-2 bg-gray-50">
-                        <p className="text-xs text-gray-600 text-center">Before</p>
+                        <p className="text-xs text-gray-600 text-center">{t('history.before')}</p>
                       </div>
                     </div>
                     <div>
                       <img
                         src={enhancement.after}
-                        alt="After"
+                        alt={t('history.after')}
                         className="w-full h-32 object-cover"
                       />
                       <div className="p-2 bg-dzinza-50">
-                        <p className="text-xs text-dzinza-600 text-center">After</p>
+                        <p className="text-xs text-dzinza-600 text-center">{t('history.after')}</p>
                       </div>
                     </div>
                   </div>
@@ -460,13 +462,13 @@ const PhotoEnhancement = () => {
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-semibold text-gray-900 text-sm">{enhancement.name}</h3>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(enhancement.status)}`}>
-                        {enhancement.status}
+                        {t(`status.${enhancement.status}`)}
                       </span>
                     </div>
                     <p className="text-gray-600 text-xs mb-3">{enhancement.description}</p>
                     <div className="flex items-center justify-between">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(enhancement.type)}`}>
-                        {enhancement.type}
+                        {t(`type.${enhancement.type}`)}
                       </span>
                       <span className="text-xs text-gray-500">
                         {new Date(enhancement.dateProcessed).toLocaleDateString()}
@@ -474,10 +476,10 @@ const PhotoEnhancement = () => {
                     </div>
                     <div className="flex space-x-2 mt-3">
                       <button className="flex-1 bg-dzinza-600 text-white py-2 px-3 rounded-md hover:bg-dzinza-700 transition-colors text-xs">
-                        Download
+                        {t('controls.download')}
                       </button>
                       <button className="flex-1 border border-gray-300 text-gray-700 py-2 px-3 rounded-md hover:bg-gray-50 transition-colors text-xs">
-                        Share
+                        {t('controls.share')}
                       </button>
                     </div>
                   </div>

@@ -9,7 +9,7 @@
 
 Dzinza is a modern, feature-rich genealogy platform inspired by industry leaders like MyHeritage. It provides a suite of tools for users to build their family history, connect with relatives, and uncover the stories of their ancestors. The platform is designed with a mobile-first, responsive interface and a powerful backend to support a seamless user experience.
 
-Key features include an intuitive family tree builder, DNA matching and analysis, a vast searchable database of historical records, AI-powered photo enhancement, and collaborative research capabilities. The project is built on a robust, scalable, and secure technology stack, ensuring data integrity and user privacy.
+Key features include an intuitive family tree builder, DNA matching and analysis, a vast searchable database of historical records, AI-powered photo enhancement, multi-language support (English, Shona, Ndebele), and collaborative research capabilities. The platform is designed to serve users from diverse linguistic and cultural backgrounds, with particular focus on Zimbabwean heritage and African genealogy. The project is built on a robust, scalable, and secure technology stack, ensuring data integrity and user privacy.
 
 Implementation Plan
 This project will be implemented in five distinct phases, each with specific milestones and deliverables. The platform will be developed using a microservices architecture, containerized with Docker, and orchestrated with Kubernetes for scalability and resilience.
