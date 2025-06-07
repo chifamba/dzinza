@@ -1,9 +1,11 @@
-Repo Summary & Description
-Repo Name: dzinza
+# Project Overview
 
-Summary: An open-source, interactive genealogy platform for building family trees, discovering relatives, and exploring ancestral history.
+## Repo Summary & Description
+**Repo Name:** dzinza
 
-Description:
+**Summary:** An open-source, interactive genealogy platform for building family trees, discovering relatives, and exploring ancestral history.
+
+## Description
 
 Dzinza is a modern, feature-rich genealogy platform inspired by industry leaders like MyHeritage. It provides a suite of tools for users to build their family history, connect with relatives, and uncover the stories of their ancestors. The platform is designed with a mobile-first, responsive interface and a powerful backend to support a seamless user experience.
 
