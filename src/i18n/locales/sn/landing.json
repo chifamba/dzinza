@@ -1,0 +1,67 @@
+{
+  "hero": {
+    "title": "Ziva",
+    "titleHighlight": "Nyaya Yemhuri Yako",
+    "subtitle": "Ziva madzitateguru ako, batana nehama, uye chengetedza nhaka yemhuri yako neplatform yepamusoro pasi rose yekutsvaga madzinza.",
+    "startJourney": "Tanga Rwendo Rwako",
+    "watchDemo": "Ona Demo",
+    "stats": {
+      "familyTrees": "Miti Yemhuri",
+      "records": "Zvinyorwa", 
+      "countries": "Nyika"
+    }
+  },
+  "features": {
+    "title": "Zvishandiso Zvine Simba Zvekuziva Mhuri",
+    "subtitle": "Zvose zvaunoda kuziva, kuchengetedza, nekugovana nhoroondo yemhuri yako",
+    "interactiveFamilyTrees": {
+      "title": "Miti Yemhuri Inobatanidzwa",
+      "description": "Vaka uye ongorora nhoroondo yemhuri yako neshandiso yedu inoshandika yekukweva-nekudonhedza."
+    },
+    "dnaMatching": {
+      "title": "Kuwirirana kweDNA",
+      "description": "Ziva hama nemavambo erudzi kuburikidza nekuongororwa kweDNA kwepamusoro nekuwirirana algorithms."
+    },
+    "historicalRecords": {
+      "title": "Zvinyorwa Zvenhoroondo",
+      "description": "Tsvaga kuburikidza nemabhiriyoni ezvinyorwa zvenhoroondo, magwaro, uye ma-archives pasi rose."
+    },
+    "photoEnhancement": {
+      "title": "Kuvandudza Mapicture",
+      "description": "Dzoreredza, isa mavara, uye vavandudza mapicture ekare emhuri uchishandisa AI-powered technology."
+    },
+    "collaborativeResearch": {
+      "title": "Kutsvagisa Pamwe",
+      "description": "Shanda pamwe nenhengo dzemhuri nevamwe vatsvagi kuziva nhoroondo yenyu yakagovana."
+    },
+    "globalDatabase": {
+      "title": "Database Yepasi Rose",
+      "description": "Wana zvinyorwa kubva pakasiyana pakasiyana pasi nedatabase yedu yakazara yemadzinza."
+    }
+  },
+  "testimonials": {
+    "title": "Inovimbwa neMamiriyoni",
+    "subtitle": "Ona zviri kutaurwa nemunharaunda wedu nezveDzinza",
+    "testimonial1": {
+      "name": "Sarah Johnson",
+      "role": "Munyori Wenhoroondo Yemhuri",
+      "content": "Dzinza yakandibatsira kutevera mhuri yangu kudzokera kuzvizvarwa gumi nemiviri. Chinhu chekuwirirana kweDNA chakandibatanidza nemuzukuru wandisina kumboziva kuti varipo!"
+    },
+    "testimonial2": {
+      "name": "Michael Chen", 
+      "role": "Mutsvagi Wemadzinza",
+      "content": "Kutsvaga zvinyorwa zvenhoroondo kune simba rinoshamisa. Ndakawana magwaro ekutama evasekuru vangu mukati meminiti."
+    },
+    "testimonial3": {
+      "name": "Emma Rodriguez",
+      "role": "Muvaki Wemuti Wemhuri", 
+      "content": "Chinhu chekudzoreredza mapicture chakadzosera mapicture ekare emhuri kuhupenyu. Ambuya vangu vakashamisika kuona vabereki vavo vaine mavara!"
+    }
+  },
+  "cta": {
+    "title": "Wakagadzirira Kuziva Nhoroondo Yemhuri Yako?",
+    "subtitle": "Batana nemamiriyoni evanhu vakatotanga rwendo rwavo rwenhoroondo yemhuri",
+    "getStartedFree": "Tanga Mahara",
+    "learnMore": "Dzidza Zvimwe"
+  }
+}

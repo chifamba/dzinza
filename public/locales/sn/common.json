@@ -1,0 +1,130 @@
+{
+  "app": {
+    "name": "Dzinza",
+    "tagline": "Wana Nhoroondo Yemhuri Yako"
+  },
+  "navigation": {
+    "dashboard": "Dashbhodhi",
+    "familyTree": "Muti Wemhuri",
+    "dnaMatching": "Kuwana DNA",
+    "records": "Zvinyorwa",
+    "photos": "Mifananidzo",
+    "signIn": "Pinda",
+    "login": "Pinda",
+    "signOut": "Buda",
+    "profile": "Chimiro",
+    "settings": "Mamiriro"
+  },
+  "actions": {
+    "save": "Chengetedza",
+    "cancel": "Dzosa",
+    "delete": "Bvisa",
+    "edit": "Gadziridza",
+    "add": "Wedzera",
+    "remove": "Bvisa",
+    "upload": "Rodha",
+    "download": "Dhawunrodha",
+    "share": "Govera",
+    "export": "Budisa",
+    "import": "Pinza",
+    "search": "Tsvaga",
+    "filter": "Sefa",
+    "sort": "Ronga",
+    "view": "Ona",
+    "close": "Vhara",
+    "back": "Dzokera",
+    "next": "Tenderera",
+    "previous": "Yapfuura",
+    "submit": "Endesa",
+    "reset": "Dzosera"
+  },
+  "status": {
+    "loading": "Kufema...",
+    "saving": "Kuchengetedza...",
+    "saved": "Zvachengeterwa",
+    "error": "Kukanganisa",
+    "success": "Kufara",
+    "warning": "Kuyambira",
+    "info": "Ruzivo",
+    "noData": "Hapana data",
+    "noResults": "Hapana zvakawanikwa"
+  },
+  "messages": {
+    "welcomeBack": "Wakauya zvakare kuDzinza",
+    "lastLogin": "Wakapinda kekupedzisira",
+    "noData": "Hapana data",
+    "confirmDelete": "Uri chokwadi here kuti unoda kubvisa izvi?",
+    "unsavedChanges": "Une shanduko dzisina kuchengetedzwa. Unoda kubuda?",
+    "connectionError": "Kukanganisa kwekubatana. Edza zvakare.",
+    "permissionDenied": "Hauna mvumo yekuita izvi",
+    "sessionExpired": "Nguva yako yapera. Pinda zvakare."
+  },
+  "forms": {
+    "firstName": "Zita Rekutanga",
+    "lastName": "Zita Rokupedzisira",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Simbisa Password",
+    "birthDate": "Zuva Rekuberekwa",
+    "deathDate": "Zuva Rekufa",
+    "location": "Nzvimbo",
+    "relationship": "Hukama",
+    "notes": "Zvinyorwa",
+    "gender": "Murume kana Mukadzi",
+    "phone": "Nhamba Yefoni",
+    "address": "Kero",
+    "occupation": "Basa"
+  },
+  "validation": {
+    "required": "Chinhu ichi chinodiwa",
+    "email": "Nyora email chaiyo",
+    "password": "Password inofanira kuva nemabhii 8 kana kupfuura",
+    "passwordMatch": "Mapasiwedhi haafanani",
+    "invalidDate": "Nyora zuva chairo",
+    "maxLength": "Zvibhii zvinopfuura {{max}} hazvibvumidzwe",
+    "minLength": "Zvibhii {{min}} zvinodiwa"
+  },
+  "gender": {
+    "male": "Murume",
+    "female": "Mukadzi",
+    "other": "Rimwe",
+    "unknown": "Hazvizivikanwe"
+  },
+  "relationships": {
+    "spouse": "Mudzimai/Murume",
+    "parent": "Mubereki",
+    "child": "Mwana",
+    "sibling": "Munin'ina/Mukoma/Munun'una/Hanzvadzi",
+    "grandparent": "Mbuya/Sekuru",
+    "grandchild": "Muzukuru",
+    "aunt": "Mainini/Vatete",
+    "uncle": "Babamukuru/Babamunini/Sekuru",
+    "niece": "Mwana womukoma/wohanzvadzi",
+    "nephew": "Mwana womukoma/wohanzvadzi",
+    "cousin": "Mwana wababamukuru/wamainini"
+  },
+  "time": {
+    "today": "Nhasi",
+    "yesterday": "Nezuro",
+    "thisWeek": "Vhiki ino",
+    "thisMonth": "Mwedzi uno",
+    "thisYear": "Gore rino",
+    "years": "gore {{count}}",
+    "years_plural": "makore {{count}}",
+    "months": "mwedzi {{count}}",
+    "months_plural": "mwedzi {{count}}",
+    "days": "zuva {{count}}",
+    "days_plural": "mazuva {{count}}",
+    "hours": "awa {{count}}",
+    "hours_plural": "maawa {{count}}",
+    "minutes": "miniti {{count}}",
+    "minutes_plural": "maminiti {{count}}"
+  },
+  "languages": {
+    "en": "Chirungu",
+    "sn": "ChiShona",
+    "nd": "IsiNdebele",
+    "selectLanguage": "Sarudza Mutauro",
+    "changeLanguage": "Shandura Mutauro"
+  }
+}

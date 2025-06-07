@@ -1,0 +1,71 @@
+{
+  "title": "Kuwirirana kweDNA",
+  "subtitle": "Wana hama kuburikidza nekuongorora kweDNA",
+  "tabs": {
+    "matches": "Zvinowirirana zveDNA",
+    "ethnicity": "Fungidziro yeRudzi",
+    "migration": "Maitiro ekutama"
+  },
+  "search": {
+    "placeholder": "Tsvaga zvinowirirana zveDNA...",
+    "noResults": "Hapana zvinowirirana zveDNA zvakawanikwa"
+  },
+  "filters": {
+    "all": "Zvese Zvinowirirana",
+    "close": "Mhuri Yepedyo",
+    "distant": "Hama Dziri Kure",
+    "new": "Zvinowirirana Zvitsva"
+  },
+  "matches": {
+    "sharedDNA": "DNA Yakagovaniswa",
+    "confidence": "Chivimbo",
+    "treeSize": "Saizi yeMuti",
+    "lastActive": "Pakupedzisira Kushanda",
+    "contact": "Taura",
+    "viewTree": "Ona Muti",
+    "compare": "Zenzanisa",
+    "relationship": "Hukama",
+    "newMatch": "Zvinoenderana Zvitsva"
+  },
+  "ethnicity": {
+    "regions": "Matunhu",
+    "percentage": "Chikamu",
+    "confidence": "Kuchinja kweChivimbo",
+    "details": "Ruzivo rweDunhu",
+    "migrate": "Nzira yekutama",
+    "breakdown": "Kuganhurwa kweRudzi",
+    "regionalBreakdown": "Kuganhurwa kweDunhu"
+  },
+  "migration": {
+    "patterns": "Maitiro ekutama",
+    "routes": "Nzira dzenhoroondo",
+    "timeline": "Nguva",
+    "origin": "Kwakabva",
+    "destination": "Kwaienda"
+  },
+  "stats": {
+    "totalMatches": "zvinoenderana zveDNA {{count}}",
+    "totalMatches_plural": "zvinoenderana zveDNA {{count}}",
+    "closeFamily": "hama yepedyo {{count}}",
+    "closeFamily_plural": "hama dzepedyo {{count}}",
+    "newThisWeek": "zvitsva {{count}} vhiki ino",
+    "countries": "nyika {{count}}",
+    "countries_plural": "nyika {{count}}"
+  },
+  "actions": {
+    "contactMatch": "Taura neZvinoenderana",
+    "shareTree": "Govera Muti",
+    "compareResults": "Zenzanisa Mhinduro",
+    "exportData": "Budisa Data",
+    "uploadData": "Kwidza Data yeDNA"
+  },
+  "sidebar": {
+    "title": "Ruzivo rweZvinoenderana",
+    "dnaDetails": "Ruzivo rweDNA",
+    "people": "vanhu",
+    "location": "Nzvimbo",
+    "sendMessage": "Tumira Meseji",
+    "viewTree": "Ona Muti weMhuri",
+    "compareDNA": "Zenzanisa DNA"
+  }
+}

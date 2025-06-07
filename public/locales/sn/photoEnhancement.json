@@ -1,0 +1,82 @@
+{
+  "title": "Kuvandudza Mapicture",
+  "subtitle": "Vavandudza, wedzera mavara, uye mukurudzire mapicture emhuri yako uchishandisa AI",
+  "header": {
+    "processingQueue": "Mutsara Wekugadzirisa",
+    "uploadPhoto": "Isa Mufananidzo"
+  },
+  "tabs": {
+    "enhancementStudio": "Studio Yekuvandudza",
+    "enhancementHistory": "Nhoroondo Yekuvandudza",
+    "gallery": "Gallery"
+  },
+  "tools": {
+    "title": "Zvishandiso Zvekuvandudza",
+    "autoEnhance": {
+      "name": "Mukurudziro Otomatiki",
+      "description": "Mukurudziro otomatiki une AI"
+    },
+    "colorization": {
+      "name": "Kuisa Mavara",
+      "description": "Isa mavara echokwadi pamapicture matema nechena"
+    },
+    "restoration": {
+      "name": "Kudzoseredzwa",
+      "description": "Gadzira kukuvara nekusimudzira hunhu"
+    },
+    "detailEnhancement": {
+      "name": "Mukurudziro Wezvakajeka",
+      "description": "Pina uye vavandudza zvakajeka"
+    }
+  },
+  "settings": {
+    "title": "Magadzirirwo",
+    "enhancementLevel": "Danho Rekuvandudza",
+    "subtle": "Chinyararire",
+    "dramatic": "Chinoshamisa",
+    "outputQuality": "Hunhu Hwekubuda",
+    "hdQuality": "HD (1080p)",
+    "fourKQuality": "4K (2160p)",
+    "originalResolution": "Resolution Yekutanga",
+    "preserveOriginal": "Chengetedza yekutanga"
+  },
+  "processing": {
+    "title": "Chinzvimbo Chekugadzirisa",
+    "imageAnalysis": "Kuongororwa Kwemufananidzo",
+    "noiseReduction": "Kudzikisira Ruzha",
+    "detailEnhancement": "Mukurudziro Wezvakajeka",
+    "colorRestoration": "Kudzoseredzwa Kwemavara",
+    "finalProcessing": "Kugadzirisa Kwekupedzisira"
+  },
+  "workspace": {
+    "original": "Yekutanga",
+    "enhancedPreview": "Kuona Kwakavandudza",
+    "startPrompt": "Dzvanya \"Tanga Mukurudziro\" kuti utange",
+    "uploadPrompt": {
+      "title": "Isa mufananidzo kuti utange",
+      "description": "Dhonza uye ise mapicture emhuri yako pano, kana dzvanya butoni rekuisa pamusoro",
+      "choosePhoto": "Sarudza Mufananidzo"
+    }
+  },
+  "controls": {
+    "reset": "Dzosera",
+    "adjust": "Gadzirisa",
+    "startEnhancement": "Tanga Mukurudziro",
+    "download": "Dhaunirodha",
+    "share": "Govana"
+  },
+  "history": {
+    "before": "Kare",
+    "after": "Mushure"
+  },
+  "status": {
+    "completed": "yakapera",
+    "processing": "iri kugadziriswa",
+    "queued": "iri kumutsara"
+  },
+  "type": {
+    "colorization": "kuisa mavara",
+    "restoration": "kudzoseredzwa",
+    "enhancement": "mukurudziro"
+  }
+}

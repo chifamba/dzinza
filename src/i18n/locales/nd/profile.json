@@ -1,0 +1,102 @@
+{
+  "title": "Iphrofayili Yami",
+  "personalInfo": {
+    "title": "Ulwazi Lomuntu Siqu",
+    "firstName": "Igama Lokuqala",
+    "lastName": "Isibongo",
+    "middleName": "Igama Laphakathi",
+    "birthDate": "Usuku Lokuzalwa",
+    "birthPlace": "Indawo Yokuzalwa",
+    "gender": "Ubulili",
+    "email": "I-Email",
+    "phone": "Ifoni",
+    "address": "Ikheli",
+    "occupation": "Umsebenzi",
+    "education": "Imfundo",
+    "biography": "Ukuphila Kwami"
+  },
+  "preferences": {
+    "title": "Izinkambo",
+    "language": "Ulimi",
+    "timezone": "Isikhathi Sendawo",
+    "dateFormat": "Ifomati Yosuku",
+    "notifications": "Izaziso",
+    "privacy": "Ubumfihlo",
+    "theme": "Isimo"
+  },
+  "familyConnections": {
+    "title": "Ukuxhumana Komndeni",
+    "parents": "Abazali",
+    "spouse": "Umyeni/Umkakhe",
+    "children": "Abantwana",
+    "siblings": "Abafowethu/Odadewethu",
+    "addConnection": "Engeza Ukuxhumana"
+  },
+  "mediaGallery": {
+    "title": "Igalari Yezithombe",
+    "profilePhoto": "Isithombe Sephrofayili",
+    "photos": "Izithombe",
+    "documents": "Amadokhumenti",
+    "uploadPhoto": "Layisha Isithombe",
+    "uploadDocument": "Layisha Idokhumenti",
+    "noMedia": "Akukho media"
+  },
+  "security": {
+    "title": "Ukuphepha",
+    "changePassword": "Guqula Iphasiwedi",
+    "currentPassword": "Iphasiwedi Yamanje",
+    "newPassword": "Iphasiwedi Entsha",
+    "confirmPassword": "Qinisekisa Iphasiwedi",
+    "twoFactorAuth": "Ukuqinisekisa Okuphindwe Kabili",
+    "loginHistory": "Umlando Wokungenwa",
+    "activeSessions": "Izikhathi Ezisebenzayo"
+  },
+  "privacy": {
+    "title": "Ubumfihlo",
+    "publicProfile": "Iphrofayili Yomphakathi",
+    "showBirthDate": "Bonisa Usuku Lokuzalwa",
+    "showContact": "Bonisa Ulwazi Lokuxhumana",
+    "allowMessages": "Vumela Imilayezo",
+    "familyAccess": "Ukufinyelela Komndeni",
+    "searchable": "Kungafunwa"
+  },
+  "notifications": {
+    "title": "Izaziso",
+    "email": "I-Email",
+    "push": "Push",
+    "familyUpdates": "Izibuyekezo Zomndeni",
+    "newMatches": "Ukufanana Okusha",
+    "birthdays": "Izinsuku Zokuzalwa",
+    "anniversaries": "Amaqwedandaba",
+    "systemUpdates": "Izibuyekezo Zesistimu"
+  },
+  "actions": {
+    "editProfile": "Hlela Iphrofayili",
+    "saveChanges": "Gcina Izinguquko",
+    "uploadPhoto": "Layisha Isithombe",
+    "downloadData": "Thobela Idatha",
+    "deleteAccount": "Susa I-akhawunti",
+    "exportFamily": "Thumela Umndeni"
+  },
+  "validation": {
+    "firstNameRequired": "Igama lokuqala liyadingeka",
+    "lastNameRequired": "Isibongo siyadingeka",
+    "emailRequired": "I-email iyadingeka",
+    "validEmailRequired": "Faka i-email efaneleyo",
+    "phoneRequired": "Inombolo yefoni iyadingeka",
+    "birthdateRequired": "Usuku lokuzalwa luyadingeka",
+    "validDateRequired": "Faka usuku olufaneleyo"
+  },
+  "success": {
+    "profileUpdated": "Iphrofayili ihleliwe ngempumelelo",
+    "photoUploaded": "Isithombe silayishwe ngempumelelo",
+    "passwordChanged": "Iphasiwedi iguquliwe ngempumelelo",
+    "preferencesUpdated": "Izinkambo zihleliwe ngempumelelo"
+  },
+  "errors": {
+    "updateFailed": "Ukuhlela kuhlulekile",
+    "uploadFailed": "Ukulayisha kuhlulekile",
+    "invalidData": "Idatha engalungile",
+    "serverError": "Iphutha leseva"
+  }
+}

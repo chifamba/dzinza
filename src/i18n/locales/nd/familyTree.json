@@ -1,0 +1,115 @@
+{
+  "title": "Isihlahla Somndeni",
+  "relationships": {
+    "father": "Ubaba",
+    "mother": "Umama",
+    "son": "Indodana",
+    "daughter": "Indodakazi",
+    "husband": "Umyeni",
+    "wife": "Umkakhe",
+    "brother": "Umfowabo",
+    "sister": "Udadewabo",
+    "grandfather": "Umkhulu",
+    "grandmother": "Ugogo",
+    "grandson": "Umzukulwane",
+    "granddaughter": "Intombazane",
+    "uncle": "Umalume",
+    "aunt": "Umakoti",
+    "nephew": "Umfowabo womtwana",
+    "niece": "Udadewabo womtwana",
+    "cousin": "Umzala",
+    "fatherInLaw": "Uyisezala",
+    "motherInLaw": "Uninazala",
+    "sonInLaw": "Umkhwenyana",
+    "daughterInLaw": "Umakoti"
+  },
+  "generations": {
+    "greatGreatGrandparents": "Ogogo abakhulu",
+    "greatGrandparents": "Ogogo",
+    "grandparents": "Okhulu",
+    "parents": "Abazali",
+    "self": "Mina",
+    "children": "Abantwana",
+    "grandchildren": "Abazukulwane",
+    "greatGrandchildren": "Abazukulwane abakhulu",
+    "greatGreatGrandchildren": "Abazukulwane abakhulu kakhulu"
+  },
+  "actions": {
+    "addMember": "Engeza Ilungu",
+    "editMember": "Hlela Ilungu",
+    "deleteMember": "Susa Ilungu",
+    "addChild": "Engeza Umntwana",
+    "addParent": "Engeza Umzali",
+    "addSpouse": "Engeza Umyeni/Umkakhe",
+    "viewDetails": "Buka Imininingwane",
+    "expandTree": "Nweba Isihlahla",
+    "collapseTree": "Goqa Isihlahla",
+    "printTree": "Phrinta Isihlahla",
+    "exportTree": "Thumela Isihlahla",
+    "share": "Yabelana",
+    "addPerson": "Engeza Umuntu",
+    "addGreatGrandparents": "Engeza Okhokho Abakhulu",
+    "saveChanges": "Gcina Izinguquko",
+    "discardChanges": "Lahla Izinguquko",
+    "deleteConfirm": "Uqinisile ukuthi ufuna ukususa lo muntu?",
+    "deleteWarning": "Lesi senzo asingeke sibuyiselwe emuva."
+  },
+  "views": {
+    "ancestorView": "Ukubuka Okhokho",
+    "descendantView": "Ukubuka Abazukulwane",
+    "familyView": "Ukubuka Umndeni",
+    "timelineView": "Ukubuka Isikhathi",
+    "compactView": "Ukubuka Okuncane",
+    "detailedView": "Ukubuka Okuningi"
+  },
+  "memberInfo": {
+    "birthDate": "Usuku Lokuzalwa",
+    "deathDate": "Usuku Lokufa",
+    "birthPlace": "Indawo Yokuzalwa",
+    "occupation": "Umsebenzi",
+    "education": "Imfundo",
+    "notes": "Amanothi",
+    "living": "Uyaphila",
+    "deceased": "Ufile"
+  },
+  "search": {
+    "searchPlaceholder": "Funa amalungu omndeni...",
+    "filterByGeneration": "Khetha ngokwesizukulwane",
+    "filterByLocation": "Khetha ngokwendawo",
+    "filterByStatus": "Khetha ngokwesimo",
+    "noResults": "Akukho lutho olutholakalayo"
+  },
+  "statistics": {
+    "totalMembers": "Amalungu Onke",
+    "livingMembers": "Amalungu Aphilayo",
+    "deceasedMembers": "Amalungu Afile",
+    "generations": "Izizukulwane",
+    "branches": "Amagatsha",
+    "countries": "Amazwe",
+    "averageAge": "Iminyaka Ephakathi"
+  },
+  "toolbar": {
+    "addPerson": "Engeza Umuntu",
+    "viewModes": "Izindlela Zokubona",
+    "export": "Khupha",
+    "share": "Yabelana",
+    "settings": "Izilungiselelo"
+  },
+  "sidebar": {
+    "personDetails": "Imininingwane Yomuntu",
+    "changePhoto": "Shintsha Isithombe",
+    "basicInformation": "Ulwazi Oluyisisekelo",
+    "fields": {
+      "fullName": "Ibizo Eliphelele",
+      "relationship": "Ubudlelwano",
+      "birthYear": "Umnyaka Wokuzalwa",
+      "deathYear": "Umnyaka Wokufa",
+      "location": "Indawo"
+    },
+    "actions": {
+      "saveChanges": "Gcina Izinguquko",
+      "viewFullProfile": "Bona Iphrofayela Ephelele",
+      "removePerson": "Susa Umuntu"
+    }
+  }
+}
