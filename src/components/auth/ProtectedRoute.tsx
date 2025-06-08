@@ -1,48 +1,35 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { useSelector } from 'react-redux';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { RootState } from '../../store/store'; // Adjust path as needed
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requiredRoles?: string[];
-  requireEmailVerification?: boolean;
+  // No specific props needed if just using Outlet for children
+  // children?: React.ReactNode; // If you prefer to pass children explicitly
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  children,
-  requiredRoles = [],
-  requireEmailVerification = false
-}) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = () => {
+  const { isAuthenticated, status } = useSelector((state: RootState) => state.auth);
   const location = useLocation();
 
-  // Show loading spinner while checking authentication
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
+  // Optional: Handle loading state if you have an initial auth check
+  if (status === 'loading') {
+    // You might want to return a loading spinner here
+    // For now, we'll let it potentially show the login page briefly
+    // or rely on initial state of isAuthenticated being false.
+    return <div>Loading authentication status...</div>; // Or a proper spinner component
   }
 
-  // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to="/auth/login" state={{ from: location }} replace />;
+    // Redirect them to the /login page, but save the current location they were
+    // trying to go to when they were redirected. This allows us to send them
+    // along to that page after they login, which is a nicer user experience
+    // than dropping them off on the home page.
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check email verification requirement
-  if (requireEmailVerification && !user?.emailVerified) {
-    return <Navigate to="/auth/verify-email" replace />;
-  }
-
-  // Check role requirements
-  if (requiredRoles.length > 0 && user) {
-    const hasRequiredRole = requiredRoles.some(role => user.roles.includes(role));
-    if (!hasRequiredRole) {
-      return <Navigate to="/unauthorized" replace />;
-    }
-  }
-
-  return <>{children}</>;
+  return <Outlet />; // Outlet will render the matched child route element
+  // Or if using explicit children: return <>{children}</>;
 };
+
+export default ProtectedRoute;
