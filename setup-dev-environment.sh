@@ -30,13 +30,13 @@ log_error() {
 }
 
 # Check if running on macOS
-check_os() {
-    if [[ "$OSTYPE" != "darwin"* ]]; then
-        log_error "This script is designed for macOS. Please adapt for your OS."
-        exit 1
-    fi
-    log_info "Running on macOS ✓"
-}
+# check_os() {
+#     if [[ "$OSTYPE" != "darwin"* ]]; then
+#         log_error "This script is designed for macOS. Please adapt for your OS."
+#         exit 1
+#     fi
+#     log_info "Running on macOS ✓"
+# }
 
 # Check prerequisites
 check_prerequisites() {
@@ -46,6 +46,7 @@ check_prerequisites() {
     if ! command -v brew &> /dev/null; then
         log_info "Installing Homebrew..."
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     else
         log_success "Homebrew is already installed ✓"
     fi
@@ -60,6 +61,14 @@ check_prerequisites() {
         log_success "Docker is already installed ✓"
     fi
     
+    # Check if Docker Compose is installed
+    if ! command -v docker-compose &> /dev/null; then
+        log_info "Installing Docker Compose..."
+        brew install docker-compose
+    else
+        log_success "Docker Compose is already installed ✓"
+    fi
+
     # Check if Node.js is installed
     if ! command -v node &> /dev/null; then
         log_info "Installing Node.js via nvm..."
@@ -105,12 +114,12 @@ generate_env_files() {
     log_info "Generating environment files..."
     
     # Generate random passwords and secrets
-    DB_PASSWORD=$(openssl rand -base64 32)
-    MONGO_PASSWORD=$(openssl rand -base64 32)
-    REDIS_PASSWORD=$(openssl rand -base64 32)
-    JWT_SECRET=$(openssl rand -base64 64)
-    API_KEY=$(openssl rand -hex 32)
-    GRAFANA_PASSWORD=$(openssl rand -base64 16)
+    DB_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9')
+    MONGO_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9')
+    REDIS_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9')
+    JWT_SECRET=$(openssl rand -base64 64 | tr -dc 'a-zA-Z0-9')
+    API_KEY=$(openssl rand -hex 32) # hex output is already safe
+    GRAFANA_PASSWORD=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9')
     
     # Create .env file
     cat > .env << EOF
@@ -155,12 +164,12 @@ install_dependencies() {
     
     log_info "Installing backend dependencies..."
     cd backend
-    npm install
+    npm install --legacy-peer-deps
     cd ..
     
     # Install global tools
     log_info "Installing global development tools..."
-    npm install -g @lhci/cli artillery axe-core @axe-core/cli pa11y
+    sudo npm install -g @lhci/cli artillery axe-core @axe-core/cli pa11y
     
     log_success "Dependencies installed ✓"
 }
@@ -391,25 +400,25 @@ start_dev_environment() {
     
     # Pull required Docker images
     log_info "Pulling Docker images..."
-    docker-compose pull
+    sudo /home/linuxbrew/.linuxbrew/bin/docker-compose pull
     
     # Start the development stack
     log_info "Starting Docker containers..."
-    docker-compose up -d postgres redis mongodb elasticsearch
+    sudo /home/linuxbrew/.linuxbrew/bin/docker-compose up -d postgres redis mongodb elasticsearch
     
     # Wait for databases to be ready
     log_info "Waiting for databases to be ready..."
     sleep 30
     
     # Check if databases are accessible
-    if docker-compose exec postgres pg_isready -U dzinza_user -d dzinza_db; then
+    if sudo /home/linuxbrew/.linuxbrew/bin/docker-compose exec postgres pg_isready -U dzinza_user -d dzinza_db; then
         log_success "PostgreSQL is ready ✓"
     else
         log_error "PostgreSQL failed to start"
         exit 1
     fi
     
-    if docker-compose exec redis redis-cli ping; then
+    if sudo /home/linuxbrew/.linuxbrew/bin/docker-compose exec redis redis-cli ping; then
         log_success "Redis is ready ✓"
     else
         log_error "Redis failed to start"
@@ -422,6 +431,7 @@ start_dev_environment() {
 # Create development scripts
 create_dev_scripts() {
     log_info "Creating development scripts..."
+    mkdir -p scripts
     
     # Start script
     cat > scripts/start-dev.sh << 'EOF'
@@ -679,7 +689,7 @@ main() {
     echo "=========================================================="
     echo
     
-    check_os
+    # check_os
     check_prerequisites
     setup_directories
     generate_env_files
