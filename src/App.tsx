@@ -1,6 +1,15 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { LandingPage, LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage, DashboardPage } from './pages'; // Adjust path as needed
+// Ensure FamilyTreePage is imported
+import {
+  LandingPage,
+  LoginPage,
+  RegisterPage,
+  ForgotPasswordPage,
+  ResetPasswordPage,
+  DashboardPage,
+  FamilyTreePage // Import FamilyTreePage
+} from './pages';
 import { ProtectedRoute } from './components/auth'; // Adjust path as needed
 
 function App() {
@@ -17,6 +26,7 @@ function App() {
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/family-tree" element={<FamilyTreePage />} /> {/* Add this route */}
           {/* Add other protected routes here */}
         </Route>
 
