@@ -1,0 +1,82 @@
+{
+  "title": "Ukwenza Imifanekiso Ibe Ngcono",
+  "subtitle": "Buyisela, faka imibala, futhi wenze imifanekiso yomndeni wakho ibe ngcono ngokusebenzisa i-AI",
+  "header": {
+    "processingQueue": "Umgqa Wokucubungula",
+    "uploadPhoto": "Layisha Isithombe"
+  },
+  "tabs": {
+    "enhancementStudio": "Isitudiyo Sokwenza Kube Ngcono",
+    "enhancementHistory": "Umlando Wokwenza Kube Ngcono",
+    "gallery": "Igalari"
+  },
+  "tools": {
+    "title": "Amathuluzi Okwenza Kube Ngcono",
+    "autoEnhance": {
+      "name": "Ukwenza Kube Ngcono Ngokuzenzela",
+      "description": "Ukwenza kube ngcono ngokuzenzela ngokusebenzisa i-AI"
+    },
+    "colorization": {
+      "name": "Ukufaka Imibala",
+      "description": "Fakela imibala eqinisile ezithombeni ezimnyama namhlophe"
+    },
+    "restoration": {
+      "name": "Ukubuyiselwa",
+      "description": "Lungisa ukulimala futhi wenze ikhwalithi ibe ngcono"
+    },
+    "detailEnhancement": {
+      "name": "Ukwenza Imininingwane Ibe Ngcono",
+      "description": "Qinisa futhi wenze imininingwane ibe ngcono"
+    }
+  },
+  "settings": {
+    "title": "Izilungiselelo",
+    "enhancementLevel": "Izinga Lokwenza Kube Ngcono",
+    "subtle": "Kancane",
+    "dramatic": "Okumangalisayo",
+    "outputQuality": "Ikhwalithi Yokuphuma",
+    "hdQuality": "HD (1080p)",
+    "fourKQuality": "4K (2160p)",
+    "originalResolution": "Ukubona Kwasekuqaleni",
+    "preserveOriginal": "Gcina esasekuqaleni"
+  },
+  "processing": {
+    "title": "Isimo Sokucubungula",
+    "imageAnalysis": "Ukuhlaziya Isithombe",
+    "noiseReduction": "Ukunciphisa Umsindo",
+    "detailEnhancement": "Ukwenza Imininingwane Ibe Ngcono",
+    "colorRestoration": "Ukubuyiselwa Kwemibala",
+    "finalProcessing": "Ukucubungula Kokugcina"
+  },
+  "workspace": {
+    "original": "Esasekuqaleni",
+    "enhancedPreview": "Ukubona Okwenziwe Kube Ngcono",
+    "startPrompt": "Cindezela \"Qala Ukwenza Kube Ngcono\" ukuze uqale",
+    "uploadPrompt": {
+      "title": "Layisha isithombe ukuze uqale",
+      "description": "Donsa bese ufaka izithombe zomndeni wakho lapha, noma cindezela inkinobho yokulayisha ngenhla",
+      "choosePhoto": "Khetha Isithombe"
+    }
+  },
+  "controls": {
+    "reset": "Buyisela",
+    "adjust": "Lungisa",
+    "startEnhancement": "Qala Ukwenza Kube Ngcono",
+    "download": "Layisha Phansi",
+    "share": "Yabelana"
+  },
+  "history": {
+    "before": "Ngaphambi",
+    "after": "Ngemva"
+  },
+  "status": {
+    "completed": "kuqediwe",
+    "processing": "kuyacutshungulwa",
+    "queued": "kusemgqeni"
+  },
+  "type": {
+    "colorization": "ukufaka imibala",
+    "restoration": "ukubuyiselwa",
+    "enhancement": "ukwenza kube ngcono"
+  }
+}

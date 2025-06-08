@@ -1,0 +1,95 @@
+{
+  "title": "Muti Wemhuri",
+  "subtitle": "Ongorora uye uvake nhoroondo yemhuri yako",
+  "search": {
+    "placeholder": "Tsvaga nhengo dzemhuri...",
+    "noResults": "Hapana nhengo dzemhuri dzakawanikwa"
+  },
+  "toolbar": {
+    "addPerson": "Wedzera Munhu",
+    "viewModes": "Nzira Dzekuona",
+    "export": "Budisa",
+    "share": "Govera",
+    "settings": "Mamiriro"
+  },
+  "generations": {
+    "you": "Iwe",
+    "parents": "Vabereki",
+    "grandparents": "Mbuya naSekuru",
+    "greatGrandparents": "Mbuya naSekuru Vakakura",
+    "children": "Vana",
+    "grandchildren": "Vazukuru"
+  },
+  "person": {
+    "born": "Akaberekwa",
+    "died": "Akafa",
+    "age": "Makore {{age}}",
+    "unknown": "Hazvizivikanwe",
+    "addPhoto": "Wedzera Mufananidzo",
+    "editProfile": "Gadziridza Chimiro",
+    "viewFullProfile": "Ona Chimiro Chakakwana",
+    "removePerson": "Bvisa Munhu",
+    "addRelative": "Wedzera Hama",
+    "connectRelationship": "Batanidza Hukama"
+  },
+  "forms": {
+    "addPerson": {
+      "title": "Wedzera Munhu Mutsva",
+      "selectRelationship": "Sarudza Hukama",
+      "personDetails": "Ruzivo Rwemunhu"
+    },
+    "editPerson": {
+      "title": "Gadziridza Munhu",
+      "saveChanges": "Chengetedza Shanduko"
+    }
+  },
+  "relationships": {
+    "father": "Baba",
+    "mother": "Amai",
+    "son": "Mwanakomana",
+    "daughter": "Mwanasikana",
+    "husband": "Murume",
+    "wife": "Mudzimai",
+    "brother": "Mukoma/Munin'ina",
+    "sister": "Hanzvadzi/Munun'una"
+  },
+  "viewModes": {
+    "tree": "Kutarira Kwemuti",
+    "pedigree": "Kutarira Kwerudzi",
+    "fan": "Chati Yefani",
+    "timeline": "Kutarira Kwenguva"
+  },
+  "actions": {
+    "share": "Govera",
+    "export": "Budisa",
+    "addPerson": "Wedzera Munhu",
+    "addGreatGrandparents": "Wedzera Madzisekuru Makuru",
+    "saveChanges": "Chengetedza Shanduko",
+    "discardChanges": "Rasa Shanduko",
+    "deleteConfirm": "Uri chokwadi here kuti unoda kubvisa munhu uyu?",
+    "deleteWarning": "Chiitiko ichi hachigone kudzorwa."
+  },
+  "sidebar": {
+    "personDetails": "Rondedzero yaMunhu",
+    "changePhoto": "Chinja Mufananidzo",
+    "basicInformation": "Ruzivo Rwekutanga",
+    "fields": {
+      "fullName": "Zita Rizere",
+      "relationship": "Hukama",
+      "birthYear": "Gore Rekuzvarwa",
+      "deathYear": "Gore Rekufa",
+      "location": "Nzvimbo"
+    },
+    "actions": {
+      "saveChanges": "Chengetedza Shanduko",
+      "viewFullProfile": "Ona Profile Yese",
+      "removePerson": "Bvisa Munhu"
+    }
+  },
+  "stats": {
+    "totalPeople": "munhu {{count}} mumuti",
+    "totalPeople_plural": "vanhu {{count}} mumuti",
+    "generations": "chizvarwa {{count}}",
+    "generations_plural": "zvizvarwa {{count}}"
+  }
+}

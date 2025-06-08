@@ -1,0 +1,59 @@
+{
+  "title": "Amarekhodi Omlando",
+  "subtitle": "Thola isikhathi esidlule somndeni wakho ngamadokhumenti omlando",
+  "search": {
+    "placeholder": "Sesha amarekhodi omlando...",
+    "noResults": "Akukho marekhodi atholiweyo afanayo nokusesha kwakho"
+  },
+  "filters": {
+    "all": "Wonke Amarekhodi",
+    "birth": "Amarekhodi Okuzalwa",
+    "marriage": "Amarekhodi Omendo", 
+    "death": "Amarekhodi Okufa",
+    "immigration": "Amarekhodi Okungena Ezweni",
+    "census": "Amarekhodi Okubala Abantu"
+  },
+  "record": {
+    "type": "Uhlobo Lwerekhodi",
+    "date": "Usuku",
+    "location": "Indawo",
+    "relevance": "Ukubaluleka",
+    "source": "Umthombo",
+    "description": "Incazelo",
+    "viewRecord": "Bona Irekhodi",
+    "downloadRecord": "Dawuniloda Irekhodi",
+    "shareRecord": "Yabelana Ngerekhodi",
+    "addToTree": "Engeza Esihlahleni Somndeni",
+    "starred": "Esinenkanyezi",
+    "unstarred": "Esingenankanyezi"
+  },
+  "types": {
+    "birth": "Irekhodi Lokuzalwa",
+    "marriage": "Irekhodi Lomendo",
+    "death": "Irekhodi Lokufa",
+    "immigration": "Irekhodi Lokungena Ezweni",
+    "census": "Irekhodi Lokubala Abantu",
+    "military": "Irekhodi Lomkhosi",
+    "court": "Irekhodi Lenkundla",
+    "land": "Irekhodi Lomhlaba"
+  },
+  "stats": {
+    "totalRecords": "irekhodi {{count}} elitholiweyo",
+    "totalRecords_plural": "amarekhodi {{count}} atholiweyo",
+    "relevanceScore": "ukubaluleka {{score}}%",
+    "timeRange": "Amarekhodi kusuka {{startYear}} kuze kube {{endYear}}"
+  },
+  "actions": {
+    "viewDetails": "Bona Imininingwane",
+    "downloadPDF": "Dawuniloda i-PDF",
+    "shareRecord": "Yabelana Ngerekhodi",
+    "addNote": "Engeza Inothi",
+    "orderCopy": "Odela Ikhophi"
+  },
+  "sidebar": {
+    "recordDetails": "Imininingwane Yerekhodi",
+    "transcription": "Ukubhala Kabusha",
+    "relatedRecords": "Amarekhodi Ahlobene",
+    "sourceInformation": "Ulwazi Lomthombo"
+  }
+}

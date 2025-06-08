@@ -1,0 +1,82 @@
+{
+  "title": "Photo Enhancement",
+  "subtitle": "Restore, colorize, and enhance your family photos using AI",
+  "header": {
+    "processingQueue": "Processing Queue",
+    "uploadPhoto": "Upload Photo"
+  },
+  "tabs": {
+    "enhancementStudio": "Enhancement Studio",
+    "enhancementHistory": "Enhancement History",
+    "gallery": "Gallery"
+  },
+  "tools": {
+    "title": "Enhancement Tools",
+    "autoEnhance": {
+      "name": "Auto Enhance",
+      "description": "AI-powered automatic enhancement"
+    },
+    "colorization": {
+      "name": "Colorization",
+      "description": "Add realistic colors to B&W photos"
+    },
+    "restoration": {
+      "name": "Restoration",
+      "description": "Repair damage and improve quality"
+    },
+    "detailEnhancement": {
+      "name": "Detail Enhancement",
+      "description": "Sharpen and enhance details"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "enhancementLevel": "Enhancement Level",
+    "subtle": "Subtle",
+    "dramatic": "Dramatic",
+    "outputQuality": "Output Quality",
+    "hdQuality": "HD (1080p)",
+    "fourKQuality": "4K (2160p)",
+    "originalResolution": "Original Resolution",
+    "preserveOriginal": "Preserve original"
+  },
+  "processing": {
+    "title": "Processing Status",
+    "imageAnalysis": "Image Analysis",
+    "noiseReduction": "Noise Reduction",
+    "detailEnhancement": "Detail Enhancement",
+    "colorRestoration": "Color Restoration",
+    "finalProcessing": "Final Processing"
+  },
+  "workspace": {
+    "original": "Original",
+    "enhancedPreview": "Enhanced Preview",
+    "startPrompt": "Click \"Start Enhancement\" to begin",
+    "uploadPrompt": {
+      "title": "Upload a photo to get started",
+      "description": "Drag and drop your family photos here, or click the upload button above",
+      "choosePhoto": "Choose Photo"
+    }
+  },
+  "controls": {
+    "reset": "Reset",
+    "adjust": "Adjust",
+    "startEnhancement": "Start Enhancement",
+    "download": "Download",
+    "share": "Share"
+  },
+  "history": {
+    "before": "Before",
+    "after": "After"
+  },
+  "status": {
+    "completed": "completed",
+    "processing": "processing",
+    "queued": "queued"
+  },
+  "type": {
+    "colorization": "colorization",
+    "restoration": "restoration",
+    "enhancement": "enhancement"
+  }
+}

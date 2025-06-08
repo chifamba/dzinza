@@ -1,0 +1,85 @@
+{
+  "navigation": {
+    "home": "Ikhaya",
+    "dashboard": "I-Dashboard",
+    "familyTree": "Isihlahla Somndeni",
+    "records": "Amarekhodi",
+    "dnaMatching": "I-DNA Matching",
+    "photos": "Izithombe",
+    "settings": "Izilungiselelo",
+    "profile": "Iphrofayili",
+    "login": "Ngena",
+    "logout": "Phuma"
+  },
+  "actions": {
+    "save": "Gcina",
+    "cancel": "Yekela",
+    "delete": "Susa",
+    "edit": "Hlela",
+    "add": "Engeza",
+    "upload": "Layisha",
+    "download": "Thobela",
+    "search": "Funa",
+    "filter": "Khetha",
+    "sort": "Hlela",
+    "submit": "Thumela",
+    "continue": "Qhubeka",
+    "back": "Buyela emuva",
+    "next": "Okulandelayo",
+    "previous": "Okwedlule",
+    "close": "Vala",
+    "open": "Vula"
+  },
+  "status": {
+    "loading": "Kulayisha...",
+    "saving": "Kuyagcinwa...",
+    "saved": "Kugciniwe",
+    "error": "Iphutha",
+    "success": "Kuphumelele",
+    "warning": "Isexwayiso",
+    "info": "Ulwazi",
+    "pending": "Kulindile",
+    "complete": "Kuphelile",
+    "failed": "Kuhlulekile"
+  },
+  "validation": {
+    "required": "Le nto iyadingeka",
+    "email": "Faka i-email efaneleyo",
+    "password": "Iphasiwedi kumele ibe namagama angaphezu kwesi-8",
+    "confirmPassword": "Amaphasiwedi akafani",
+    "phone": "Faka inombolo yefoni efaneleyo",
+    "date": "Faka usuku olufaneleyo",
+    "url": "Faka i-URL efaneleyo",
+    "number": "Faka inombolo efaneleyo"
+  },
+  "messages": {
+    "welcomeBack": "Siyakwamukela futhi ku-Dzinza",
+    "lastLogin": "Ukungena kokugcina",
+    "noData": "Akukho lwazi olutholakalayo",
+    "confirmDelete": "Uqinisekile ukuthi ufuna ukususa loku?",
+    "unsavedChanges": "Unezinguquko ongazigcinanga. Ufuna ukuphuma?",
+    "connectionError": "Iphutha loxhumo. Zama futhi.",
+    "permissionDenied": "Awunamvumo wokwenza loku",
+    "sessionExpired": "Isikhathi sakho siphelile. Ngena futhi."
+  },
+  "dates": {
+    "today": "Namhlanje",
+    "yesterday": "Izolo",
+    "tomorrow": "Kusasa",
+    "thisWeek": "Kuleviki",
+    "thisMonth": "Kulenyanga",
+    "thisYear": "Kulo nyaka",
+    "lastWeek": "Evikini eledlule",
+    "lastMonth": "Enyangeni eledlule",
+    "lastYear": "Onyakeni owedlule"
+  },
+  "time": {
+    "seconds": "imizuzwana",
+    "minutes": "imizuzu",
+    "hours": "amahola",
+    "days": "izinsuku",
+    "weeks": "amaviki",
+    "months": "izinyanga",
+    "years": "iminyaka"
+  }
+}

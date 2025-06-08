@@ -1,0 +1,71 @@
+{
+  "title": "Ukufanana kweDNA",
+  "subtitle": "Thola izihlobo ngokuhlaziya i-DNA",
+  "tabs": {
+    "matches": "Okufanayo kweDNA",
+    "ethnicity": "Isilinganiso Sobuhlanga",
+    "migration": "Amaphethini Okufuduka"
+  },
+  "search": {
+    "placeholder": "Sesha okufanayo kweDNA...",
+    "noResults": "Akukho okufanayo kweDNA okutholiweyo"
+  },
+  "filters": {
+    "all": "Konke Okufanayo",
+    "close": "Umndeni Oseduze",
+    "distant": "Abazala Abakude",
+    "new": "Okufanayo Okusha"
+  },
+  "matches": {
+    "sharedDNA": "I-DNA Ebiwelanayo",
+    "confidence": "Ukuzethemba",
+    "treeSize": "Ubukhulu Besihlahla",
+    "lastActive": "Okugcina Ukusebenza",
+    "contact": "Xhumana",
+    "viewTree": "Bona Isihlahla",
+    "compare": "Qhathanisa",
+    "relationship": "Ubudlelwano",
+    "newMatch": "Okufanayo Okusha"
+  },
+  "ethnicity": {
+    "regions": "Izingozi",
+    "percentage": "Iperesenti",
+    "confidence": "Ububanzi Bokuzethemba",
+    "details": "Imininingwane Yesifunda",
+    "migrate": "Indlela Yokufuduka",
+    "breakdown": "Ukwehlukaniswa Kobuhlanga",
+    "regionalBreakdown": "Ukwehlukaniswa Kwezifunda"
+  },
+  "migration": {
+    "patterns": "Amaphethini Okufuduka",
+    "routes": "Izindlela Zomlando",
+    "timeline": "Umugqa Wesikhathi",
+    "origin": "Umsuka",
+    "destination": "Indawo Ekuya Kuyo"
+  },
+  "stats": {
+    "totalMatches": "okufanayo kwe-DNA {{count}}",
+    "totalMatches_plural": "okufanayo kwe-DNA {{count}}",
+    "closeFamily": "isihlobo esiseduze {{count}}",
+    "closeFamily_plural": "izihlobo eziseduze {{count}}",
+    "newThisWeek": "okusha {{count}} kuleli viki",
+    "countries": "izwe {{count}}",
+    "countries_plural": "amazwe {{count}}"
+  },
+  "actions": {
+    "contactMatch": "Xhumana Nokufanayo",
+    "shareTree": "Yabelana Ngesihlahla",
+    "compareResults": "Qhathanisa Imiphumela",
+    "exportData": "Khupha Idatha",
+    "uploadData": "Layisha Idatha ye-DNA"
+  },
+  "sidebar": {
+    "title": "Imininingwane Yokufanayo",
+    "dnaDetails": "Imininingwane ye-DNA",
+    "people": "abantu",
+    "location": "Indawo",
+    "sendMessage": "Thumela Umlayezo",
+    "viewTree": "Bona Isihlahla Somndeni",
+    "compareDNA": "Qhathanisa i-DNA"
+  }
+}
