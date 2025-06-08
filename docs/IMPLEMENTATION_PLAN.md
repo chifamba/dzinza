@@ -114,32 +114,34 @@ This project follows an iterative development approach with 6 distinct phases, e
 
 ### Week 4: Family Tree Basic Structure
 **Deliverables:**
-- [ ] Basic family tree visualization
-- [ ] Add/edit individual profiles
-- [ ] Simple relationship connections
-- [ ] Family tree navigation
+- [x] ✅ Basic family tree visualization (list-style display of person nodes)
+- [x] ✅ Add/edit individual profiles (implemented with modal forms and mock service integration)
+- [x] ✅ Simple relationship connections (placeholder UI for initiating connections created; full logic pending)
+- [ ] Family tree navigation (deferred - advanced canvas navigation like zoom/pan not implemented)
 
 **Tasks:**
-1. **Family Tree Components**
+1. **Family Tree Components** (PersonNode.tsx, FamilyTreeDisplay.tsx created)
    ```typescript
    src/components/family-tree/
-   ├── FamilyTreeCanvas.tsx
+   ├── FamilyTreeDisplay.tsx
    ├── PersonNode.tsx
-   ├── RelationshipLine.tsx
-   └── TreeNavigation.tsx
+   ├── AddPersonForm.tsx
+   ├── EditPersonForm.tsx
+   ├── AddRelationshipForm.tsx
+   // RelationshipLine.tsx and TreeNavigation.tsx for advanced canvas view deferred
    ```
 
 2. **Data Structures**
-   - Person interface definition
-   - Relationship types
-   - Family tree data model
-   - Mock data generation
+   - [x] ✅ Person interface definition (`src/types/genealogy.ts`)
+   - [x] ✅ Relationship types (`src/types/genealogy.ts`)
+   - [x] ✅ Family tree data model (`src/types/genealogy.ts`)
+   - [x] ✅ Mock data generation (`src/services/api/genealogyService.ts`)
 
 3. **Basic Interactions**
-   - Add new person
-   - Edit person details
-   - Connect relationships
-   - Tree navigation (zoom, pan)
+   - [x] ✅ Add new person (via modal and mock service)
+   - [x] ✅ Edit person details (via modal and mock service)
+   - [x] ✅ Connect relationships (placeholder UI and form created, mock service call pending full implementation)
+   - [ ] Tree navigation (zoom, pan) (deferred)
 
 ---
 
