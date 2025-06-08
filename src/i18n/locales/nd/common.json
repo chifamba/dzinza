@@ -8,7 +8,10 @@
     "photos": "Izithombe",
     "settings": "Izilungiselelo",
     "profile": "Iphrofayili",
+    "signIn": "Ngena",
+    "signUp": "Bhalisa",
     "login": "Ngena",
+    "signOut": "Phuma",
     "logout": "Phuma"
   },
   "actions": {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -7,17 +7,37 @@ import {
   X, 
   TreePine, 
   Home, 
-  Users, 
   Search, 
   Camera,
-  Dna
+  Dna,
+  LogOut,
+  User
 } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import LanguageSelector from './LanguageSelector';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation('common');
+  const { user, isAuthenticated, logout } = useAuth();
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const navItems = [
     { path: '/dashboard', label: t('navigation.dashboard'), icon: Home },
@@ -26,6 +46,20 @@ const Navbar = () => {
     { path: '/records', label: t('navigation.records'), icon: Search },
     { path: '/photos', label: t('navigation.photos'), icon: Camera },
   ];
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+      setShowUserMenu(false);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const handleLogin = () => {
+    navigate('/login');
+  };
 
   return (
     <nav className="bg-white shadow-lg sticky top-0 z-50">
@@ -48,7 +82,7 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {navItems.map((item) => {
+            {isAuthenticated && navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               
@@ -70,9 +104,60 @@ const Navbar = () => {
             
             <div className="flex items-center space-x-4">
               <LanguageSelector />
-              <button className="bg-dzinza-600 text-white px-4 py-2 rounded-md hover:bg-dzinza-700 transition-colors duration-300">
-                {t('navigation.login')}
-              </button>
+              
+              {isAuthenticated ? (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-gray-600 hover:text-dzinza-600 hover:bg-dzinza-50 transition-colors duration-300"
+                  >
+                    <User className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      {user?.firstName || user?.email}
+                    </span>
+                  </button>
+                  
+                  {showUserMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+                    >
+                      <Link
+                        to="/profile"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <User className="h-4 w-4 mr-2" />
+                        {t('navigation.profile')}
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        {t('navigation.signOut')}
+                      </button>
+                    </motion.div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleLogin}
+                    className="text-gray-600 hover:text-dzinza-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
+                  >
+                    {t('navigation.signIn')}
+                  </button>
+                  <Link
+                    to="/register"
+                    className="bg-dzinza-600 text-white px-4 py-2 rounded-md hover:bg-dzinza-700 transition-colors duration-300 text-sm font-medium"
+                  >
+                    {t('navigation.signUp')}
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 
@@ -99,7 +184,7 @@ const Navbar = () => {
         className="md:hidden bg-white border-t border-gray-200 overflow-hidden"
       >
         <div className="px-2 pt-2 pb-3 space-y-1">
-          {navItems.map((item) => {
+          {isAuthenticated && navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             
@@ -124,9 +209,53 @@ const Navbar = () => {
             <div className="mb-3">
               <LanguageSelector className="w-full" />
             </div>
-            <button className="w-full bg-dzinza-600 text-white px-4 py-2 rounded-md hover:bg-dzinza-700 transition-colors duration-300">
-              {t('navigation.login')}
-            </button>
+            
+            {isAuthenticated ? (
+              <div className="space-y-2">
+                {user && (
+                  <div className="px-3 py-2 text-sm text-gray-600">
+                    Welcome, {user.firstName || user.email}
+                  </div>
+                )}
+                <Link
+                  to="/profile"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center w-full px-3 py-2 rounded-md text-gray-600 hover:text-dzinza-600 hover:bg-dzinza-50 transition-colors duration-300"
+                >
+                  <User className="h-5 w-5 mr-2" />
+                  {t('navigation.profile')}
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setIsOpen(false);
+                  }}
+                  className="flex items-center w-full px-3 py-2 rounded-md text-gray-600 hover:text-dzinza-600 hover:bg-dzinza-50 transition-colors duration-300"
+                >
+                  <LogOut className="h-5 w-5 mr-2" />
+                  {t('navigation.signOut')}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    handleLogin();
+                    setIsOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-md text-gray-600 hover:text-dzinza-600 hover:bg-dzinza-50 transition-colors duration-300"
+                >
+                  {t('navigation.signIn')}
+                </button>
+                <Link
+                  to="/register"
+                  onClick={() => setIsOpen(false)}
+                  className="block w-full bg-dzinza-600 text-white px-4 py-2 rounded-md hover:bg-dzinza-700 transition-colors duration-300 text-center"
+                >
+                  {t('navigation.signUp')}
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
