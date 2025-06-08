@@ -1,0 +1,399 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: dzinza
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    rule_files:
+      - "/etc/prometheus/rules/*.yml"
+
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # API Gateway
+      - job_name: 'api-gateway'
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - dzinza
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: api-gateway
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: http
+
+      # Authentication Service
+      - job_name: 'auth-service'
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - dzinza
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: auth-service
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: http
+
+      # Genealogy Service
+      - job_name: 'genealogy-service'
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - dzinza
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: genealogy-service
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: http
+
+      # Search Service
+      - job_name: 'search-service'
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - dzinza
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: search-service
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: http
+
+      # Storage Service
+      - job_name: 'storage-service'
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - dzinza
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: storage-service
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: http
+
+      # PostgreSQL
+      - job_name: 'postgres'
+        static_configs:
+          - targets: ['postgres-exporter:9187']
+
+      # MongoDB
+      - job_name: 'mongodb'
+        static_configs:
+          - targets: ['mongodb-exporter:9216']
+
+      # Elasticsearch
+      - job_name: 'elasticsearch'
+        static_configs:
+          - targets: ['elasticsearch-exporter:9114']
+
+      # Redis
+      - job_name: 'redis'
+        static_configs:
+          - targets: ['redis-exporter:9121']
+
+      # Kubernetes metrics
+      - job_name: 'kubernetes-apiservers'
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: default;kubernetes;https
+
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics
+
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              - alertmanager:9093
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: dzinza
+data:
+  dzinza-alerts.yml: |
+    groups:
+    - name: dzinza-microservices
+      rules:
+      # Service availability alerts
+      - alert: ServiceDown
+        expr: up{job=~"api-gateway|auth-service|genealogy-service|search-service|storage-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 1 minute"
+
+      # High error rate alerts
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "Error rate is {{ $value }} requests per second"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.pod }}"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.pod }}"
+          description: "CPU usage is {{ $value | humanizePercentage }}"
+
+      # Database connection alerts
+      - alert: DatabaseConnectionFailure
+        expr: mongodb_up == 0 or pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection failure"
+          description: "Database {{ $labels.job }} is unreachable"
+
+      # Elasticsearch cluster health
+      - alert: ElasticsearchClusterHealth
+        expr: elasticsearch_cluster_health_status != 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elasticsearch cluster health is degraded"
+          description: "Elasticsearch cluster status is {{ $labels.status }}"
+
+      # File storage alerts
+      - alert: HighStorageUsage
+        expr: (node_filesystem_size_bytes - node_filesystem_avail_bytes) / node_filesystem_size_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High storage usage on {{ $labels.instance }}"
+          description: "Storage usage is {{ $value | humanizePercentage }}"
+
+      # Search service specific alerts
+      - alert: SearchIndexingLag
+        expr: elasticsearch_indices_indexing_index_time_in_millis > 10000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Search indexing is slow"
+          description: "Search indexing time is {{ $value }}ms"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: dzinza
+data:
+  dzinza-overview.json: |
+    {
+      "dashboard": {
+        "title": "Dzinza Platform Overview",
+        "panels": [
+          {
+            "title": "Service Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=~'api-gateway|auth-service|genealogy-service|search-service|storage-service'}",
+                "legendFormat": "{{ job }}"
+              }
+            ]
+          },
+          {
+            "title": "Request Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total[5m])) by (job)",
+                "legendFormat": "{{ job }}"
+              }
+            ]
+          },
+          {
+            "title": "Error Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{status=~'5..'}[5m])) by (job)",
+                "legendFormat": "{{ job }} errors"
+              }
+            ]
+          },
+          {
+            "title": "Response Time",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le))",
+                "legendFormat": "{{ job }} 95th percentile"
+              }
+            ]
+          }
+        ]
+      }
+    }
+
+  storage-service.json: |
+    {
+      "dashboard": {
+        "title": "Storage Service Metrics",
+        "panels": [
+          {
+            "title": "File Upload Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(file_uploads_total[5m])",
+                "legendFormat": "Uploads per second"
+              }
+            ]
+          },
+          {
+            "title": "Storage Usage",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "storage_used_bytes",
+                "legendFormat": "Used Storage"
+              }
+            ]
+          },
+          {
+            "title": "Processing Queue",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "file_processing_queue_size",
+                "legendFormat": "Queue Size"
+              }
+            ]
+          }
+        ]
+      }
+    }
+
+  search-service.json: |
+    {
+      "dashboard": {
+        "title": "Search Service Metrics",
+        "panels": [
+          {
+            "title": "Search Request Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(search_requests_total[5m])",
+                "legendFormat": "Searches per second"
+              }
+            ]
+          },
+          {
+            "title": "Search Response Time",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(search_duration_seconds_bucket[5m]))",
+                "legendFormat": "95th percentile"
+              }
+            ]
+          },
+          {
+            "title": "Index Size",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "elasticsearch_indices_store_size_bytes",
+                "legendFormat": "Index Size"
+              }
+            ]
+          }
+        ]
+      }
+    }
