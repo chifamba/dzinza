@@ -1,4 +1,3 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../hooks/useAuth';
@@ -8,13 +7,13 @@ import ForgotPassword from '../pages/auth/ForgotPassword';
 import '../i18n';
 
 // Mock API client
-vi.mock('../services/api/auth', () => ({
+jest.mock('../services/api/auth', () => ({
   authApi: {
-    login: vi.fn(),
-    register: vi.fn(),
-    requestPasswordReset: vi.fn(),
-    refreshToken: vi.fn(),
-    getCurrentUser: vi.fn(),
+    login: jest.fn(),
+    register: jest.fn(),
+    requestPasswordReset: jest.fn(),
+    refreshToken: jest.fn(),
+    getCurrentUser: jest.fn(),
   },
 }));
 
@@ -28,7 +27,7 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => (
 
 describe('Authentication System', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
     localStorage.clear();
   });
 
@@ -172,12 +171,12 @@ describe('Authentication System', () => {
 
   describe('Authentication Flow', () => {
     it('stores tokens on successful login', async () => {
-      const mockLogin = vi.fn().mockResolvedValue({
+      const mockLogin = jest.fn().mockResolvedValue({
         user: { id: '1', email: 'test@example.com', firstName: 'Test' },
         tokens: { accessToken: 'token', refreshToken: 'refresh' }
       });
 
-      vi.mocked(require('../services/api/auth').authApi.login).mockImplementation(mockLogin);
+      jest.mocked(require('../services/api/auth').authApi.login).mockImplementation(mockLogin);
 
       render(
         <TestWrapper>
@@ -202,11 +201,11 @@ describe('Authentication System', () => {
     });
 
     it('handles authentication errors', async () => {
-      const mockLogin = vi.fn().mockRejectedValue({
+      const mockLogin = jest.fn().mockRejectedValue({
         response: { data: { message: 'Invalid credentials' } }
       });
 
-      vi.mocked(require('../services/api/auth').authApi.login).mockImplementation(mockLogin);
+      jest.mocked(require('../services/api/auth').authApi.login).mockImplementation(mockLogin);
 
       render(
         <TestWrapper>

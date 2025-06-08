@@ -4,7 +4,7 @@ import { FamilyTree, FamilyMember, Relationship } from '../../types/genealogy'; 
 const MOCK_DELAY = 500;
 
 // Initial Mock Data
-let mockTreeData: FamilyTree = {
+const mockTreeData: FamilyTree = {
   id: 'tree1',
   name: 'My Ancestry',
   ownerId: 'user1', // Corresponds to a logged-in user ideally

@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import { renderWithI18n, validateTranslationKeys, checkTranslationCoverage } from '../src/i18n/utils/testUtils';
 import { screen } from '@testing-library/react';
 import { LanguageSelector } from '../src/components/LanguageSelector';
