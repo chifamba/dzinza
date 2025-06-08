@@ -1,19 +1,20 @@
 // src/services/api/authService.ts
 
-// Define interfaces for payloads and responses (can be expanded)
+// Ensure this UserData interface is consistent with authSlice.ts
+export interface UserData { // Export if not already
+  id: string;
+  name: string;
+  email: string;
+  profileImageUrl?: string;
+}
+
 interface LoginPayload {
   email: string;
-  password?: string; // Password might not be needed for all auth strategies
+  password?: string;
 }
 
 interface RegisterPayload extends LoginPayload {
   name: string;
-}
-
-interface UserData {
-  id: string;
-  name: string;
-  email: string;
 }
 
 interface AuthResponse {
@@ -21,96 +22,116 @@ interface AuthResponse {
   token: string;
 }
 
-const MOCK_DELAY = 1000; // 1 second delay
+const MOCK_DELAY = 1000;
 
-// Mock user database
+// Mock user database - ensure users have 'id'
 const mockUsers: UserData[] = [
-  { id: '1', name: 'Test User', email: 'test@example.com' },
+  { id: '1', name: 'Test User', email: 'test@example.com', profileImageUrl: 'https://via.placeholder.com/150/0000FF/808080?Text=User1' },
+  // Add more mock users if needed for testing getUserProfile with different IDs
 ];
-let nextUserId = 2;
+let nextUserId = mockUsers.length > 0 ? Math.max(...mockUsers.map(u => parseInt(u.id))) + 1 : 1;
+
 
 export const authService = {
   login: (payload: LoginPayload): Promise<AuthResponse> => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const user = mockUsers.find(u => u.email === payload.email);
-        // In a real app, you'd also check the password hash here
-        if (user && payload.password === 'password') { // Mock password check
-          resolve({
-            user: { id: user.id, name: user.name, email: user.email },
-            token: `mock-jwt-token-for-${user.id}-${Date.now()}`,
-          });
-        } else {
-          reject(new Error('Invalid email or password.'));
-        }
-      }, MOCK_DELAY);
-    });
-  },
-
-  register: (payload: RegisterPayload): Promise<AuthResponse> => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (mockUsers.some(u => u.email === payload.email)) {
-          reject(new Error('User with this email already exists.'));
-          return;
-        }
-
-        const newUser: UserData = {
-          id: String(nextUserId++),
-          name: payload.name,
-          email: payload.email,
-        };
-        mockUsers.push(newUser); // Add to our mock "database"
-
-        // In a real app, password would be hashed and stored securely.
-        // Here, we just simulate success.
-        resolve({
-          user: newUser,
-          token: `mock-jwt-token-for-${newUser.id}-${Date.now()}`, // Or null if email verification is needed
+        return new Promise((resolve, reject) => {
+          setTimeout(() => {
+            const user = mockUsers.find(u => u.email === payload.email);
+            // In a real app, you'd also check the password hash here
+            if (user && payload.password === 'password') { // Mock password check
+              resolve({
+                user: { id: user.id, name: user.name, email: user.email, profileImageUrl: user.profileImageUrl },
+                token: `mock-jwt-token-for-${user.id}-${Date.now()}`,
+              });
+            } else {
+              reject(new Error('Invalid email or password.'));
+            }
+          }, MOCK_DELAY);
         });
-      }, MOCK_DELAY);
-    });
-  },
+      },
+  register: (payload: RegisterPayload): Promise<AuthResponse> => {
+        return new Promise((resolve, reject) => {
+          setTimeout(() => {
+            if (mockUsers.some(u => u.email === payload.email)) {
+              reject(new Error('User with this email already exists.'));
+              return;
+            }
 
+            const newUser: UserData = {
+              id: String(nextUserId++),
+              name: payload.name,
+              email: payload.email,
+              profileImageUrl: `https://via.placeholder.com/150/CCCCCC/808080?Text=${payload.name.substring(0,1)}`
+            };
+            mockUsers.push(newUser);
+
+            resolve({
+              user: newUser,
+              token: `mock-jwt-token-for-${newUser.id}-${Date.now()}`,
+            });
+          }, MOCK_DELAY);
+        });
+  },
   forgotPassword: (email: string): Promise<{ message: string }> => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const userExists = mockUsers.some(u => u.email === email);
-        if (userExists) {
-          console.log(`Simulating password reset email sent to ${email}`);
-          resolve({ message: 'If an account with this email exists, a reset link has been sent.' });
-        } else {
-          // Silently succeed even if user doesn't exist, as per common practice
-          resolve({ message: 'If an account with this email exists, a reset link has been sent.' });
-        }
-      }, MOCK_DELAY);
-    });
-  },
-
+        return new Promise((resolve, reject) => {
+          setTimeout(() => {
+            const userExists = mockUsers.some(u => u.email === email);
+            if (userExists) {
+              console.log(`Simulating password reset email sent to ${email}`);
+              resolve({ message: 'If an account with this email exists, a reset link has been sent.' });
+            } else {
+              resolve({ message: 'If an account with this email exists, a reset link has been sent.' });
+            }
+          }, MOCK_DELAY);
+        });
+      },
   resetPassword: (token: string, newPassword: string): Promise<{ message: string }> => {
+        return new Promise((resolve, reject) => {
+          setTimeout(() => {
+            if (token && newPassword) {
+              console.log(`Simulating password reset for token ${token} with new password.`);
+              resolve({ message: 'Password has been reset successfully.' });
+            } else {
+              reject(new Error('Invalid token or password.'));
+            }
+          }, MOCK_DELAY);
+        });
+      },
+  logout: (): Promise<void> => {
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            console.log('User logged out (mock)');
+            resolve();
+          }, MOCK_DELAY / 2);
+        });
+      },
+
+  // New mock service functions for profile
+  getUserProfile: (userId: string): Promise<UserData> => {
     return new Promise((resolve, reject) => {
       setTimeout(() => {
-        // In a real app, you'd validate the token and then update the password.
-        if (token && newPassword) {
-          console.log(`Simulating password reset for token ${token} with new password.`);
-          resolve({ message: 'Password has been reset successfully.' });
+        const user = mockUsers.find(u => u.id === userId);
+        if (user) {
+          resolve(user);
         } else {
-          reject(new Error('Invalid token or password.'));
+          reject(new Error('User not found.'));
         }
       }, MOCK_DELAY);
     });
   },
 
-  logout: (): Promise<void> => {
-    return new Promise((resolve) => {
+  updateUserProfile: (userId: string, data: Partial<UserData>): Promise<UserData> => {
+    return new Promise((resolve, reject) => {
       setTimeout(() => {
-        // Simulate clearing session, etc.
-        console.log('User logged out (mock)');
-        resolve();
-      }, MOCK_DELAY / 2); // Shorter delay for logout
+        const userIndex = mockUsers.findIndex(u => u.id === userId);
+        if (userIndex !== -1) {
+          const updatedUser = { ...mockUsers[userIndex], ...data };
+          mockUsers[userIndex] = updatedUser;
+          resolve(updatedUser);
+        } else {
+          reject(new Error('User not found. Cannot update profile.'));
+        }
+      }, MOCK_DELAY);
     });
   }
 };
-
-// Optional: Export types if they are needed by components directly
-// export type { LoginPayload, RegisterPayload, UserData, AuthResponse };

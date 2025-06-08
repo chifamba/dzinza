@@ -12,6 +12,14 @@ This project follows an iterative development approach with 6 distinct phases, e
 
 ## Phase 1: Foundation & MVP Frontend (Weeks 1-4)
 
+**UI/UX Consistency Guidelines for Phase 1:**
+> All UI development during this phase and beyond should adhere to the established visual theme: modern, clean, and intuitive, primarily built using Tailwind CSS utility classes.
+> - **Component Reusability:** Prioritize the use of existing UI components found in `src/components/ui/`, `src/components/layout/`, and `src/components/navigation/`.
+> - **Styling:** Leverage Tailwind CSS utilities for all styling to ensure consistency. Avoid custom CSS where Tailwind provides an equivalent.
+> - **New Components:** Any new components should align with the design principles of existing ones (e.g., spacing, typography, color palette, interactivity). Props for new components should be designed to encourage consistency (e.g., `variant`, `size` props similar to the `Button` component).
+> - **Responsive Design:** Ensure all UI elements are responsive and provide a good user experience across common screen sizes.
+
+
 ### Week 1: Project Setup & Infrastructure
 **Deliverables:**
 - [x] ✅ Repository structure and documentation
