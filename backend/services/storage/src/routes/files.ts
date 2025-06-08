@@ -226,7 +226,7 @@ router.post('/upload', upload.array('files', 10), [
         );
 
         // Process images
-        let thumbnails = [];
+        const thumbnails = [];
         let imageMetadata = {};
         if (actualMimeType.startsWith('image/') && generateThumbnails) {
           try {

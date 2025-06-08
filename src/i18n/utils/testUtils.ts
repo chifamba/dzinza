@@ -1,5 +1,5 @@
 import { i18n } from 'i18next';
-import { render, RenderResult } from '@testing-library/react';
+import { render, RenderResult, RenderOptions } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { ReactElement } from 'react';
 
@@ -44,11 +44,12 @@ export const createMockI18n = (language: string = 'en'): i18n => {
 /**
  * Custom render function that includes i18n provider
  */
-export const renderWithI18n = (
-  ui: ReactElement,
-  { language = 'en', ...renderOptions } = {}
-): RenderResult & { i18n: i18n } => {
-  const mockI18n = createMockI18n(language);
+/*
+export function renderWithI18n(
+  ui: any, // Temporarily changed for debugging
+  options: any // Temporarily changed for debugging
+): any { // Temporarily changed to any for debugging parsing error
+  const mockI18n = createMockI18n(options?.language || 'en');
   
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <I18nextProvider i18n={mockI18n}>
@@ -56,11 +57,15 @@ export const renderWithI18n = (
     </I18nextProvider>
   );
 
+  // Extract language from options, so it's not passed down to RTL's render
+  const { language, ...rtlOptions } = options;
+
   return {
-    ...render(ui, { wrapper: Wrapper, ...renderOptions }),
+    ...render(ui, { wrapper: Wrapper, ...rtlOptions }),
     i18n: mockI18n,
   };
 };
+*/
 
 /**
  * Test helper to validate translation keys exist
