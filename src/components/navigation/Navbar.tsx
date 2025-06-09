@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom'; // Assuming react-router-dom is used for navigation
+import NotificationIndicator from '../notifications/NotificationIndicator'; // Import NotificationIndicator
 
 interface NavItem {
   label: string;
@@ -28,7 +29,7 @@ const Navbar: React.FC<NavbarProps> = ({
       <div className="container mx-auto flex items-center justify-between">
         {logo && <div className="flex-shrink-0">{logo}</div>}
 
-        <div className="hidden md:flex space-x-4 lg:space-x-6">
+        <div className="hidden md:flex items-center space-x-4 lg:space-x-6"> {/* Added items-center here */}
           {navItems.map((item) => (
             <Link
               key={item.path}
@@ -41,8 +42,18 @@ const Navbar: React.FC<NavbarProps> = ({
           ))}
         </div>
 
+        {/* Right side items: Notification Indicator, User Menu, etc. */}
+        <div className="flex items-center space-x-3">
+          <NotificationIndicator />
+          {/* Placeholder for User Menu or other icons */}
+          {/* <UserMenu /> */}
+        </div>
+
         {/* Mobile menu button (functionality to be added later) */}
-        <div className="md:hidden">
+        {/* This button's visibility might need to be adjusted if right-side icons are also hidden on mobile */}
+        <div className="md:hidden flex items-center"> {/* Added flex items-center to group mobile items if needed */}
+          {/* Example: Show notification also on mobile if desired, or only menu button */}
+          {/* <div className="mr-2"><NotificationIndicator /></div> */}
           <button
             type="button"
             className="text-gray-600 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"

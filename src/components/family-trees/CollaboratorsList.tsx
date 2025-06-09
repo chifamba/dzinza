@@ -53,8 +53,8 @@ interface CollaboratorsListProps {
   treeId: string;
   collaborators: Collaborator[]; // Raw collaborator data from FamilyTree object
   ownerId: string;
+  currentUserRoleOnTree: 'owner' | 'admin' | 'editor' | 'viewer' | null; // Role of the logged-in user on this tree
   onCollaboratorUpdated: () => void; // To refetch tree details or collaborator list
-  // currentUserId: string; // Passed from parent, obtained via useAuth hook there
 }
 
 interface CollaboratorWithProfile extends Collaborator {
@@ -67,12 +67,13 @@ const CollaboratorsList: React.FC<CollaboratorsListProps> = ({
   treeId,
   collaborators: initialCollaborators,
   ownerId,
+  currentUserRoleOnTree,
   onCollaboratorUpdated
 }) => {
-  const { currentUser } = useAuth(); // Mocked for now
+  const { currentUser } = useAuth(); // Mocked for now, primarily for currentUser.id
   const [collaboratorsWithProfiles, setCollaboratorsWithProfiles] = useState<CollaboratorWithProfile[]>([]);
 
-  const [editingRole, setEditingRole] = useState<Record<string, 'viewer' | 'editor' | 'admin'>>({});
+  const [editingRole, setEditingRole] = useState<Record<string, Collaborator['role']>>({});
   const [actionStates, setActionStates] = useState<Record<string, { isLoading: boolean; error: string | null }>>({});
 
   const fetchCollaboratorProfiles = useCallback(async (collabs: Collaborator[]) => {
@@ -172,71 +173,95 @@ const CollaboratorsList: React.FC<CollaboratorsListProps> = ({
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {collaboratorsWithProfiles.map((collab) => {
-            const isOwner = collab.userId === ownerId;
-            const isSelf = collab.userId === currentUser.id; // currentUser from useAuth()
-            const canManageThisCollab = !isOwner && !isSelf; // Basic rule: cannot manage owner or self via this interface
+            const isTargetOwner = collab.userId === ownerId;
+            const isTargetSelf = collab.userId === currentUser.id;
 
             const currentActionState = actionStates[collab.userId] || { isLoading: false, error: null };
 
+            // Determine if role select should be shown and what options it should have
+            let canEditRole = false;
+            let roleOptions: { value: Collaborator['role']; label: string }[] = [
+              { value: 'viewer', label: 'Viewer' },
+              { value: 'editor', label: 'Editor' },
+            ];
+
+            if (currentUserRoleOnTree === 'owner' && !isTargetOwner && !isTargetSelf) {
+              canEditRole = true;
+              roleOptions.push({ value: 'admin', label: 'Admin' });
+            } else if (currentUserRoleOnTree === 'admin' && !isTargetOwner && !isTargetSelf && collab.role !== 'admin') {
+              // Admin can edit non-owner, non-self, non-admin collaborators to viewer/editor
+              canEditRole = true;
+            }
+            // If current user is admin, they cannot change another admin's role
+            if (currentUserRoleOnTree === 'admin' && collab.role === 'admin' && !isTargetSelf) {
+                canEditRole = false;
+            }
+
+
+            // Determine if remove button should be shown
+            let canRemove = false;
+            if (currentUserRoleOnTree === 'owner' && !isTargetOwner && !isTargetSelf) {
+              canRemove = true;
+            } else if (currentUserRoleOnTree === 'admin' && !isTargetOwner && !isTargetSelf && collab.role !== 'admin') {
+              canRemove = true;
+            }
+             // Edge case: an admin should not be able to remove themselves if this logic is reached (isTargetSelf check handles it)
+
+            const showSaveRoleButton = canEditRole && editingRole[collab.userId] && editingRole[collab.userId] !== collab.role;
+
             return (
-              <tr key={collab.userId} className="hover:bg-gray-50">
+              <tr key={collab.userId} className={`hover:bg-gray-50 ${isTargetSelf ? 'bg-blue-50' : ''}`}>
                 <td className="px-4 py-3 whitespace-nowrap text-sm">
                   {collab.isLoadingProfile ? 'Loading profile...' :
                    collab.profileError ? <span className="text-red-500">{collab.profileError}</span> :
                    (collab.profile?.name || collab.profile?.email || collab.userId)}
-                  {isOwner && <span className="ml-2 text-xs font-semibold text-green-700">(Owner)</span>}
+                  {isTargetOwner && <span className="ml-2 text-xs font-semibold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Owner</span>}
+                  {isTargetSelf && !isTargetOwner && <span className="ml-2 text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">You</span>}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 capitalize">
-                  {canManageThisCollab && currentUser.id === ownerId ? ( // Owner can edit any non-owner's role
+                  {canEditRole ? (
                      <Select
                         value={editingRole[collab.userId] || collab.role}
-                        onChange={(e) => handleRoleChange(collab.userId, e.target.value as 'viewer' | 'editor' | 'admin')}
+                        onChange={(e) => handleRoleChange(collab.userId, e.target.value as Collaborator['role'])}
                         disabled={currentActionState.isLoading}
+                        aria-label={`Role for ${collab.profile?.name || collab.userId}`}
                       >
-                        <option value="viewer">Viewer</option>
-                        <option value="editor">Editor</option>
-                        <option value="admin">Admin</option>
+                        {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                       </Select>
                   ) : (
                     collab.role
                   )}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                  {collab.acceptedAt ? new Date(collab.acceptedAt).toLocaleDateString() : 'N/A'}
+                  {collab.acceptedAt ? new Date(collab.acceptedAt).toLocaleDateString() : 'N/A (Pending)'}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm space-x-2">
-                  {canManageThisCollab && currentUser.id === ownerId && (editingRole[collab.userId] && editingRole[collab.userId] !== collab.role) && (
+                <td className="px-4 py-3 whitespace-nowrap text-sm space-x-2 flex items-center">
+                  {showSaveRoleButton && (
                     <Button
                       onClick={() => updateCollaboratorAction(collab.userId, 'updateRole')}
                       disabled={currentActionState.isLoading}
                       size="small"
-                      className="w-full mb-1 sm:w-auto sm:mb-0"
                     >
-                      {currentActionState.isLoading && actionStates[collab.userId]?.isLoading ? 'Saving...' : 'Save Role'}
+                      {currentActionState.isLoading ? 'Saving...' : 'Save Role'}
                     </Button>
                   )}
-                  {canManageThisCollab && (currentUser.id === ownerId || (currentUser.id !== ownerId && collab.role !== 'admin') ) && (
-                    // Owner can remove anyone (except self via this UI). Admin can remove non-admins.
+                  {canRemove && (
                     <Button
                       onClick={() => updateCollaboratorAction(collab.userId, 'remove')}
                       disabled={currentActionState.isLoading}
                       variant="danger"
                       size="small"
-                      className="w-full sm:w-auto"
                     >
-                      {currentActionState.isLoading && actionStates[collab.userId]?.isLoading ? 'Removing...' : 'Remove'}
+                      {currentActionState.isLoading ? 'Removing...' : 'Remove'}
                     </Button>
                   )}
-                  {!canManageThisCollab && isSelf && collab.userId !== ownerId && (
-                     <span className="text-xs text-gray-400 italic"> (You - cannot manage self here)</span>
-                  )}
+                  {currentActionState.error && <p className="text-xs text-red-500">{currentActionState.error}</p>}
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      {/* Display general errors for actions if not shown per row */}
     </div>
   );
 };
