@@ -6,7 +6,7 @@ This document outlines the 17 primary workstreams for the Dzinza Genealogy Platf
 - Branch: `ws/01-devops-infra-backend-setup`
 - Tasks:
   - Phase 1: Initial Project Setup & Backend Foundation
-    - Week 1: Project Setup & Infrastructure (Repository, Dev Env, CI/CD Initial, Docker Config)
+    - [COMPLETED] Week 1: Project Setup & Infrastructure (Repository, Dev Env, CI/CD Initial, Docker Config)
     - Week 5: Backend Infrastructure (Core) (API Server, PostgreSQL, Migrations, Basic Auth Endpoints)
   - Phase 2 & Ongoing: Enhancements & Production Readiness (Testing Infra, Prod Infra, Security, Microservices, Full CI/CD, General DevOps)
   - (Detailed tasks as per `ws/01-devops-infra-backend-setup/task.md`)
@@ -57,6 +57,7 @@ This document outlines the 17 primary workstreams for the Dzinza Genealogy Platf
 
 ## Workstream 6: Family Tree Core Frontend Visualization
 - Branch: `ws/06-family-tree-frontend`
+- Status: Partially completed. Basic visualization, add/edit profiles, and initial relationship UI are done. Core data structures are defined.
 - Tasks:
   - Interactive family tree visualization component (e.g., using D3.js, Cytoscape.js, or a dedicated library).
   - UI for adding, editing, and deleting individuals in the tree.
