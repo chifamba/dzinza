@@ -9,8 +9,10 @@ import { Person, IPerson } from '../models/Person'; // Added Person model import
 import { authMiddleware } from '@shared/middleware/auth'; // Path to shared auth middleware
 import { logger } from '@shared/utils/logger'; // Path to shared logger
 import { recordActivity } from '../services/activityLogService.js'; // Import recordActivity
+import fetch from 'node-fetch'; // For making HTTP requests to search service
 
 const router = express.Router();
+const SEARCH_SERVICE_URL = process.env.SEARCH_SERVICE_URL || 'http://localhost:SEARCH_PORT_PLACEHOLDER/api'; // Replace SEARCH_PORT_PLACEHOLDER or use actual discovery
 
 /**
  * @swagger
@@ -245,6 +247,28 @@ router.post(
         userAgent: req.get('User-Agent'),
       });
 
+      // Asynchronously index the new event
+      fetch(`${SEARCH_SERVICE_URL}/index`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'event',
+          documentId: newEvent._id.toString(),
+          document: newEvent.toObject(), // Send the full document or a relevant subset
+        }),
+      })
+      .then(async searchRes => {
+        if (!searchRes.ok) {
+          const errorBody = await searchRes.text();
+          logger.warn(`Failed to index new event ${newEvent._id}. Status: ${searchRes.status}. Body: ${errorBody}`);
+        } else {
+          logger.info(`Event ${newEvent._id} submitted for indexing successfully.`);
+        }
+      })
+      .catch(searchErr => {
+        logger.error(`Error calling search service to index new event ${newEvent._id}:`, searchErr);
+      });
+
       res.status(201).json(newEvent);
     } catch (error) {
       logger.error('Error creating event:', error);
@@ -466,6 +490,28 @@ router.put(
         }
       }
 
+      // Asynchronously update the index for the event
+      fetch(`${SEARCH_SERVICE_URL}/index`, {
+        method: 'POST', // Using POST to update/re-index
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'event',
+          documentId: updatedEvent._id.toString(),
+          document: updatedEvent.toObject(),
+        }),
+      })
+      .then(async searchRes => {
+        if (!searchRes.ok) {
+           const errorBody = await searchRes.text();
+           logger.warn(`Failed to update index for event ${updatedEvent._id}. Status: ${searchRes.status}. Body: ${errorBody}`);
+        } else {
+           logger.info(`Event ${updatedEvent._id} submitted for re-indexing successfully.`);
+        }
+      })
+      .catch(searchErr => {
+        logger.error(`Error calling search service to update index for event ${updatedEvent._id}:`, searchErr);
+      });
+
       res.status(200).json(updatedEvent);
     } catch (error) {
       logger.error(`Error updating event ${id}:`, error);
@@ -574,7 +620,24 @@ router.delete(
         }
       }
 
+      const eventIdToDelete = event._id.toString(); // Store before deleting
       await Event.findByIdAndDelete(id);
+
+      // Asynchronously delete the event from the index
+      fetch(`${SEARCH_SERVICE_URL}/index/event/${eventIdToDelete}`, {
+        method: 'DELETE',
+      })
+      .then(async searchRes => {
+        if (!searchRes.ok && searchRes.status !== 404) { // 404 (not found) is acceptable for delete
+           const errorBody = await searchRes.text();
+           logger.warn(`Failed to delete event ${eventIdToDelete} from index. Status: ${searchRes.status}. Body: ${errorBody}`);
+        } else {
+           logger.info(`Event ${eventIdToDelete} submitted for deletion from index successfully (or was not found).`);
+        }
+      })
+      .catch(searchErr => {
+        logger.error(`Error calling search service to delete event ${eventIdToDelete} from index:`, searchErr);
+      });
 
       res.status(200).json({ message: 'Event deleted successfully' });
       // Alternatively, use 204 No Content:
