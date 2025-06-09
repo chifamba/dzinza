@@ -1,10 +1,14 @@
 import express, { Request, Response } from 'express';
 import mongoose from 'mongoose'; // Added for ObjectId and potentially other Mongoose utilities
 import { body, query, param, validationResult } from 'express-validator';
+import express, { Request, Response } from 'express'; // Ensure express is imported
+import mongoose from 'mongoose'; // Added for ObjectId and potentially other Mongoose utilities
+import { body, query, param, validationResult } from 'express-validator'; // Ensure validators are imported
 import { Event, IEvent } from '../models'; // Assuming index.ts in models exports Event and IEvent
 import { Person, IPerson } from '../models/Person'; // Added Person model import
 import { authMiddleware } from '@shared/middleware/auth'; // Path to shared auth middleware
 import { logger } from '@shared/utils/logger'; // Path to shared logger
+import { recordActivity } from '../services/activityLogService.js'; // Import recordActivity
 
 const router = express.Router();
 
@@ -226,6 +230,20 @@ router.post(
         }
       }
       // The main event creation is successful even if media association fails for some items.
+
+      // Record activity
+      recordActivity({
+        userId: req.user.id,
+        userName: req.user.name || req.user.email, // Assuming name or email on req.user
+        actionType: 'CREATE_EVENT',
+        familyTreeId: newEvent.familyTreeId ? newEvent.familyTreeId.toString() : undefined,
+        targetResourceId: newEvent._id.toString(),
+        targetResourceType: 'Event',
+        targetResourceName: newEvent.title,
+        details: `${req.user.name || req.user.id} created event '${newEvent.title}'.`,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      });
 
       res.status(201).json(newEvent);
     } catch (error) {
