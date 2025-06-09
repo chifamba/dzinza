@@ -5,7 +5,8 @@ import QRCode from 'qrcode';
 import { User } from '../models/User';
 import { validateRequest } from '../middleware/validation';
 import { logger } from '../utils/logger';
-import { verifyAccessToken } from '../utils/jwt';
+// import { verifyAccessToken } from '../utils/jwt'; // No longer needed here
+import { authenticateToken, AuthenticatedRequest } from '../middleware/authMiddleware';
 
 const router = Router();
 
@@ -18,15 +19,10 @@ const router = Router();
  *     security:
  *       - bearerAuth: []
  */
-router.post('/setup', async (req, res, next) => {
+router.post('/setup', authenticateToken, async (req: AuthenticatedRequest, res, next) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const decoded = verifyAccessToken(token);
-    const user = await User.findById(decoded.userId);
+    const userId = req.user!.id; // user is guaranteed by authenticateToken
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -69,20 +65,16 @@ router.post('/setup', async (req, res, next) => {
  *   post:
  *     summary: Verify and enable MFA
  *     tags: [MFA]
+ *     security:
+ *       - bearerAuth: [] # Added to indicate auth requirement
  */
-router.post('/verify-setup', [
+router.post('/verify-setup', authenticateToken, [
   body('token').isLength({ min: 6, max: 6 }).isNumeric(),
-], validateRequest, async (req, res, next) => {
+], validateRequest, async (req: AuthenticatedRequest, res, next) => {
   try {
     const { token: mfaToken } = req.body;
-    const authToken = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!authToken) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const decoded = verifyAccessToken(authToken);
-    const user = await User.findById(decoded.userId);
+    const userId = req.user!.id; // user is guaranteed by authenticateToken
+    const user = await User.findById(userId);
 
     if (!user || !user.mfaSecret) {
       return res.status(404).json({ error: 'MFA setup not found' });
@@ -178,21 +170,17 @@ router.post('/verify', [
  *   post:
  *     summary: Disable MFA for user account
  *     tags: [MFA]
+ *     security:
+ *       - bearerAuth: [] # Added to indicate auth requirement
  */
-router.post('/disable', [
+router.post('/disable', authenticateToken, [
   body('password').notEmpty(),
   body('token').isLength({ min: 6, max: 6 }),
-], validateRequest, async (req, res, next) => {
+], validateRequest, async (req: AuthenticatedRequest, res, next) => {
   try {
     const { password, token } = req.body;
-    const authToken = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!authToken) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const decoded = verifyAccessToken(authToken);
-    const user = await User.findById(decoded.userId);
+    const userId = req.user!.id; // user is guaranteed by authenticateToken
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -237,17 +225,13 @@ router.post('/disable', [
  *   post:
  *     summary: Generate new backup codes
  *     tags: [MFA]
+ *     security:
+ *       - bearerAuth: [] # Added to indicate auth requirement
  */
-router.post('/backup-codes', async (req, res, next) => {
+router.post('/backup-codes', authenticateToken, async (req: AuthenticatedRequest, res, next) => {
   try {
-    const authToken = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!authToken) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const decoded = verifyAccessToken(authToken);
-    const user = await User.findById(decoded.userId);
+    const userId = req.user!.id; // user is guaranteed by authenticateToken
+    const user = await User.findById(userId);
 
     if (!user || !user.mfaEnabled) {
       return res.status(400).json({ error: 'MFA not enabled' });

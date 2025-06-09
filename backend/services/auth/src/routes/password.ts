@@ -6,15 +6,17 @@ import { User } from '../models/User';
 import { AuditLog } from '../models/AuditLog';
 import { rateLimitByEmail } from '../middleware/rateLimitByEmail';
 import { validateRequest } from '../middleware/validation';
-import { authMiddleware } from '../../../../shared/middleware/auth';
+// import { authMiddleware } from '../../../../shared/middleware/auth'; // This seems to be an incorrect path or unused import for this context
+import { authenticateToken, AuthenticatedRequest } from '../middleware/authMiddleware'; // Correct import
 import { logger } from '../utils/logger';
 import { sendPasswordResetEmail } from '../utils/email';
+import { RefreshToken } from '../models/RefreshToken'; // Import RefreshToken model
 
 const router = Router();
 
 /**
  * @swagger
- * /password/forgot:
+ * /password/forgot-password:
  *   post:
  *     summary: Request password reset
  *     tags: [Password Management]
@@ -38,7 +40,7 @@ const router = Router();
  *       429:
  *         description: Too many requests
  */
-router.post('/forgot', [
+router.post('/forgot-password', [
   rateLimitByEmail,
   body('email')
     .isEmail()
@@ -80,21 +82,18 @@ router.post('/forgot', [
       });
     }
 
-    // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-    // Save reset token to user
-    user.passwordResetToken = resetToken;
-    user.passwordResetExpires = resetTokenExpiry;
+    // Generate reset token using user model method
+    const resetToken = user.generatePasswordResetToken();
+    // The method user.generatePasswordResetToken() already sets the token and expiry on the user object.
     await user.save();
 
     // Send password reset email
     try {
-      await sendPasswordResetEmail(email, resetToken, user.firstName);
-      logger.info('Password reset email sent successfully', { email, correlationId });
+      // Note: sendPasswordResetEmail expects (email, firstName, token)
+      await sendPasswordResetEmail(user.email, user.firstName, resetToken);
+      logger.info('Password reset email sent successfully', { email: user.email, correlationId });
     } catch (emailError) {
-      logger.error('Failed to send password reset email', { 
+      logger.error('Failed to send password reset email', {
         email, 
         correlationId,
         error: emailError 
@@ -129,10 +128,17 @@ router.post('/forgot', [
 
 /**
  * @swagger
- * /password/reset:
+ * /password/reset-password/{token}:
  *   post:
  *     summary: Reset password with token
  *     tags: [Password Management]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Password reset token
  *     requestBody:
  *       required: true
  *       content:
@@ -140,11 +146,8 @@ router.post('/forgot', [
  *           schema:
  *             type: object
  *             required:
- *               - token
  *               - password
  *             properties:
- *               token:
- *                 type: string
  *               password:
  *                 type: string
  *                 minLength: 8
@@ -156,10 +159,7 @@ router.post('/forgot', [
  *       401:
  *         description: Token expired
  */
-router.post('/reset', [
-  body('token')
-    .isLength({ min: 1 })
-    .withMessage('Reset token is required'),
+router.post('/reset-password/:token', [
   body('password')
     .isLength({ min: 8 })
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
@@ -167,10 +167,11 @@ router.post('/reset', [
   validateRequest
 ], async (req, res) => {
   try {
-    const { token, password } = req.body;
+    const { token } = req.params;
+    const { password } = req.body;
     const correlationId = req.headers['x-correlation-id'] as string;
 
-    logger.info('Password reset attempted', { 
+    logger.info('Password reset attempted', {
       correlationId,
       ip: req.ip,
       userAgent: req.get('User-Agent')
@@ -203,10 +204,18 @@ router.post('/reset', [
     user.passwordChangedAt = new Date();
     user.failedLoginAttempts = 0; // Reset failed login attempts
     user.lockUntil = undefined; // Unlock account if it was locked
-    
     await user.save();
 
-    logger.info('Password reset completed successfully', { 
+    // Optionally, invalidate existing refresh tokens for this user
+    try {
+      await RefreshToken.revokeAllForUser(user._id);
+      logger.info(`All refresh tokens revoked for user ${user._id} after password reset`, { userId: user._id, correlationId });
+    } catch (revokeError) {
+      logger.error(`Failed to revoke refresh tokens for user ${user._id} after password reset`, { userId: user._id, error: revokeError, correlationId });
+      // Do not let this fail the entire operation
+    }
+
+    logger.info('Password reset completed successfully', {
       userId: user._id,
       email: user.email,
       correlationId 
@@ -269,7 +278,7 @@ router.post('/reset', [
  *         description: Invalid current password or unauthorized
  */
 router.post('/change', [
-  authMiddleware,
+  authenticateToken, // Corrected to use authenticateToken
   body('currentPassword')
     .isLength({ min: 1 })
     .withMessage('Current password is required'),
@@ -278,13 +287,13 @@ router.post('/change', [
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
     .withMessage('New password must be at least 8 characters with uppercase, lowercase, number, and special character'),
   validateRequest
-], async (req, res) => {
+], async (req: AuthenticatedRequest, res) => { // Added AuthenticatedRequest type
   try {
     const { currentPassword, newPassword } = req.body;
-    const userId = req.user.id;
+    const userId = req.user!.id; // Added non-null assertion as authenticateToken guarantees req.user
     const correlationId = req.headers['x-correlation-id'] as string;
 
-    logger.info('Password change requested', { 
+    logger.info('Password change requested', {
       userId,
       correlationId,
       ip: req.ip,
@@ -351,9 +360,9 @@ router.post('/change', [
     });
 
   } catch (error) {
-    logger.error('Password change failed', { 
+    logger.error('Password change failed', {
       error,
-      userId: req.user?.id,
+      userId: (req as AuthenticatedRequest).user?.id, // Type assertion for safety
       correlationId: req.headers['x-correlation-id']
     });
     res.status(500).json({ error: 'Internal server error' });
