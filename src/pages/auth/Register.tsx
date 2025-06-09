@@ -11,7 +11,7 @@ import { PasswordStrengthIndicator } from '../../components/ui/PasswordStrengthI
 const Register = () => {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
-  const { register, isLoading, error } = useAuth();
+  const { register, isLoading, error, signInWithProvider } = useAuth();
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -359,6 +359,7 @@ const Register = () => {
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 type="button"
+                onClick={() => signInWithProvider('google')}
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                 disabled={isLoading}
               >
@@ -373,6 +374,7 @@ const Register = () => {
 
               <button
                 type="button"
+                onClick={() => signInWithProvider('facebook')}
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                 disabled={isLoading}
               >

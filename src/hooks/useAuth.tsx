@@ -23,6 +23,8 @@ interface AuthContextType {
   clearError: () => void;
   refreshToken: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
+  signInWithProvider: (provider: 'google' | 'facebook') => Promise<void>;
+  processOAuthCallback: (provider: 'google' | 'facebook', code: string, state: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -193,6 +195,59 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
   };
 
+  const signInWithProvider = async (provider: 'google' | 'facebook'): Promise<void> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await authApi.initiateOAuth(provider);
+      if (response.authUrl) {
+        window.location.href = response.authUrl;
+      } else {
+        throw new Error('No authUrl received from backend');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || `OAuth initiation with ${provider} failed`;
+      setError(errorMessage);
+      // No need to rethrow here as the redirection will handle the flow or error page
+    } finally {
+      // Note: setIsLoading(false) might not be reached if redirection happens.
+      // This is generally fine as the page will reload.
+      // If redirection fails, it's important to set loading to false.
+      // However, if authUrl is missing, the catch block handles it.
+      // If window.location.href succeeds, the current JS context is lost.
+      // For now, we'll keep it simple. If issues arise, this could be revisited.
+      // One way to ensure it's set is if the API call itself fails before redirection.
+      if (!window.location.href.includes('provider_redirect_happened_or_failed')) { // Pseudo-check
+          setIsLoading(false);
+      }
+    }
+  };
+
+  const processOAuthCallback = async (provider: 'google' | 'facebook', code: string, state: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await authApi.handleOAuthCallback(provider, code, state);
+
+      if (response.tokens && response.user) {
+        const accessTokenKey = import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token';
+        const refreshTokenKey = import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token';
+        localStorage.setItem(accessTokenKey, response.tokens.accessToken);
+        localStorage.setItem(refreshTokenKey, response.tokens.refreshToken);
+        setUser(response.user);
+      } else {
+        // This case should ideally be an error from handleOAuthCallback
+        throw new Error('OAuth callback did not return tokens or user');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'OAuth callback processing failed';
+      setError(errorMessage);
+      throw err; // Rethrow to allow the calling page (e.g., callback page) to handle it
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isAuthenticated,
@@ -203,7 +258,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     clearError,
     refreshToken,
-    updateProfile
+    updateProfile,
+    signInWithProvider,
+    processOAuthCallback
   };
 
   return (
