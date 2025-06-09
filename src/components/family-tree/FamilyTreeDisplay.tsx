@@ -52,16 +52,28 @@ const FamilyTreeDisplay: React.FC = () => {
 
   const [d3TreeData, setD3TreeData] = useState<RawNodeDatum | null>(null);
 
-
+  /**
+   * Converts flat arrays of members and relationships into a hierarchical structure
+   * suitable for react-d3-tree.
+   * @param members - Array of FamilyMember objects.
+   * @param relationships - Array of Relationship objects.
+   * @returns A single RawNodeDatum object (if a single root or synthetic root is formed)
+   *          or an array of RawNodeDatum objects (if multiple roots are identified and returned directly),
+   *          or null if data is insufficient.
+   */
   const buildTreeData = (members: FamilyMember[], relationships: Relationship[]): RawNodeDatum | RawNodeDatum[] | null => {
+    // Handle empty or null members input
     if (!members || members.length === 0) {
-      return { name: "No Data" };
+      return { name: "No Data" }; // Return a placeholder node
     }
 
-    const membersMap = new Map(members.map(member => [member.id, member]));
-    const childrenMap = new Map<string, string[]>(); // parentId -> childId[]
-    const memberNodeMap = new Map<string, RawNodeDatum>(); // member.id -> RawNodeDatum
+    // Initialize maps for efficient lookup
+    const membersMap = new Map(members.map(member => [member.id, member])); // Map member ID to member data
+    const childrenMap = new Map<string, string[]>(); // Map parentId to an array of childIds
+    const memberNodeMap = new Map<string, RawNodeDatum>(); // Map member.id to its RawNodeDatum representation for the tree
 
+    // Process relationships to populate childrenMap
+    // This map stores parent-child links, crucial for building the hierarchy.
     relationships.forEach(rel => {
       if (rel.type === 'PARENT_CHILD') {
         const children = childrenMap.get(rel.person1Id) || [];
@@ -70,24 +82,28 @@ const FamilyTreeDisplay: React.FC = () => {
       }
     });
 
+    // Populate memberNodeMap with RawNodeDatum objects for each member.
+    // Each node includes attributes and an initialized 'children' array.
+    // 'originalId' is stored to link back to the original FamilyMember object if needed.
     members.forEach(member => {
       memberNodeMap.set(member.id, {
         name: member.name,
-        attributes: {
+        attributes: { // Attributes are used by the TreePersonNode component
           Gender: member.gender,
           Birthdate: member.birthDate || 'N/A',
           ...(member.deathDate && { 'Death Date': member.deathDate }),
-          // Include relationship IDs
           parentIds: member.parentIds || [],
           childIds: member.childIds || [],
           spouseIds: member.spouseIds || [],
-          profileImageUrl: member.profileImageUrl // ensure image is also in attributes if needed by TreePersonNode
+          profileImageUrl: member.profileImageUrl,
         },
-        originalId: member.id,
-        children: [],
+        originalId: member.id, // Store the original ID from the FamilyMember object
+        children: [], // Initialize children array; will be populated by buildHierarchy
       });
     });
 
+    // Identify root nodes: members who are not children in any 'PARENT_CHILD' relationship.
+    // These nodes will be the starting points for building the tree hierarchy.
     const roots: RawNodeDatum[] = [];
     members.forEach(member => {
       const isChild = relationships.some(rel => rel.type === 'PARENT_CHILD' && rel.person2Id === member.id);
@@ -99,27 +115,48 @@ const FamilyTreeDisplay: React.FC = () => {
       }
     });
 
+    // Console warning if no roots are found but members exist.
+    // This can indicate a disconnected graph, circular dependencies, or data issues.
+    if (roots.length === 0 && members.length > 0) {
+      console.warn('[buildTreeData] No root nodes found, but members exist. The tree might be disconnected or have an unusual structure. Displaying members as a flat list or based on first member.');
+    }
+
+    /**
+     * Recursively constructs the tree hierarchy for a given memberId.
+     * It finds the member's node and then recursively calls itself for all children of that member,
+     * linking the resulting child nodes to the parent's 'children' array.
+     * @param memberId - The ID of the member for whom to build the hierarchy.
+     * @returns A RawNodeDatum object representing the member and their descendants, or undefined if the member is not found.
+     */
     const buildHierarchy = (memberId: string): RawNodeDatum | undefined => {
       const node = memberNodeMap.get(memberId);
-      if (!node) return undefined;
+      // If a memberId (e.g., from a childIds array) doesn't correspond to an actual member in memberNodeMap.
+      if (!node) {
+        console.warn(`[buildTreeData] Node data not found for memberId: ${memberId} during hierarchy construction.`);
+        return undefined;
+      }
 
       const childIds = childrenMap.get(memberId) || [];
       node.children = childIds
-        .map(childId => buildHierarchy(childId))
-        .filter(childNode => childNode !== undefined) as RawNodeDatum[];
+        .map(childId => buildHierarchy(childId)) // Recursively build hierarchy for each child
+        .filter(childNode => childNode !== undefined) as RawNodeDatum[]; // Filter out undefined children (e.g., if a childId was invalid)
       return node;
     };
 
+    // Populate the children for each identified root node by calling buildHierarchy.
+    // This transforms the flat list of roots into a list of hierarchical tree structures.
     const populatedRoots = roots.map(root => buildHierarchy(root.originalId!)).filter(r => r) as RawNodeDatum[];
 
+    // Handle cases for the final return value:
+    // - If no populated roots are found despite members existing (e.g., all nodes are disconnected individuals or small, unlinked groups),
+    //   return all members as a flat list of nodes. react-d3-tree might require a synthetic root to display these.
+    // - Otherwise, return the array of populated root nodes. The calling code (useEffect) will handle
+    //   wrapping multiple roots under a synthetic 'Family' node if necessary for react-d3-tree.
     if (populatedRoots.length === 0 && members.length > 0) {
-      // Handle case with single person or disconnected graph - return all members as roots
-      // or the first member as a single node if no relationships defined them as roots
-      return members.map(m => memberNodeMap.get(m.id)!);
+      return members.map(m => memberNodeMap.get(m.id)!); // Fallback for disconnected graphs or no clear roots
     }
 
-
-    return populatedRoots;
+    return populatedRoots; // This will be an array of root nodes.
   };
 
 
@@ -352,7 +389,7 @@ const FamilyTreeDisplay: React.FC = () => {
         {/* These values might need to be dynamic based on node content or fixed if nodes are uniform size */}
         {/* The x,y for foreignObject are relative to the <g> which react-d3-tree positions */}
         {/* Reduced size for better responsiveness, adjust x,y to keep it centered */}
-        <foreignObject x="-120" y="-90" width="240" height="190">
+        <foreignObject x="-110" y="-80" width="220" height="170">
           <TreePersonNode
             nodeDatum={nodeDatum}
             toggleNode={toggleNode}
@@ -433,7 +470,7 @@ const FamilyTreeDisplay: React.FC = () => {
         ))}
       </div> */}
 
-      <div className="w-full h-[70vh] min-h-[400px] max-h-[800px] border border-gray-300 rounded-md shadow-sm">
+      <div className="w-full min-h-[400px] aspect-video border border-gray-300 rounded-md shadow-sm">
         {d3TreeData ? (
           <Tree
             data={d3TreeData}
@@ -473,6 +510,7 @@ const FamilyTreeDisplay: React.FC = () => {
             isLoading={isSubmittingEdit}
             error={submitEditError}
             initialMode={editingPerson.currentMode} // Pass the mode to the form
+            allMembers={currentMembers} // <-- ADD THIS LINE
           />
         </Modal>
       )}

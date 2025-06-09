@@ -10,6 +10,7 @@ interface EditPersonFormProps {
   isLoading: boolean;
   error?: string | null;
   initialMode?: 'view' | 'edit';
+  allMembers?: FamilyMember[]; // Added for displaying relationship names
 }
 
 const EditPersonForm: React.FC<EditPersonFormProps> = ({
@@ -19,8 +20,11 @@ const EditPersonForm: React.FC<EditPersonFormProps> = ({
   isLoading,
   error,
   initialMode = 'edit',
+  allMembers = [], // Default to empty array
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>(initialMode);
+
+  const getNameById = (id: string) => allMembers?.find(m => m.id === id)?.name || 'Unknown';
 
   // Form field states
   const [name, setName] = useState(person.name);
@@ -79,11 +83,39 @@ const EditPersonForm: React.FC<EditPersonFormProps> = ({
             {deathDate && <div><strong className="font-medium text-gray-600">Death Date:</strong> {deathDate}</div>}
         </div>
 
-        {/* Placeholder for relationships - could be fetched and displayed here if needed */}
-        {/* <div className="mt-3 pt-3 border-t">
-          <h4 className="font-medium text-gray-700">Relationships:</h4>
-          <p className="text-xs text-gray-500">Parent, spouse, children details can be shown here.</p>
-        </div> */}
+        {/* Relationships Display */}
+        <div className="mt-3 pt-3 border-t">
+          <h4 className="text-md font-semibold text-gray-800 mb-2">Relationships</h4>
+          {person.parentIds && person.parentIds.length > 0 && (
+            <div className="mb-2">
+              <h5 className="font-medium text-gray-600 text-sm">Parents:</h5>
+              <ul className="list-disc list-inside text-sm text-gray-500 ml-4">
+                {person.parentIds.map(id => <li key={id}>{getNameById(id)}</li>)}
+              </ul>
+            </div>
+          )}
+          {person.spouseIds && person.spouseIds.length > 0 && (
+            <div className="mb-2">
+              <h5 className="font-medium text-gray-600 text-sm">Spouse(s):</h5>
+              <ul className="list-disc list-inside text-sm text-gray-500 ml-4">
+                {person.spouseIds.map(id => <li key={id}>{getNameById(id)}</li>)}
+              </ul>
+            </div>
+          )}
+          {person.childIds && person.childIds.length > 0 && (
+            <div className="mb-2">
+              <h5 className="font-medium text-gray-600 text-sm">Children:</h5>
+              <ul className="list-disc list-inside text-sm text-gray-500 ml-4">
+                {person.childIds.map(id => <li key={id}>{getNameById(id)}</li>)}
+              </ul>
+            </div>
+          )}
+          {(!person.parentIds || person.parentIds.length === 0) &&
+           (!person.spouseIds || person.spouseIds.length === 0) &&
+           (!person.childIds || person.childIds.length === 0) && (
+            <p className="text-xs text-gray-400 italic">No relationships defined.</p>
+          )}
+        </div>
 
         {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
         <div className="flex justify-end space-x-3 pt-4 mt-4 border-t">
@@ -100,7 +132,7 @@ const EditPersonForm: React.FC<EditPersonFormProps> = ({
 
   // Edit Mode Form (existing structure adapted)
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-1">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <Input
         label="Full Name"
         name="name"
