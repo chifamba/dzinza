@@ -6,7 +6,7 @@ import nodemailer from 'nodemailer';
 import app from '../../src/server'; // Express app
 import bcrypt from 'bcryptjs'; // For checking password change
 
-const mockSendMail = nodemailer.createTransport({}).sendMail as jest.Mock;
+const mockSendMail = nodemailer.createTransport({}).sendMail as jest.MockedFunction<any>;
 
 describe('Password Routes - Recovery and Change', () => {
   let testUser: IUser;

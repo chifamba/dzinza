@@ -49,17 +49,6 @@
 * ✅ Use ARIA labels, semantic HTML
 * ✅ Label inputs, support keyboard navigation
 
-## File Structure (Simplified)
-
-```
-src/
-├── components/  # UI + layout
-├── pages/       # Route-level views
-├── hooks/       # Custom hooks
-├── services/    # API and integrations
-├── stores/      # Zustand stores
-├── utils/       # Helpers
-```
 
 ## Quick Decision Flow
 
