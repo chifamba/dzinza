@@ -88,7 +88,7 @@ i18n
   .init({
     resources,
     fallbackLng: 'en',
-    debug: import.meta.env.DEV,
+    debug: import.meta.env.DEV, // Reverted to original
     
     // Language detection
     detection: detectionOptions,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button'; // Adjust path as needed
-import { logger } from '../../../../shared/utils/logger'; // Assuming logger is accessible
+import { logger } from '@shared/utils/logger'; // Use alias
 
 interface DisplayedEvent {
   _id: string;

@@ -219,11 +219,6 @@ UserSchema.methods.comparePassword = async function(candidatePassword: string): 
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Method to check if account is locked
-UserSchema.methods.isLocked = function(): boolean {
-  return !!(this.lockUntil && this.lockUntil > new Date());
-};
-
 // Method to increment login attempts
 UserSchema.methods.incLoginAttempts = async function(): Promise<void> {
   // If we have a previous lock that has expired, restart at 1
