@@ -11,7 +11,7 @@ export default {
     'lcov',
     'clover'
   ],
-  testEnvironment: 'node', // Changed to 'node' for backend Mongoose tests
+  testEnvironment: 'jsdom', // Changed to 'jsdom' for frontend component tests
   transform: {
     '^.+\\.(t|j)sx?$': 'babel-jest',
     '^.+\\.mjs$': 'babel-jest',
@@ -19,11 +19,19 @@ export default {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json', 'node'],
   transformIgnorePatterns: [
-    // Added 'file-type' to the list of modules to be transformed if they are ESM
-    '/node_modules/(?!(bson|mongodb|mongoose|@noble/hashes|@paralleldrive/cuid2|file-type)/)',
+    // Simpler pattern to transform @tiptap and prosemirror packages
+    "/node_modules/(?!(@tiptap\\/.*|prosemirror-.*))"
   ],
   moduleNameMapper: {
     '^@shared/(.*)$': '<rootDir>/backend/shared/$1',
+    // Map problematic TipTap extensions to manual mocks
+    '^@tiptap/extension-link$': '<rootDir>/src/__mocks__/@tiptap/extension-link.js',
+    '^@tiptap/extension-image$': '<rootDir>/src/__mocks__/@tiptap/extension-image.js',
+    '^@tiptap/extension-placeholder$': '<rootDir>/src/__mocks__/@tiptap/extension-placeholder.js',
+    '^@tiptap/extension-underline$': '<rootDir>/src/__mocks__/@tiptap/extension-underline.js',
+    '^@tiptap/starter-kit$': '<rootDir>/src/__mocks__/@tiptap/starter-kit.js',
+    '^@tiptap/core$': '<rootDir>/src/__mocks__/@tiptap/core.js',
+    '^@tiptap/react$': '<rootDir>/src/__mocks__/@tiptap/react.js',
     // Example for frontend alias, if src/@/* is used:
     // '^@/(.*)$': '<rootDir>/src/$1',
   },

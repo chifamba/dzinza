@@ -1,4 +1,5 @@
 import { TextEncoder, TextDecoder } from 'util';
+import '@testing-library/jest-dom';
 
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder;
@@ -19,12 +20,12 @@ const mockImportMetaEnv = {
 // The `babel-plugin-transform-import-meta` in babel.config.cjs will handle
 // transforming `import.meta.env` in the source code itself.
 if (typeof global.import === 'undefined') {
-  global.import = {} as any;
+  global.import = {};
 }
 if (typeof global.import.meta === 'undefined') {
-  (global.import.meta as any) = {};
+  global.import.meta = {};
 }
-(global.import.meta as any).env = mockImportMetaEnv;
+global.import.meta.env = mockImportMetaEnv;
 
 // For direct use in tests if needed, though Babel plugin should make it transparent in source.
 global.mockedImportMetaEnv = mockImportMetaEnv;
