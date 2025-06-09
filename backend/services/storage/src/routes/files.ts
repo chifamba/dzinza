@@ -162,6 +162,8 @@ router.post('/upload', upload.array('files', 10), [
   body('category').optional().isIn(['photo', 'document', 'audio', 'video', 'other']),
   body('privacy').optional().isIn(['public', 'private', 'family']),
   body('tags').optional().isString(),
+  body('relatedPersons').optional().isString(),
+  body('relatedEvents').optional().isString(),
   body('description').optional().isString().trim().isLength({ max: 1000 }),
   body('generateThumbnails').optional().isBoolean()
 ], async (req: Request, res: Response) => {
@@ -191,6 +193,8 @@ router.post('/upload', upload.array('files', 10), [
       category = 'other',
       privacy = 'private',
       tags,
+      relatedPersons,
+      relatedEvents,
       description,
       generateThumbnails = true
     } = req.body;
@@ -281,7 +285,9 @@ router.post('/upload', upload.array('files', 10), [
             ...imageMetadata
           },
           thumbnails,
-          tags: tags ? tags.split(',').map((tag: string) => tag.trim()) : [],
+          tags: tags ? tags.split(',').map((tag: string) => tag.trim()).filter(Boolean) : [],
+          relatedPersons: relatedPersons ? relatedPersons.split(',').map((id: string) => id.trim()).filter(Boolean) : [],
+          relatedEvents: relatedEvents ? relatedEvents.split(',').map((id: string) => id.trim()).filter(Boolean) : [],
           description
         });
 

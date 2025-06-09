@@ -38,6 +38,7 @@ export interface IFile extends Document {
   expiresAt?: Date; // For temporary files
   parentId?: string; // For thumbnails/versions linked to original
   relatedPersons?: string[]; // IDs of persons this file relates to
+  relatedEvents?: string[]; // IDs of events this file relates to
   familyTreeId?: string; // Associated family tree
 }
 
@@ -88,6 +89,7 @@ const FileSchema = new Schema<IFile>({
   expiresAt: { type: Date, index: true }, // TTL index for cleanup
   parentId: { type: Schema.Types.ObjectId, ref: 'File' },
   relatedPersons: [{ type: String, index: true }],
+  relatedEvents: [{ type: String, index: true }],
   familyTreeId: { type: String, index: true }
 }, {
   timestamps: true,
