@@ -4,13 +4,14 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Mail, Lock, TreePine, Shield } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+// LoadingSpinner and Alert are already imported, but ensure path is correct if components are moved
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { Alert } from '../../components/ui/Alert';
 
 const Login = () => {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
-  const { login, isLoading, error } = useAuth();
+  const { login, isLoading, error, signInWithProvider } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -228,6 +229,7 @@ const Login = () => {
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 type="button"
+                onClick={() => signInWithProvider('google')}
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                 disabled={isLoading}
               >
@@ -242,6 +244,7 @@ const Login = () => {
 
               <button
                 type="button"
+                onClick={() => signInWithProvider('facebook')}
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                 disabled={isLoading}
               >
