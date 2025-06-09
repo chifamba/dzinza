@@ -126,10 +126,6 @@ const EventForm: React.FC<EventFormProps> = ({
     setFormData((prev) => ({ ...prev, content: value }));
   };
 
-  const handleContentChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, content: value }));
-  };
-
   const handlePersonSelectionChange = (personId: string) => {
     setSelectedPersonIds(prevSelectedIds =>
       prevSelectedIds.includes(personId)
@@ -261,8 +257,6 @@ const EventForm: React.FC<EventFormProps> = ({
           className="mt-1"
           placeholder="ID of the family tree this event belongs to"
         />
-      </div>
-
       </div>
 
       <div>

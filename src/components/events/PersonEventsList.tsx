@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { logger } from '../../../../shared/utils/logger'; // Adjust path as necessary
+import { logger } from '@shared/utils/logger'; // Use alias
 
 interface DisplayedEvent {
   _id: string;
