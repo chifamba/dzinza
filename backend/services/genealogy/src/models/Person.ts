@@ -443,6 +443,8 @@ PersonSchema.pre('save', function(next) {
   }
   
   // If person is marked as not living but no death date, add estimated death date
+  // This logic might be contentious - consider if it's always desired.
+  // For now, keeping as per existing code.
   if (!this.isLiving && !this.deathDate?.date && this.birthDate?.date) {
     const estimatedDeathYear = this.birthDate.date.getFullYear() + 85; // Average life expectancy
     this.deathDate = {
@@ -450,6 +452,13 @@ PersonSchema.pre('save', function(next) {
       approximate: true,
       accuracy: 'estimated',
     };
+  }
+
+  // Validate birthDate vs deathDate
+  if (this.birthDate?.date && this.deathDate?.date && this.birthDate.date > this.deathDate.date) {
+    const err = new Error('Death date cannot be before birth date.');
+    // (err as any).statusCode = 400; // Optional: for more specific error handling if desired
+    return next(err); // Pass error to Mongoose to prevent save
   }
   
   next();
