@@ -55,7 +55,7 @@ const AddRelationshipForm: React.FC<AddRelationshipFormProps> = ({
           disabled={isLoading}
         >
           <option value="SPOUSE">Spouse</option>
-          <option value="PARENT_CHILD">Parent (of selected person)</option>
+          <option value="PARENT_CHILD">This person is PARENT of (selected person)</option>
           {/* For PARENT_CHILD, sourcePerson is parent, target is child. Or vice-versa depending on UI flow.
               Let's assume for this form: sourcePerson is PARENT of targetPerson.
               If you want to set sourcePerson as CHILD of targetPerson, the UI/labeling might need adjustment
