@@ -14,6 +14,7 @@ import familyTreeRoutes from './routes/familyTree.js';
 import personRoutes from './routes/person.js';
 import relationshipRoutes from './routes/relationship.js';
 import mediaRoutes from './routes/media.js';
+import eventsRouter from './routes/events.js';
 
 // Import middleware
 import { errorHandler } from '../../../src/shared/middleware/errorHandler.js';
@@ -174,6 +175,7 @@ app.use('/api/family-trees', authMiddleware, familyTreeRoutes);
 app.use('/api/persons', authMiddleware, personRoutes);
 app.use('/api/relationships', authMiddleware, relationshipRoutes);
 app.use('/api/media', authMiddleware, mediaRoutes);
+app.use('/api/events', authMiddleware, eventsRouter);
 
 // Error handling
 app.use(errorHandler);

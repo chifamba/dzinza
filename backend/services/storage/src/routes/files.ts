@@ -1,8 +1,9 @@
 import express, { Request, Response } from 'express';
 import multer from 'multer';
-import { body, query, validationResult } from 'express-validator';
+import { body, query, param, validationResult } from 'express-validator';
 import { fileTypeFromBuffer } from 'file-type';
 import mimeTypes from 'mime-types';
+import mongoose from 'mongoose';
 import { S3Service, UploadOptions } from '../services/s3';
 import { ImageProcessor } from '../services/imageProcessor';
 import { File } from '../models/File';
@@ -845,5 +846,166 @@ router.delete('/:id', async (req, res) => {
     });
   }
 });
+
+
+// --- Internal Event Association Endpoints ---
+
+/**
+ * @swagger
+ * /api/files/{fileId}/associate-event:
+ *   put:
+ *     summary: Associate an event with a file (Internal)
+ *     tags: [Files, Internal]
+ *     description: Adds an event ID to the file's relatedEvents array. Intended for internal service-to-service communication.
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: mongoId
+ *         description: The ID of the file
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - eventId
+ *             properties:
+ *               eventId:
+ *                 type: string
+ *                 description: The ID of the event to associate
+ *     responses:
+ *       200:
+ *         description: Event associated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FileUpload'
+ *       400:
+ *         description: Invalid input (fileId or eventId)
+ *       404:
+ *         description: File not found
+ *       500:
+ *         description: Server error
+ *     security: [] # No end-user auth, but should be protected by network policies/service auth
+ */
+router.put(
+  '/:fileId/associate-event',
+  [
+    param('fileId').isMongoId().withMessage('Invalid file ID'),
+    body('eventId').notEmpty().withMessage('Event ID is required').isString(),
+  ],
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { fileId } = req.params;
+    const { eventId } = req.body;
+
+    try {
+      const updatedFile = await File.findByIdAndUpdate(
+        fileId,
+        { $addToSet: { relatedEvents: eventId } },
+        { new: true }
+      );
+
+      if (!updatedFile) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+
+      res.status(200).json(updatedFile);
+    } catch (error) {
+      logger.error(`Error associating event ${eventId} with file ${fileId}:`, error);
+      if (error instanceof mongoose.Error.CastError && error.path === '_id') {
+        return res.status(400).json({ message: 'Invalid file ID format in request' });
+      }
+      res.status(500).json({ message: 'Server error while associating event' });
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /api/files/{fileId}/disassociate-event:
+ *   put:
+ *     summary: Disassociate an event from a file (Internal)
+ *     tags: [Files, Internal]
+ *     description: Removes an event ID from the file's relatedEvents array. Intended for internal service-to-service communication.
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: mongoId
+ *         description: The ID of the file
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - eventId
+ *             properties:
+ *               eventId:
+ *                 type: string
+ *                 description: The ID of the event to disassociate
+ *     responses:
+ *       200:
+ *         description: Event disassociated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FileUpload'
+ *       400:
+ *         description: Invalid input (fileId or eventId)
+ *       404:
+ *         description: File not found
+ *       500:
+ *         description: Server error
+ *     security: [] # No end-user auth, but should be protected by network policies/service auth
+ */
+router.put(
+  '/:fileId/disassociate-event',
+  [
+    param('fileId').isMongoId().withMessage('Invalid file ID'),
+    body('eventId').notEmpty().withMessage('Event ID is required').isString(),
+  ],
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { fileId } = req.params;
+    const { eventId } = req.body;
+
+    try {
+      const updatedFile = await File.findByIdAndUpdate(
+        fileId,
+        { $pull: { relatedEvents: eventId } },
+        { new: true }
+      );
+
+      if (!updatedFile) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+
+      res.status(200).json(updatedFile);
+    } catch (error) {
+      logger.error(`Error disassociating event ${eventId} from file ${fileId}:`, error);
+      if (error instanceof mongoose.Error.CastError && error.path === '_id') {
+        return res.status(400).json({ message: 'Invalid file ID format in request' });
+      }
+      res.status(500).json({ message: 'Server error while disassociating event' });
+    }
+  }
+);
 
 export default router;
