@@ -4,43 +4,103 @@ import { FamilyMember } from '../../types/genealogy'; // Adjust path
 import { Input, Button } from '../ui'; // Adjust path
 
 interface EditPersonFormProps {
-  person: FamilyMember; // Current person data to edit
+  person: FamilyMember;
   onUpdatePerson: (personData: FamilyMember) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
   error?: string | null;
+  initialMode?: 'view' | 'edit';
 }
 
-const EditPersonForm: React.FC<EditPersonFormProps> = ({ person, onUpdatePerson, onCancel, isLoading, error }) => {
+const EditPersonForm: React.FC<EditPersonFormProps> = ({
+  person,
+  onUpdatePerson,
+  onCancel,
+  isLoading,
+  error,
+  initialMode = 'edit',
+}) => {
+  const [mode, setMode] = useState<'view' | 'edit'>(initialMode);
+
+  // Form field states
   const [name, setName] = useState(person.name);
   const [birthDate, setBirthDate] = useState(person.birthDate || '');
   const [deathDate, setDeathDate] = useState(person.deathDate || '');
   const [gender, setGender] = useState(person.gender || 'unknown');
   const [profileImageUrl, setProfileImageUrl] = useState(person.profileImageUrl || '');
 
+  const resetFormFields = (p: FamilyMember) => {
+    setName(p.name);
+    setBirthDate(p.birthDate || '');
+    setDeathDate(p.deathDate || '');
+    setGender(p.gender || 'unknown');
+    setProfileImageUrl(p.profileImageUrl || '');
+  };
+
   useEffect(() => {
-    setName(person.name);
-    setBirthDate(person.birthDate || '');
-    setDeathDate(person.deathDate || '');
-    setGender(person.gender || 'unknown');
-    setProfileImageUrl(person.profileImageUrl || '');
-  }, [person]);
+    resetFormFields(person);
+    setMode(initialMode);
+  }, [person, initialMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedPersonData: FamilyMember = {
-      ...person, // Keep existing fields like id, parentIds etc.
-      name,
-      birthDate: birthDate || undefined, // Store as undefined if empty
-      deathDate: deathDate || undefined,
-      gender: gender as FamilyMember['gender'],
-      profileImageUrl: profileImageUrl || undefined,
-    };
-    await onUpdatePerson(updatedPersonData);
+    if (mode === 'edit') {
+      const updatedPersonData: FamilyMember = {
+        ...person,
+        name,
+        birthDate: birthDate || undefined,
+        deathDate: deathDate || undefined,
+        gender: gender as FamilyMember['gender'],
+        profileImageUrl: profileImageUrl || undefined,
+      };
+      await onUpdatePerson(updatedPersonData);
+    }
   };
 
+  if (mode === 'view') {
+    return (
+      <div className="space-y-3 p-2">
+        {profileImageUrl && (
+          <div className="flex justify-center my-4">
+            <img
+              src={profileImageUrl}
+              alt={name}
+              className="w-32 h-32 rounded-full object-cover border-2 border-gray-300 shadow"
+            />
+          </div>
+        )}
+        <div className="text-center mb-4">
+            <h3 className="text-xl font-semibold">{name}</h3>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <div><strong className="font-medium text-gray-600">Gender:</strong> <span className="capitalize">{gender}</span></div>
+            {birthDate && <div><strong className="font-medium text-gray-600">Birth Date:</strong> {birthDate}</div>}
+            {deathDate && <div><strong className="font-medium text-gray-600">Death Date:</strong> {deathDate}</div>}
+        </div>
+
+        {/* Placeholder for relationships - could be fetched and displayed here if needed */}
+        {/* <div className="mt-3 pt-3 border-t">
+          <h4 className="font-medium text-gray-700">Relationships:</h4>
+          <p className="text-xs text-gray-500">Parent, spouse, children details can be shown here.</p>
+        </div> */}
+
+        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+        <div className="flex justify-end space-x-3 pt-4 mt-4 border-t">
+          <Button type="button" variant="secondary" onClick={onCancel}>
+            Close
+          </Button>
+          <Button type="button" variant="primary" onClick={() => setMode('edit')}>
+            Edit Profile
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Edit Mode Form (existing structure adapted)
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 p-1">
       <Input
         label="Full Name"
         name="name"
@@ -92,7 +152,19 @@ const EditPersonForm: React.FC<EditPersonFormProps> = ({ person, onUpdatePerson,
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex justify-end space-x-3 pt-2">
-        <Button type="button" variant="secondary" onClick={onCancel} disabled={isLoading}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            if (initialMode === 'view') {
+              resetFormFields(person); // Reset data to original
+              setMode('view');
+            } else {
+              onCancel();
+            }
+          }}
+          disabled={isLoading}
+        >
           Cancel
         </Button>
         <Button type="submit" variant="primary" disabled={isLoading}>
