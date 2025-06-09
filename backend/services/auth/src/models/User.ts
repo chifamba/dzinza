@@ -16,6 +16,8 @@ export interface IUser extends Document {
   passwordResetToken?: string;
   passwordResetExpires?: Date;
   passwordChangedAt?: Date;
+  googleId?: string; // Added for Google OAuth
+  authProvider?: 'local' | 'google'; // Added to distinguish auth methods
   lastLogin?: Date;
   loginAttempts: number;
   lockUntil?: Date;
@@ -65,7 +67,8 @@ const UserSchema = new Schema<IUser>({
   },
   password: {
     type: String,
-    required: true,
+    // Password is not required if authProvider is 'google'
+    required: function(this: IUser) { return this.authProvider === 'local'; },
     minlength: 8,
   },
   firstName: {
@@ -102,6 +105,17 @@ const UserSchema = new Schema<IUser>({
   passwordResetToken: String,
   passwordResetExpires: Date,
   passwordChangedAt: Date,
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true, // Allows multiple documents to have null for this field but unique if value is present
+    index: true,
+  },
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local',
+  },
   lastLogin: Date,
   loginAttempts: {
     type: Number,
@@ -172,6 +186,7 @@ const UserSchema = new Schema<IUser>({
 
 // Indexes
 UserSchema.index({ email: 1 });
+UserSchema.index({ googleId: 1 }); // Index for googleId
 UserSchema.index({ isActive: 1 });
 UserSchema.index({ createdAt: -1 });
 UserSchema.index({ 'preferences.privacy.profileVisibility': 1 });
