@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { logger } from '../../../../shared/utils/logger'; // Adjust path as necessary
+import { logger } from '@shared/utils/logger'; // Use alias
 
 interface DisplayedEvent {
   _id: string;
@@ -57,9 +57,9 @@ const PersonEventsList: React.FC<PersonEventsListProps> = ({ personId }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/events?relatedPersonId=${pId}&sortBy=date&sortOrder=desc`);
+      const response = await fetch(`/api/events?relatedPersonId=${pId}&sortBy=date&sortOrder=desc&limit=5`); // Added limit=5
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ message: "Unknown error structure" })); // Ensure errorData has a fallback
         throw new Error(errorData.message || `Failed to fetch events for person ${pId}. Status: ${response.status}`);
       }
       const result: FetchEventsResponse = await response.json();
@@ -108,13 +108,11 @@ const PersonEventsList: React.FC<PersonEventsListProps> = ({ personId }) => {
               </p>
               <div className="mt-3">
                 <Link
-                  to={`/events/edit/${event._id}`}
+                  to={`/events/${event._id}`} // Changed link to view, not edit
                   className="text-sm text-indigo-500 hover:text-indigo-700 font-medium"
                 >
-                  Edit Event
+                  View Details
                 </Link>
-                {/* Optionally, a link to a full event view page could go here */}
-                {/* <Link to={`/events/${event._id}`} className="ml-4 text-sm text-gray-500 hover:text-gray-700">View Details</Link> */}
               </div>
             </div>
           ))}

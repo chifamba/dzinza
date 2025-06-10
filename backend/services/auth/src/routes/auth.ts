@@ -560,7 +560,7 @@ router.post('/logout', authenticateToken, async (req: any, res, next) => {
         userAgent: req.get('User-Agent'),
         timestamp: new Date()
       });
-    }
+    // Removed extra closing brace here
 
     res.json({
       message: 'Logout successful'

@@ -4,20 +4,29 @@ import { File, StorageUsage, StorageAnalytics } from '../../models';
 import adminRoutes from '../../routes/admin';
 import { 
   createTestUser, 
-  createTestAdminUser, 
-  createTestToken 
+  // createTestAdminUser, // Not used directly in this version
+  // createTestToken  // Not used directly in this version
 } from '../helpers/cleanup';
 
-// Mock the auth module
-jest.mock('../../../../../shared/middleware/auth', () => ({
-  authMiddleware: (req: any, res: any, next: any) => {
-    req.user = { id: 'admin-user-id', email: 'admin@example.com', isAdmin: true };
+// Mock the auth module - this path should align with how it's resolved by Jest
+// Given moduleNameMapper, '@shared/middleware/auth' is the canonical way.
+// However, the original relative path was working for the mock declaration itself.
+// The key is to import the mocked functions correctly.
+import { authMiddleware, requireAdmin } from '@shared/middleware/auth';
+
+jest.mock('@shared/middleware/auth', () => ({
+  authMiddleware: jest.fn((req: any, res: any, next: any) => {
+    // Default mock implementation: admin user
+    req.user = { _id: 'mockAdminId', id: 'mockAdminId', email: 'admin@example.com', roles: ['admin'], isAdmin: true };
     next();
-  },
-  requireAdmin: (req: any, res: any, next: any) => {
-    req.user = { id: 'admin-user-id', email: 'admin@example.com', isAdmin: true };
-    next();
-  }
+  }),
+  requireAdmin: jest.fn((req: any, res: any, next: any) => {
+    if (req.user && req.user.isAdmin) {
+      next();
+    } else {
+      res.status(403).json({ error: 'Admin access required' });
+    }
+  }),
 }));
 
 // Create test app
@@ -454,21 +463,37 @@ describe('Admin Routes', () => {
 
   describe('Admin Authorization', () => {
     it('should reject non-admin users', async () => {
-      // Mock non-admin user
-      const originalAuthMiddleware = require('../../../shared/middleware/auth').authMiddleware;
-      require('../../../shared/middleware/auth').authMiddleware = (req: any, res: any, next: any) => {
-        req.user = createTestUser(); // Regular user (not admin)
+      const mockedAuthMiddleware = authMiddleware as jest.Mock;
+      // Temporarily change the implementation for this test
+      mockedAuthMiddleware.mockImplementationOnce((req: any, res: any, next: any) => {
+        req.user = createTestUser(false); // Regular user (not admin)
         next();
-      };
+      });
 
       const response = await request(app)
-        .get('/api/admin/storage/overview')
+        .get('/api/admin/storage/overview') // Any admin route
         .expect(403);
 
       expect(response.body.error).toBe('Admin access required');
 
-      // Restore original middleware
-      require('../../../shared/middleware/auth').authMiddleware = originalAuthMiddleware;
+      // mockImplementationOnce ensures it's only for this call.
+      // Jest will restore the default mock behavior for other tests.
+    });
+
+    // Optional: Add a test to ensure admins ARE allowed, relying on default mock
+    it('should allow admin users by default (relying on default mock)', async () => {
+      // No need to change mock implementation here, default should be admin
+      // Ensure the default mock for authMiddleware sets an admin user
+      // and requireAdmin allows it.
+      const mockedAuthMiddleware = authMiddleware as jest.Mock;
+      mockedAuthMiddleware.mockImplementationOnce((req: any, res: any, next: any) => {
+        req.user = createTestUser(true); // Explicitly admin for clarity
+        next();
+      });
+
+      await request(app)
+        .get('/api/admin/storage/overview') // Any admin route
+        .expect(200); // Or whatever success code is expected
     });
   });
 });

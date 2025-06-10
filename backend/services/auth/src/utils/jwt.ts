@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken'; // Import JwtPayload
 import { v4 as uuidv4 } from 'uuid';
 import { RefreshToken } from '../models/RefreshToken';
 import { logger } from './logger';
@@ -80,8 +80,9 @@ export const generateTokens = async (
       expiresIn,
     };
 
-  } catch (error) {
-    logger.error('Error generating tokens:', error, { userId });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error during token generation';
+    logger.error('Error generating tokens:', { error: message, userId });
     throw new Error('Failed to generate tokens');
   }
 };
@@ -97,14 +98,17 @@ export const verifyAccessToken = (token: string): TokenPayload => {
     }) as TokenPayload;
 
     return decoded;
-  } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      throw new Error('Invalid token');
-    }
-    if (error instanceof jwt.TokenExpiredError) {
+  } catch (error: unknown) {
+    if (error instanceof jwt.TokenExpiredError) { // Specific check first
       throw new Error('Token expired');
     }
-    throw error;
+    if (error instanceof jwt.JsonWebTokenError) { // More general JWT error
+      throw new Error('Invalid token');
+    }
+    // For other types of errors or if not an Error instance
+    const message = error instanceof Error ? error.message : 'Unknown error during access token verification';
+    logger.error('Access token verification failed unexpectedly:', { error: message });
+    throw new Error(message); // Rethrow a generic or the original error if it was an Error instance
   }
 };
 
@@ -118,10 +122,17 @@ export const verifyRefreshToken = async (token: string): Promise<{
 }> => {
   try {
     // Verify JWT
+    // Define a more specific type for the decoded refresh token payload
+    interface DecodedRefreshToken extends JwtPayload {
+      userId: string;
+      sessionId: string;
+      tokenId: string;
+    }
+
     const decoded = jwt.verify(token, JWT_REFRESH_SECRET, {
       issuer: 'dzinza-auth',
       audience: 'dzinza-app',
-    }) as any;
+    }) as DecodedRefreshToken;
 
     // Check if refresh token exists in database and is not revoked
     const refreshToken = await RefreshToken.findOne({
@@ -141,14 +152,16 @@ export const verifyRefreshToken = async (token: string): Promise<{
       tokenId: decoded.tokenId,
     };
 
-  } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      throw new Error('Invalid refresh token');
-    }
-    if (error instanceof jwt.TokenExpiredError) {
+  } catch (error: unknown) {
+    if (error instanceof jwt.TokenExpiredError) { // Specific check first
       throw new Error('Refresh token expired');
     }
-    throw error;
+    if (error instanceof jwt.JsonWebTokenError) { // More general JWT error
+      throw new Error('Invalid refresh token');
+    }
+    const message = error instanceof Error ? error.message : 'Unknown error during refresh token verification';
+    logger.error('Refresh token verification failed unexpectedly:', { error: message });
+    throw new Error(message);
   }
 };
 
@@ -165,8 +178,9 @@ export const revokeRefreshToken = async (tokenId: string, reason: string = 'logo
         revokedReason: reason,
       }
     );
-  } catch (error) {
-    logger.error('Error revoking refresh token:', error, { tokenId });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error during refresh token revocation';
+    logger.error('Error revoking refresh token:', { error: message, tokenId });
     throw new Error('Failed to revoke token');
   }
 };
@@ -184,8 +198,9 @@ export const revokeAllUserTokens = async (userId: string, reason: string = 'secu
         revokedReason: reason,
       }
     );
-  } catch (error) {
-    logger.error('Error revoking all user tokens:', error, { userId });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error during mass token revocation';
+    logger.error('Error revoking all user tokens:', { error: message, userId });
     throw new Error('Failed to revoke tokens');
   }
 };

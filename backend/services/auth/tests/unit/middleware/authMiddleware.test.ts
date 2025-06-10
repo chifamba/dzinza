@@ -1,8 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction, Request } from 'express'; // Keep Request for Partial type if needed, or remove if AuthenticatedRequest is sufficient
 import { authenticateToken, AuthenticatedRequest } from '../../../src/middleware/authMiddleware';
 import jwt from 'jsonwebtoken';
-import { logger }
-from '../../../src/utils/logger'; // To potentially mock logger methods if needed
+// logger import removed as it's fully mocked and original not used
 
 // Mock logger to prevent console output during tests and allow assertions
 jest.mock('../../../src/utils/logger', () => ({
@@ -42,11 +41,15 @@ describe('authenticateToken Middleware', () => {
   });
 
   it('should call next() and attach user to req if token is valid', () => {
-    const mockUserPayload = { userId: '123', email: 'test@example.com', roles: ['user'] };
+    // This is the payload that jwt.verify would return (matching DecodedToken in authMiddleware)
+    const decodedJWTPayload = { userId: '123', email: 'test@example.com', roles: ['user'] };
+    // This is what req.user should look like after the middleware processes the decoded payload
+    const expectedUserOnRequest = { id: '123', email: 'test@example.com', roles: ['user'] };
+
     mockRequest.headers = { authorization: `Bearer validtokenstring` };
     mockedJwtVerify.mockImplementation((token, secret) => {
       if (token === 'validtokenstring' && secret === testSecret) {
-        return mockUserPayload;
+        return decodedJWTPayload;
       }
       throw new Error('Invalid token');
     });
@@ -54,7 +57,7 @@ describe('authenticateToken Middleware', () => {
     authenticateToken(mockRequest as AuthenticatedRequest, mockResponse as Response, nextFunction);
 
     expect(mockedJwtVerify).toHaveBeenCalledWith('validtokenstring', testSecret);
-    expect(mockRequest.user).toEqual(mockUserPayload);
+    expect(mockRequest.user).toEqual(expectedUserOnRequest);
     expect(nextFunction).toHaveBeenCalledTimes(1);
     expect(nextFunction).toHaveBeenCalledWith(); // No error
     expect(mockResponse.status).not.toHaveBeenCalled();
@@ -90,7 +93,7 @@ describe('authenticateToken Middleware', () => {
   it('should return 401 if token is expired', () => {
     mockRequest.headers = { authorization: 'Bearer expiredtokenstring' };
     mockedJwtVerify.mockImplementation(() => {
-      const error = new Error('TokenExpiredError') as any; // Simulate JWT specific error
+      const error = new Error('Token has expired.');
       error.name = 'TokenExpiredError';
       throw error;
     });
@@ -105,7 +108,7 @@ describe('authenticateToken Middleware', () => {
   it('should return 401 if token is invalid (JsonWebTokenError)', () => {
     mockRequest.headers = { authorization: 'Bearer invalidtokenstring' };
     mockedJwtVerify.mockImplementation(() => {
-      const error = new Error('JsonWebTokenError') as any;
+      const error = new Error('Invalid token signature.');
       error.name = 'JsonWebTokenError';
       throw error;
     });
@@ -120,6 +123,7 @@ describe('authenticateToken Middleware', () => {
   it('should return 403 for other jwt.verify errors', () => {
     mockRequest.headers = { authorization: 'Bearer othererrorstring' };
     mockedJwtVerify.mockImplementation(() => {
+      // Simulate a generic error that is not TokenExpiredError or JsonWebTokenError
       throw new Error('Some other verification error');
     });
 
@@ -131,14 +135,18 @@ describe('authenticateToken Middleware', () => {
   });
 
   it('should correctly assign roles, defaulting to empty array if not in token', () => {
-    const mockUserPayloadNoRoles = { userId: '123', email: 'test@example.com' }; // No roles field
+    // This is the payload that jwt.verify would return
+    const decodedJWTPayloadNoRoles = { userId: '123', email: 'test@example.com' }; // No roles field
+    // This is what req.user should look like
+    const expectedUserOnRequestNoRoles = { id: '123', email: 'test@example.com', roles: [] };
+
     mockRequest.headers = { authorization: `Bearer validtoken_noroles` };
-    mockedJwtVerify.mockReturnValue(mockUserPayloadNoRoles);
+    mockedJwtVerify.mockReturnValue(decodedJWTPayloadNoRoles);
 
     authenticateToken(mockRequest as AuthenticatedRequest, mockResponse as Response, nextFunction);
 
     expect(mockRequest.user).toBeDefined();
-    expect(mockRequest.user?.roles).toEqual([]);
+    expect(mockRequest.user).toEqual(expectedUserOnRequestNoRoles);
     expect(nextFunction).toHaveBeenCalledWith();
   });
 

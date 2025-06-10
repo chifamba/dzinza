@@ -9,7 +9,7 @@ import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { Alert } from '../../components/ui/Alert';
 
 const Login = () => {
-  const { t } = useTranslation('auth');
+  const { t } = useTranslation('auth'); // Restored namespace
   const navigate = useNavigate();
   const { login, isLoading, error, signInWithProvider } = useAuth();
   
@@ -18,13 +18,41 @@ const Login = () => {
     password: '',
     mfaCode: ''
   });
+  const [formErrors, setFormErrors] = useState({
+    email: '',
+    password: ''
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [requireMfa, setRequireMfa] = useState(false);
 
+  const validateForm = () => {
+    const newErrors = { email: '', password: '' };
+    let isValid = true;
+    if (!formData.email) {
+      newErrors.email = t('validation.emailRequired');
+      isValid = false;
+    }
+    if (!formData.password) {
+      newErrors.password = t('validation.passwordRequired');
+      isValid = false;
+    }
+    console.log('Validating form. Current formData:', formData, 'Computed errors:', newErrors); // DEBUG LINE
+    setFormErrors(newErrors);
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
     
     try {
+      // Clear previous API errors if any
+      // Assuming 'error' state from useAuth might be cleared by a new login attempt or a setter is available
+      // For now, we rely on useAuth to clear its 'error' state on new attempts or success.
+      // If not, a explicit clearError() call from useAuth would be needed here.
+
       const result = await login(formData.email, formData.password, formData.mfaCode);
       
       if (result.requireMfa) {
@@ -45,6 +73,7 @@ const Login = () => {
     }));
   };
 
+  console.log('Login formErrors state before render:', formErrors); // DEBUG LINE
   return (
     <div className="min-h-screen bg-gradient-to-br from-dzinza-50 to-dzinza-100 flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <motion.div
@@ -63,15 +92,15 @@ const Login = () => {
             <TreePine className="h-12 w-12" />
           </motion.div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900 font-display">
-            {t('login.title')}
+            {t('signIn.title')}
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            {t('login.subtitle')}{' '}
+            {t('signIn.subtitle')}{' '}
             <Link 
               to="/auth/register" 
               className="font-medium text-dzinza-600 hover:text-dzinza-500 transition-colors"
             >
-              {t('login.signUpLink')}
+              {t('signIn.signUpLink')}
             </Link>
           </p>
         </div>
@@ -92,7 +121,7 @@ const Login = () => {
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('login.email')}
+                {t('signIn.email')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -106,16 +135,17 @@ const Login = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   className="appearance-none relative block w-full pl-10 pr-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-dzinza-500 focus:border-dzinza-500 focus:z-10 sm:text-sm transition-colors"
-                  placeholder={t('login.emailPlaceholder')}
+                  placeholder={t('signIn.emailPlaceholder')}
                   disabled={isLoading}
                 />
               </div>
+              {formErrors.email && <p role="alert" className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
             </div>
 
             {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('login.password')}
+                {t('signIn.password')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -129,11 +159,12 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   className="appearance-none relative block w-full pl-10 pr-10 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-dzinza-500 focus:border-dzinza-500 focus:z-10 sm:text-sm transition-colors"
-                  placeholder={t('login.passwordPlaceholder')}
+                  placeholder={t('signIn.passwordPlaceholder')}
                   disabled={isLoading}
                 />
                 <button
                   type="button"
+                  aria-label="Toggle password visibility"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
                 >
@@ -144,6 +175,7 @@ const Login = () => {
                   )}
                 </button>
               </div>
+              {formErrors.password && <p role="alert" className="text-red-500 text-xs mt-1">{formErrors.password}</p>}
             </div>
 
             {/* MFA Code */}
@@ -154,7 +186,7 @@ const Login = () => {
                 transition={{ duration: 0.3 }}
               >
                 <label htmlFor="mfaCode" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('login.mfaCode')}
+                  {t('signIn.mfaCode')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -168,7 +200,7 @@ const Login = () => {
                     value={formData.mfaCode}
                     onChange={handleInputChange}
                     className="appearance-none relative block w-full pl-10 pr-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-dzinza-500 focus:border-dzinza-500 focus:z-10 sm:text-sm transition-colors"
-                    placeholder={t('login.mfaCodePlaceholder')}
+                    placeholder={t('signIn.mfaCodePlaceholder')}
                     disabled={isLoading}
                   />
                 </div>
@@ -186,7 +218,7 @@ const Login = () => {
                 className="h-4 w-4 text-dzinza-600 focus:ring-dzinza-500 border-gray-300 rounded"
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                {t('login.rememberMe')}
+                {t('signIn.rememberMe')}
               </label>
             </div>
 
@@ -195,7 +227,7 @@ const Login = () => {
                 to="/forgot-password"
                 className="font-medium text-dzinza-600 hover:text-dzinza-500 transition-colors"
               >
-                {t('login.forgotPassword')}
+                {t('signIn.forgotPassword')}
               </Link>
             </div>
           </div>
@@ -211,7 +243,7 @@ const Login = () => {
             {isLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
-              t('login.signIn')
+              t('signIn.signInButton')
             )}
           </motion.button>
 
@@ -222,7 +254,7 @@ const Login = () => {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">{t('login.orContinueWith')}</span>
+                <span className="px-2 bg-white text-gray-500">{t('signIn.orContinueWith')}</span>
               </div>
             </div>
 

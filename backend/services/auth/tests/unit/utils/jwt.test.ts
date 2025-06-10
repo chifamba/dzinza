@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { generateTokens, verifyRefreshToken, TokenPayload, TokenPair } from '../../../src/utils/jwt';
 import { RefreshToken, IRefreshToken } from '../../../src/models/RefreshToken';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken'; // Import JwtPayload
 
 // Mock the RefreshToken model
 jest.mock('../../../src/models/RefreshToken');
@@ -49,7 +49,12 @@ describe('JWT Utilities', () => {
       expect(decodedAccess.aud).toBe('dzinza-app');
 
       // Verify refresh token structure and payload
-      const decodedRefresh = jwt.verify(tokens.refreshToken, TEST_JWT_REFRESH_SECRET) as any;
+      interface DecodedTestRefreshToken extends JwtPayload {
+        userId: string;
+        sessionId: string;
+        tokenId: string;
+      }
+      const decodedRefresh = jwt.verify(tokens.refreshToken, TEST_JWT_REFRESH_SECRET) as DecodedTestRefreshToken;
       expect(decodedRefresh.userId).toBe(userId);
       expect(decodedRefresh.sessionId).toBe(decodedAccess.sessionId); // Should match access token's session
       expect(decodedRefresh.tokenId).toBeDefined(); // This is the UUID stored in DB
@@ -84,7 +89,18 @@ describe('JWT Utilities', () => {
       const tokens = await generateTokens(userId, email, roles);
       validRefreshTokenJwt = tokens.refreshToken;
 
-      const decodedRefresh = jwt.decode(validRefreshTokenJwt) as any;
+      // Define expected structure for decoded refresh token when using jwt.decode
+      interface DecodedRefreshTokenPayload { // Potentially same as DecodedTestRefreshToken or slightly different if decode provides less
+        userId: string;
+        sessionId: string;
+        tokenId: string;
+        iat?: number;
+        exp?: number;
+        iss?: string;
+        aud?: string;
+      }
+      const decodedRefresh = jwt.decode(validRefreshTokenJwt) as DecodedRefreshTokenPayload | null;
+      if (!decodedRefresh) throw new Error('Failed to decode refresh token for test setup');
       storedTokenId = decodedRefresh.tokenId;
       sessionId = decodedRefresh.sessionId;
     });

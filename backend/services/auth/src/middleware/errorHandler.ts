@@ -1,16 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 
+// More specific error structure for known error types
 export interface AppError extends Error {
   statusCode?: number;
   isOperational?: boolean;
+  code?: number; // For MongoError code 11000
+  errors?: any[]; // For validation errors from express-validator
 }
 
 export const errorHandler = (
   err: AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction // next is not used, prefix with underscore
 ): void => {
   const { method, originalUrl, ip } = req;
   const correlationId = req.headers['x-correlation-id'] as string;
@@ -26,7 +29,7 @@ export const errorHandler = (
   } else if (err.name === 'CastError') {
     statusCode = 400;
     message = 'Invalid ID format';
-  } else if (err.name === 'MongoError' && (err as any).code === 11000) {
+  } else if (err.name === 'MongoError' && err.code === 11000) { // Now err.code can be accessed if AppError includes it
     statusCode = 409;
     message = 'Duplicate field value';
   } else if (err.name === 'JsonWebTokenError') {
@@ -92,7 +95,15 @@ export const notFoundHandler = (req: Request, res: Response): void => {
   });
 };
 
-export const asyncHandler = (fn: Function) => {
+// Define a more specific type for Express route handlers
+export type ExpressRouteHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => Promise<void> | void;
+
+
+export const asyncHandler = (fn: ExpressRouteHandler) => {
   return (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };

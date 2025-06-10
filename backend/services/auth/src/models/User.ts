@@ -209,19 +209,21 @@ UserSchema.pre('save', async function(next) {
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
     next();
-  } catch (error) {
-    next(error as Error);
+  } catch (error: unknown) { // Explicitly type error as unknown
+    if (error instanceof Error) {
+      return next(error);
+    }
+    // Fallback for non-Error types thrown
+    const descriptiveError = new Error('Password hashing failed due to an unknown reason.');
+    // Attach original error for debugging if needed, though 'cause' is more modern
+    (descriptiveError as any).originalError = error;
+    return next(descriptiveError);
   }
 });
 
 // Method to compare password
 UserSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password);
-};
-
-// Method to check if account is locked
-UserSchema.methods.isLocked = function(): boolean {
-  return !!(this.lockUntil && this.lockUntil > new Date());
 };
 
 // Method to increment login attempts
