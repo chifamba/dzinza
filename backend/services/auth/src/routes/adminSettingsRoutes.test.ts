@@ -4,6 +4,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { app } from '../server'; // Assuming Express app is exported from server.ts (auth service)
 import { SiteSetting, ISiteSetting, GLOBAL_SETTINGS_ID } from '../models/SiteSetting'; // Adjust path
 import { AuthenticatedUserWithRoles } from '@shared/middleware/adminAuth'; // Adjust path
+import { Request, Response, NextFunction } from 'express'; // Import express types
 
 // Mock logger
 jest.mock('@shared/utils/logger', () => ({
@@ -15,9 +16,9 @@ let mockAuthUser: AuthenticatedUserWithRoles | null = null;
 let mockIsAdmin: boolean = false;
 
 jest.mock('@shared/middleware/auth', () => ({
-  authMiddleware: (req: any, res: any, next: () => void) => {
+  authMiddleware: (req: Request, res: Response, next: NextFunction) => { // Typed params
     if (mockAuthUser) {
-      req.user = mockAuthUser;
+      (req as AuthenticatedUserWithRoles).user = mockAuthUser; // Cast req to add user
       next();
     } else {
       res.status(401).json({ message: 'Unauthorized for test (authMiddleware)' });
@@ -26,8 +27,9 @@ jest.mock('@shared/middleware/auth', () => ({
 }));
 
 jest.mock('@shared/middleware/adminAuth', () => ({
-  adminAuth: (req: any, res: any, next: () => void) => {
-    if (mockIsAdmin && req.user && req.user.roles && req.user.roles.includes('admin')) {
+  adminAuth: (req: Request, res: Response, next: NextFunction) => { // Typed params
+    const authReq = req as AuthenticatedUserWithRoles;
+    if (mockIsAdmin && authReq.user && authReq.user.roles && authReq.user.roles.includes('admin')) {
       next();
     } else {
       res.status(403).json({ message: 'Forbidden for test (adminAuth)' });
@@ -105,7 +107,7 @@ describe('Admin Site Settings API (/api/admin/settings)', () => {
     it('should allow admin to update site settings (e.g., siteName, maintenanceMode)', async () => {
       const adminId = new mongoose.Types.ObjectId().toString();
       setupMockAdminUser(adminId);
-      await (SiteSetting as any).getSettings(); // Ensure settings doc exists
+      await SiteSetting.getSettings(); // Ensure settings doc exists - cast to any removed
 
       const updates = {
         siteName: 'Updated Dzinza Site',
@@ -129,7 +131,7 @@ describe('Admin Site Settings API (/api/admin/settings)', () => {
 
     it('should correctly update featureFlags', async () => {
         setupMockAdminUser();
-        await (SiteSetting as any).getSettings();
+        await SiteSetting.getSettings(); // cast to any removed
 
         const updates = {
           featureFlags: { newOnboarding: true, betaFeatureX: false }
@@ -151,7 +153,7 @@ describe('Admin Site Settings API (/api/admin/settings)', () => {
 
     it('should return validation error for invalid defaultLanguage', async () => {
       setupMockAdminUser();
-      await (SiteSetting as any).getSettings();
+      await SiteSetting.getSettings(); // cast to any removed
 
       const updates = { defaultLanguage: 'fr' }; // 'fr' is not in enum ['en', 'sn', 'nd']
 

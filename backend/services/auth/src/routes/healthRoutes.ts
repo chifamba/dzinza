@@ -24,10 +24,11 @@ router.get('/health', async (req: Request, res: Response) => {
     } else {
         dbReason = `Database in readyState: ${mongoose.connection.readyState}`;
     }
-  } catch (error: any) {
-    logger.error(`${SERVICE_NAME} /health - Database check failed:`, error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown database check error";
+    logger.error(`${SERVICE_NAME} /health - Database check failed:`, { error: message });
     dbStatus = "DOWN";
-    dbReason = error.message || "Database check failed";
+    dbReason = message;
   }
 
   const healthStatus = {

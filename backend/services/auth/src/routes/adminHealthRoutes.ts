@@ -1,6 +1,6 @@
-import express, { Request, Response } from 'express';
+import express, { Response } from 'express'; // Request removed as AuthenticatedRequest is used
 import mongoose from 'mongoose';
-import fetch from 'node-fetch'; // Ensure node-fetch is a dependency in auth service
+import fetch, { Response as FetchResponse } from 'node-fetch'; // Import FetchResponse for typing
 import { authMiddleware, AuthenticatedRequest } from '@shared/middleware/auth'; // Adjust path
 import { adminAuth } from '@shared/middleware/adminAuth'; // Adjust path
 import { logger } from '@shared/utils/logger'; // Adjust path
@@ -17,23 +17,34 @@ const SEARCH_SERVICE_HEALTH_URL = process.env.SEARCH_SERVICE_URL
 // const STORAGE_SERVICE_HEALTH_URL = process.env.STORAGE_SERVICE_URL ? `${process.env.STORAGE_SERVICE_URL}/health` : 'http://localhost:3004/health';
 
 
+// Expected structure from individual /health endpoints
+interface IndividualServiceHealthResponse {
+    status: 'UP' | 'DOWN';
+    serviceName: string;
+    timestamp: string;
+    dependencies: Record<string, { status: 'UP' | 'DOWN'; reason?: string }>;
+}
+
 interface ServiceHealth {
     name: string;
     status: 'UP' | 'DOWN' | 'UNKNOWN';
-    details?: any; // To store the response or error message
+    details?: IndividualServiceHealthResponse | { reason?: string; message?: string; [key: string]: any }; // More specific type for details
 }
 
 const checkServiceHealth = async (serviceName: string, url: string): Promise<ServiceHealth> => {
     try {
-        const response = await fetch(url, { timeout: 5000 }); // 5s timeout
-        const data = await response.json();
-        if (!response.ok || (data && data.status !== "UP")) {
+        const response: FetchResponse = await fetch(url, { timeout: 5000 }); // 5s timeout
+        const data: any = await response.json(); // Still any here, but will be part of typed details
+
+        // Check if 'status' property exists and is 'UP' for a more robust check than just response.ok
+        if (!response.ok || typeof data.status !== 'string' || data.status.toUpperCase() !== "UP") {
             return { name: serviceName, status: "DOWN", details: data || { message: `Status ${response.status}` } };
         }
-        return { name: serviceName, status: "UP", details: data };
-    } catch (error: any) {
-        logger.warn(`Failed to fetch health from ${serviceName} at ${url}:`, error.message);
-        return { name: serviceName, status: "UNKNOWN", details: { reason: error.message } };
+        return { name: serviceName, status: "UP", details: data as IndividualServiceHealthResponse };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown fetch error';
+        logger.warn(`Failed to fetch health from ${serviceName} at ${url}:`, message);
+        return { name: serviceName, status: "UNKNOWN", details: { reason: message } };
     }
 };
 
@@ -55,8 +66,8 @@ router.get(
             } else {
                 authDbReason = `Database in readyState: ${mongoose.connection.readyState}`;
             }
-        } catch (error: any) {
-            authDbReason = error.message || "Database check failed";
+        } catch (error: unknown) {
+            authDbReason = error instanceof Error ? error.message : "Database check failed";
         }
         servicesHealth.push({
             name: "auth-service",

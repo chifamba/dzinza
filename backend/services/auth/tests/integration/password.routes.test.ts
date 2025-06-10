@@ -1,12 +1,17 @@
 import request from 'supertest';
-import mongoose from 'mongoose';
+// import mongoose from 'mongoose'; // Unused default import
 import { User, IUser } from '../../src/models/User';
 import { RefreshToken } from '../../src/models/RefreshToken'; // For checking token revocation
 import nodemailer from 'nodemailer';
+import Mail from 'nodemailer/lib/mailer'; // For typing sendMail mock
+import { SentMessageInfo } from 'nodemailer/lib/smtp-transport'; // For typing sendMail mock
 import app from '../../src/server'; // Express app
 import bcrypt from 'bcryptjs'; // For checking password change
 
-const mockSendMail = nodemailer.createTransport({}).sendMail as jest.MockedFunction<any>;
+const mockSendMail = nodemailer.createTransport({}).sendMail as jest.MockedFunction<
+  (mailOptions: Mail.Options, callback?: (err: Error | null, info: SentMessageInfo) => void) => void | Promise<SentMessageInfo>
+>;
+
 
 describe('Password Routes - Recovery and Change', () => {
   let testUser: IUser;

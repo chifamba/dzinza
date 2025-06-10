@@ -1,12 +1,12 @@
-import express, { Request, Response } from 'express';
-import { query, param, body, validationResult } from 'express-validator';
+import express, { Response } from 'express';
+import { query, param, body, validationResult, matchedData } from 'express-validator';
 import mongoose from 'mongoose';
 
-import { User, IUser } from '../models/User'; // Adjust path as per your User model
-import { authMiddleware } from '@shared/middleware/auth'; // Adjust path to shared middleware
-import { adminAuth } from '@shared/middleware/adminAuth'; // Adjust path to shared middleware
-import { logger } from '@shared/utils/logger'; // Adjust path to shared logger
-import { AuthenticatedRequest } from '@shared/middleware/auth'; // Or your specific type for req.user
+import { User } from '../models/User';
+import { authMiddleware, AuthenticatedRequest } from '@shared/middleware/auth';
+import { adminAuth } from '@shared/middleware/adminAuth';
+import { logger } from '@shared/utils/logger';
+// No changes needed here, already cleaned up
 
 const router = express.Router();
 
@@ -29,10 +29,10 @@ router.get(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { page, limit, email, role } = req.query as any; // Cast after validation
+    const { page, limit, email, role } = matchedData(req, { locations: ['query'] }) as { page: number; limit: number; email?: string; role?: string};
 
     try {
-      const queryFilter: any = {};
+      const queryFilter: mongoose.FilterQuery<typeof User> = {};
       if (email) {
         queryFilter.email = { $regex: email, $options: 'i' };
       }
@@ -58,6 +58,8 @@ router.get(
       });
     } catch (error) {
       logger.error('Admin: Error fetching users:', { error, query });
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Admin: Error fetching users:', { error: message, query: req.query }); // Use req.query for logging original query
       res.status(500).json({ message: 'Server error while fetching users.' });
     }
   }
@@ -85,8 +87,9 @@ router.get(
         return res.status(404).json({ message: 'User not found.' });
       }
       res.status(200).json(user.toJSON());
-    } catch (error) {
-      logger.error(`Admin: Error fetching user ${userId}:`, { error });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Admin: Error fetching user ${userId}:`, { error: message });
       if (error instanceof mongoose.Error.CastError) {
         return res.status(400).json({ message: 'Invalid User ID format.' });
       }
@@ -165,8 +168,9 @@ router.put(
       await userToUpdate.save();
       res.status(200).json(userToUpdate.toJSON());
 
-    } catch (error) {
-      logger.error(`Admin: Error updating user ${targetUserId}:`, { error, adminUserId });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Admin: Error updating user ${targetUserId}:`, { error: message, adminUserId });
       if (error instanceof mongoose.Error.CastError && error.path === '_id') {
         return res.status(400).json({ message: 'Invalid User ID format for update.' });
       }
@@ -219,8 +223,9 @@ router.delete(
       res.status(200).json({ message: 'User deactivated successfully.', user: userToDeactivate.toJSON() });
       // Or res.status(204).send(); if no content is preferred for DELETE success
 
-    } catch (error) {
-      logger.error(`Admin: Error deactivating user ${targetUserId}:`, { error, adminUserId });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Admin: Error deactivating user ${targetUserId}:`, { error: message, adminUserId });
       if (error instanceof mongoose.Error.CastError && error.path === '_id') {
         return res.status(400).json({ message: 'Invalid User ID format for deactivation.' });
       }

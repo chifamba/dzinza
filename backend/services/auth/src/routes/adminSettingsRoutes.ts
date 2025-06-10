@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Response } from 'express'; // Request removed
 import { body, validationResult } from 'express-validator';
 import mongoose from 'mongoose';
 
@@ -18,11 +18,12 @@ router.get(
   adminAuth,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      // Use the static method to ensure settings doc exists
-      const settings = await (SiteSetting as any).getSettings();
+      // Use the static method (cast to Model with static should be on SiteSetting model type itself)
+      const settings = await SiteSetting.getSettings();
       res.status(200).json(settings);
-    } catch (error) {
-      logger.error('Admin: Error fetching site settings:', { error, userId: req.user?.id });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Admin: Error fetching site settings:', { error: message, userId: req.user?.id });
       res.status(500).json({ message: 'Server error while fetching site settings.' });
     }
   }
@@ -41,10 +42,10 @@ router.put(
       .withMessage(`Default language must be one of: ${availableLanguages.join(', ')}.`),
     body('contactEmail').optional({ checkFalsy: true }).isEmail().normalizeEmail().withMessage('Invalid contact email format.'),
     body('featureFlags').optional().isObject().withMessage('Feature flags must be an object.')
-      .custom((value: Record<string, any>) => { // Custom validation for featureFlags values
-        if (value) {
-          for (const key in value) {
-            if (typeof value[key] !== 'boolean') {
+      .custom((value: unknown) => { // Use unknown for value
+        if (value && typeof value === 'object') {
+          for (const key in (value as Record<string, unknown>)) {
+            if (typeof (value as Record<string, unknown>)[key] !== 'boolean') {
               throw new Error(`All feature flag values must be boolean. Flag '${key}' is not.`);
             }
           }
@@ -111,8 +112,9 @@ router.put(
 
       res.status(200).json(updatedSettings);
 
-    } catch (error) {
-      logger.error(`Admin: Error updating site settings:`, { error, adminUserId });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Admin: Error updating site settings:`, { error: message, adminUserId });
       res.status(500).json({ message: 'Server error while updating site settings.' });
     }
   }

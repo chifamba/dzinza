@@ -1,5 +1,5 @@
-import express, { Request, Response } from 'express';
-import { query, validationResult } from 'express-validator';
+import express, { Response } from 'express'; // Request might not be needed if AuthenticatedRequest covers it
+import { query, validationResult, matchedData } from 'express-validator'; // Import matchedData
 import { authMiddleware, AuthenticatedRequest } from '@shared/middleware/auth'; // Adjust path
 import { adminAuth } from '@shared/middleware/adminAuth'; // Adjust path
 import { logger } from '@shared/utils/logger'; // Adjust path
@@ -22,16 +22,17 @@ router.get(
       const summaryData = {
         totalUsers: 1250,
         newUsersLast7Days: 75,
-        activeUsersLast24Hours: 350, // Added an example extra field
+        activeUsersLast24Hours: 350,
         totalFamilyTrees: 300,
         totalEvents: 5000,
         totalComments: 15000,
-        totalMediaItems: 8000, // Added an example extra field
-        lastUpdatedAt: new Date().toISOString(), // Use current time for stub
+        totalMediaItems: 8000,
+        lastUpdatedAt: new Date().toISOString(),
       };
       res.status(200).json(summaryData);
-    } catch (error) {
-      logger.error('Admin: Error fetching analytics summary (stub):', { error, adminUserId: req.user?.id });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Admin: Error fetching analytics summary (stub):', { error: message, adminUserId: req.user?.id });
       res.status(500).json({ message: 'Server error while fetching summary analytics.' });
     }
   }
@@ -61,28 +62,35 @@ router.get(
     }
 
     const {
-        period = 'daily', // Default from validation if not provided
-        startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to 7 days ago
-        endDate = new Date().toISOString().split('T')[0] // Default to today
-    } = req.query as any; // Cast after validation
+    // Use matchedData to get validated and sanitized data
+    const {
+        period,
+        startDate: reqStartDate, // Renamed to avoid conflict with default
+        endDate: reqEndDate     // Renamed to avoid conflict with default
+    } = matchedData(req, { locations: ['query'] }) as { period: string; startDate?: Date; endDate?: Date };
 
-    logger.info('Admin: Fetching user trends (stub).', { period, startDate, endDate, adminUserId: req.user?.id });
+    // Apply defaults if dates are not provided or invalid (though validator should handle invalid)
+    const finalStartDate = reqStartDate ? reqStartDate.toISOString().split('T')[0] : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const finalEndDate = reqEndDate ? reqEndDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+
+    logger.info('Admin: Fetching user trends (stub).', { period, startDate: finalStartDate, endDate: finalEndDate, adminUserId: req.user?.id });
 
     try {
       // Hardcoded response for the stub
       const userTrendsData = {
         period,
-        startDate,
-        endDate,
+        startDate: finalStartDate,
+        endDate: finalEndDate,
         dataPoints: [
-          { date: new Date(new Date(endDate).setDate(new Date(endDate).getDate() - 2)).toISOString().split('T')[0], count: 8 },
-          { date: new Date(new Date(endDate).setDate(new Date(endDate).getDate() - 1)).toISOString().split('T')[0], count: 12 },
-          { date: endDate, count: 10 },
+          { date: new Date(new Date(finalEndDate).setDate(new Date(finalEndDate).getDate() - 2)).toISOString().split('T')[0], count: 8 },
+          { date: new Date(new Date(finalEndDate).setDate(new Date(finalEndDate).getDate() - 1)).toISOString().split('T')[0], count: 12 },
+          { date: finalEndDate, count: 10 },
         ],
       };
       res.status(200).json(userTrendsData);
-    } catch (error) {
-      logger.error('Admin: Error fetching user trends (stub):', { error, adminUserId: req.user?.id });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Admin: Error fetching user trends (stub):', { error: message, adminUserId: req.user?.id });
       res.status(500).json({ message: 'Server error while fetching user trends.' });
     }
   }
@@ -114,30 +122,35 @@ router.get(
     }
 
     const {
-        contentType = 'events', // Default from validation
-        period = 'daily', // Default from validation
-        startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        endDate = new Date().toISOString().split('T')[0]
-    } = req.query as any; // Cast after validation
+    const {
+        contentType,
+        period,
+        startDate: reqStartDate,
+        endDate: reqEndDate
+    } = matchedData(req, { locations: ['query'] }) as { contentType: string; period: string; startDate?: Date; endDate?: Date };
 
-    logger.info('Admin: Fetching content trends (stub).', { contentType, period, startDate, endDate, adminUserId: req.user?.id });
+    const finalStartDate = reqStartDate ? reqStartDate.toISOString().split('T')[0] : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const finalEndDate = reqEndDate ? reqEndDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+
+    logger.info('Admin: Fetching content trends (stub).', { contentType, period, startDate: finalStartDate, endDate: finalEndDate, adminUserId: req.user?.id });
 
     try {
       // Hardcoded response for the stub
       const contentTrendsData = {
         contentType,
         period,
-        startDate,
-        endDate,
+        startDate: finalStartDate,
+        endDate: finalEndDate,
         dataPoints: [
-          { date: new Date(new Date(endDate).setDate(new Date(endDate).getDate() - 2)).toISOString().split('T')[0], count: contentType === 'events' ? 55 : (contentType === 'comments' ? 150 : (contentType === 'persons' ? 20 : 5)) },
-          { date: new Date(new Date(endDate).setDate(new Date(endDate).getDate() - 1)).toISOString().split('T')[0], count: contentType === 'events' ? 65 : (contentType === 'comments' ? 180 : (contentType === 'persons' ? 25 : 8)) },
-          { date: endDate, count: contentType === 'events' ? 50 : (contentType === 'comments' ? 160 : (contentType === 'persons' ? 18 : 6)) },
+          { date: new Date(new Date(finalEndDate).setDate(new Date(finalEndDate).getDate() - 2)).toISOString().split('T')[0], count: contentType === 'events' ? 55 : (contentType === 'comments' ? 150 : (contentType === 'persons' ? 20 : 5)) },
+          { date: new Date(new Date(finalEndDate).setDate(new Date(finalEndDate).getDate() - 1)).toISOString().split('T')[0], count: contentType === 'events' ? 65 : (contentType === 'comments' ? 180 : (contentType === 'persons' ? 25 : 8)) },
+          { date: finalEndDate, count: contentType === 'events' ? 50 : (contentType === 'comments' ? 160 : (contentType === 'persons' ? 18 : 6)) },
         ],
       };
       res.status(200).json(contentTrendsData);
-    } catch (error) {
-      logger.error('Admin: Error fetching content trends (stub):', { error, adminUserId: req.user?.id });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Admin: Error fetching content trends (stub):', { error: message, adminUserId: req.user?.id });
       res.status(500).json({ message: 'Server error while fetching content trends.' });
     }
   }

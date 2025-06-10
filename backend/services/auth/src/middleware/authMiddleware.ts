@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { User } from '../models/User'; // Assuming User model might be needed for role checks etc.
+import jwt, { JwtPayload } from 'jsonwebtoken'; // Import JwtPayload
+// import { User } from '../models/User'; // User model not directly used here currently
 import { logger } from '../utils/logger';
 
 export interface AuthenticatedRequest extends Request {
@@ -23,7 +23,14 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-default-secret') as any;
+      // Define a more specific type for the decoded payload if possible, matching your JWT structure
+      interface DecodedToken extends JwtPayload {
+        userId: string;
+        email: string;
+        roles?: string[];
+        // Add other fields you expect in your token
+      }
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-default-secret') as DecodedToken;
 
       // Optional: Check if user still exists or is active, if necessary
       // const user = await User.findById(decoded.id);
@@ -39,9 +46,10 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
         roles: decoded.roles || [], // Ensure roles is always an array
       };
       next();
-    } catch (error: any) {
-      logger.error('JWT verification failed', { error: error.message });
-      if (error.name === 'TokenExpiredError') {
+    } catch (error) { // Type error more generally, then check properties
+      const err = error as Error & { name?: string }; // Cast to Error and allow checking for name
+      logger.error('JWT verification failed', { error: err.message });
+      if (err.name === 'TokenExpiredError') {
         return res.status(401).json({ message: 'Access token expired' });
       }
       if (error.name === 'JsonWebTokenError') {

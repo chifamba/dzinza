@@ -4,6 +4,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { app } from '../server'; // Assuming your Express app is exported from server.ts (auth service)
 import { User, IUser } from '../models/User'; // Adjust path
 import { AuthenticatedUserWithRoles } from '@shared/middleware/adminAuth'; // Adjust path
+import { Request, Response, NextFunction } from 'express'; // Import express types
 
 // Mock the logger
 jest.mock('@shared/utils/logger', () => ({
@@ -15,9 +16,9 @@ let mockAuthUser: AuthenticatedUserWithRoles | null = null;
 let mockIsAdmin: boolean = false;
 
 jest.mock('@shared/middleware/auth', () => ({
-  authMiddleware: (req: any, res: any, next: () => void) => {
+  authMiddleware: (req: Request, res: Response, next: NextFunction) => { // Typed params
     if (mockAuthUser) {
-      req.user = mockAuthUser;
+      (req as AuthenticatedUserWithRoles).user = mockAuthUser; // Cast req to add user
       next();
     } else {
       res.status(401).json({ message: 'Unauthorized for test (authMiddleware)' });
@@ -26,8 +27,11 @@ jest.mock('@shared/middleware/auth', () => ({
 }));
 
 jest.mock('@shared/middleware/adminAuth', () => ({
-  adminAuth: (req: any, res: any, next: () => void) => {
-    if (mockIsAdmin && req.user && req.user.roles && req.user.roles.includes('admin')) {
+  adminAuth: (req: Request, res: Response, next: NextFunction) => { // Typed params
+    // Assuming req.user is populated by a preceding authMiddleware, so we cast.
+    // In a real scenario, AuthenticatedUserWithRoles would extend Request.
+    const authReq = req as AuthenticatedUserWithRoles;
+    if (mockIsAdmin && authReq.user && authReq.user.roles && authReq.user.roles.includes('admin')) {
       next();
     } else {
       res.status(403).json({ message: 'Forbidden for test (adminAuth)' });

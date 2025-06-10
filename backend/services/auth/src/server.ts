@@ -2,6 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import express, { Request } from 'express'; // Added Request for typing
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { authRoutes } from './routes/auth';
 import { mfaRoutes } from './routes/mfa';
 import { passwordRoutes } from './routes/password';
@@ -12,6 +16,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
 import { connectDB } from './config/database';
 import { connectRedis } from './config/redis';
+import { AuthenticatedRequest } from './middleware/authMiddleware'; // Assuming this is where it's defined
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -44,9 +49,9 @@ const authenticatedUserActionLimiter = rateLimit({
   message: {
     error: 'Too many requests for this action, please try again later.',
   },
-  keyGenerator: (req: any) => {
+  keyGenerator: (req: AuthenticatedRequest) => { // Typed req
     // Use user ID for rate limiting if available (user is authenticated)
-    // Fallback to IP if user ID is not available for some reason (should not happen for protected routes)
+    // Fallback to IP if user ID is not available for some reason
     return req.user?.id || req.ip;
   },
   standardHeaders: true,

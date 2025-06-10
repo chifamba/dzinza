@@ -6,7 +6,7 @@ export interface IAuditLog extends Document {
   action: string;
   resource: string;
   resourceId?: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>; // Changed from any to unknown
   ipAddress?: string;
   userAgent?: string;
   success: boolean;
@@ -74,7 +74,7 @@ AuditLogSchema.statics.logAction = function(data: {
   action: string;
   resource: string;
   resourceId?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>; // Changed from any to unknown
   ipAddress?: string;
   userAgent?: string;
   success: boolean;

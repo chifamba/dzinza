@@ -28,24 +28,27 @@ describe('Social Auth Handler - handleGoogleUser', () => {
       emails: [{ value: 'test.user@example.com', verified: 'true' }],
       provider: 'google',
       _raw: '',
-      _json: {} as any,
+      _json: {} as Record<string, unknown>, // Changed from any
     };
   });
 
   it('should create a new user if one does not exist', async () => {
     MockedUser.findOne.mockResolvedValue(null); // No existing user
-    const mockCreatedUser = {
-        _id: new mongoose.Types.ObjectId(),
-        email: mockProfile.emails![0].value,
-        googleId: mockProfile.id,
-        firstName: 'Test',
-        lastName: 'User',
-        isEmailVerified: true,
-        authProvider: 'google',
-        roles: ['user'],
-        save: jest.fn().mockResolvedValueThis(),
-    } as unknown as IUser;
-    MockedUser.create.mockResolvedValue(mockCreatedUser);
+    const mockCreatedUserInstance = { // This is what the created user instance might look like
+      _id: new mongoose.Types.ObjectId(),
+      email: mockProfile.emails![0].value,
+      googleId: mockProfile.id,
+      firstName: 'Test',
+      lastName: 'User',
+      isEmailVerified: true,
+      authProvider: 'google',
+      roles: ['user'],
+      // Mocking Mongoose document methods if they were to be called on the result of create
+      save: jest.fn().mockResolvedValueThis(),
+      // toJSON: jest.fn().mockReturnValue(this), // etc.
+    };
+    // Ensure the mock for User.create resolves with something that matches IUser structure for the test's expectations
+    MockedUser.create.mockResolvedValue(mockCreatedUserInstance as any); // Cast to any if full IUser not mocked
 
     const user = await handleGoogleUser(mockProfile);
 
@@ -140,9 +143,16 @@ describe('Social Auth Handler - handleGoogleUser', () => {
   it('should not attempt to set password if authProvider is google and password is not required', async () => {
     MockedUser.findOne.mockResolvedValue(null);
     const createdUserSpy = jest.fn();
-    MockedUser.create.mockImplementation((userDoc: any) => {
+    // Type userDoc for the mockImplementation
+    MockedUser.create.mockImplementation((userDoc: Partial<IUser>) => {
         createdUserSpy(userDoc);
-        return Promise.resolve({ ...userDoc, _id: new mongoose.Types.ObjectId() } as IUser);
+        // Ensure the resolved value is compatible with IUser for subsequent test steps
+        return Promise.resolve({
+            ...(userDoc as object), // Spread the properties of userDoc
+            _id: new mongoose.Types.ObjectId(),
+            // Mock any other IUser methods/properties if needed by downstream code in handleGoogleUser
+            save: jest.fn().mockResolvedValueThis(),
+        } as IUser);
     });
 
     await handleGoogleUser(mockProfile);
