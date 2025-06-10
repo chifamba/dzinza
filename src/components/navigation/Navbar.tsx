@@ -1,5 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom'; // Assuming react-router-dom is used for navigation
+import NotificationIndicator from '../notifications/NotificationIndicator';
+import GlobalSearchBar from '../search/GlobalSearchBar'; // Import GlobalSearchBar
 
 interface NavItem {
   label: string;
@@ -25,24 +27,47 @@ const Navbar: React.FC<NavbarProps> = ({
         ${className}
       `}
     >
-      <div className="container mx-auto flex items-center justify-between">
-        {logo && <div className="flex-shrink-0">{logo}</div>}
-
-        <div className="hidden md:flex space-x-4 lg:space-x-6">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150"
-            >
-              {item.icon && <span className="mr-2">{item.icon}</span>}
-              {item.label}
-            </Link>
-          ))}
+      <div className="container mx-auto flex items-center justify-between gap-x-2 sm:gap-x-4">
+        {/* Left Group: Logo and Nav Items */}
+        <div className="flex items-center flex-shrink-0">
+          {logo && <div className="flex-shrink-0 mr-2 sm:mr-4">{logo}</div>}
+          <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-2 sm:px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150"
+              >
+                {item.icon && <span className="mr-1 sm:mr-1.5">{item.icon}</span>}
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </div>
 
-        {/* Mobile menu button (functionality to be added later) */}
-        <div className="md:hidden">
+        {/* Center: Global Search Bar - more prominent on desktop */}
+        <div className="flex-grow hidden sm:flex justify-center px-2 sm:px-4">
+          <div className="w-full max-w-md lg:max-w-lg xl:max-w-xl"> {/* Control max width of search bar */}
+            <GlobalSearchBar />
+          </div>
+        </div>
+
+        {/* Right side items & Mobile Menu Toggle */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="hidden sm:flex items-center space-x-2"> {/* Icons visible on sm+ */}
+            <NotificationIndicator />
+            {/* Placeholder for User Menu or other icons */}
+            {/* <UserMenu /> */}
+          </div>
+
+          {/* Mobile: Search might be an icon that expands, or nav items move to menu */}
+          <div className="sm:hidden"> {/* Mobile specific utilities / search toggle area */}
+             {/* On mobile, perhaps only show NotificationIndicator, search could be an icon toggle */}
+             <NotificationIndicator />
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden"> {/* This button itself is hidden on medium+ screens */}
           <button
             type="button"
             className="text-gray-600 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"

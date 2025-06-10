@@ -19,6 +19,7 @@ export interface IEvent extends Document {
   tags: string[];
   category?: string; // e.g., "Birth", "Marriage", "Death", "Story", "General".
   privacy: 'public' | 'private' | 'family'; // Default: 'private'
+  moderationStatus: 'visible' | 'hidden_by_moderator'; // New field
   createdAt: Date; // Mongoose default
   updatedAt: Date; // Mongoose default
 }
@@ -45,6 +46,12 @@ const EventSchema = new Schema<IEvent>({
     enum: ['public', 'private', 'family'],
     default: 'private',
     index: true
+  },
+  moderationStatus: {
+    type: String,
+    enum: ['visible', 'hidden_by_moderator'],
+    default: 'visible',
+    index: true,
   },
 }, {
   timestamps: true, // This will add createdAt and updatedAt fields

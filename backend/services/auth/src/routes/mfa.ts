@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router, Response, NextFunction } from 'express'; // Added Response, NextFunction
 import { body } from 'express-validator';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
@@ -19,7 +19,7 @@ const router = Router();
  *     security:
  *       - bearerAuth: []
  */
-router.post('/setup', authenticateToken, async (req: AuthenticatedRequest, res, next) => {
+router.post('/setup', authenticateToken, async (req: AuthenticatedRequest, res: Response, _next: NextFunction) => { // Typed res, _next
   try {
     const userId = req.user!.id; // user is guaranteed by authenticateToken
     const user = await User.findById(userId);
@@ -54,8 +54,9 @@ router.post('/setup', authenticateToken, async (req: AuthenticatedRequest, res, 
 
     logger.info('MFA setup initiated', { userId: user._id });
 
-  } catch (error) {
-    next(error);
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error('Unknown error during MFA setup.');
+    _next(err); // Pass to error handler
   }
 });
 
@@ -70,7 +71,7 @@ router.post('/setup', authenticateToken, async (req: AuthenticatedRequest, res, 
  */
 router.post('/verify-setup', authenticateToken, [
   body('token').isLength({ min: 6, max: 6 }).isNumeric(),
-], validateRequest, async (req: AuthenticatedRequest, res, next) => {
+], validateRequest, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => { // Typed res, next
   try {
     const { token: mfaToken } = req.body;
     const userId = req.user!.id; // user is guaranteed by authenticateToken
@@ -109,8 +110,8 @@ router.post('/verify-setup', authenticateToken, [
 
     logger.info('MFA enabled', { userId: user._id });
 
-  } catch (error) {
-    next(error);
+  } catch (error: unknown) {
+    next(error); // Let central error handler manage
   }
 });
 
@@ -124,7 +125,7 @@ router.post('/verify-setup', authenticateToken, [
 router.post('/verify', [
   body('userId').notEmpty(),
   body('token').isLength({ min: 6, max: 6 }),
-], validateRequest, async (req, res, next) => {
+], validateRequest, async (req: express.Request, res: Response, next: NextFunction) => { // Typed req, res, next
   try {
     const { userId, token } = req.body;
 
@@ -159,7 +160,7 @@ router.post('/verify', [
 
     res.json({ verified: true });
 
-  } catch (error) {
+  } catch (error: unknown) {
     next(error);
   }
 });
@@ -176,7 +177,7 @@ router.post('/verify', [
 router.post('/disable', authenticateToken, [
   body('password').notEmpty(),
   body('token').isLength({ min: 6, max: 6 }),
-], validateRequest, async (req: AuthenticatedRequest, res, next) => {
+], validateRequest, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => { // Typed res, next
   try {
     const { password, token } = req.body;
     const userId = req.user!.id; // user is guaranteed by authenticateToken
@@ -214,7 +215,7 @@ router.post('/disable', authenticateToken, [
 
     logger.info('MFA disabled', { userId: user._id });
 
-  } catch (error) {
+  } catch (error: unknown) {
     next(error);
   }
 });
@@ -228,7 +229,7 @@ router.post('/disable', authenticateToken, [
  *     security:
  *       - bearerAuth: [] # Added to indicate auth requirement
  */
-router.post('/backup-codes', authenticateToken, async (req: AuthenticatedRequest, res, next) => {
+router.post('/backup-codes', authenticateToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => { // Typed res, next
   try {
     const userId = req.user!.id; // user is guaranteed by authenticateToken
     const user = await User.findById(userId);
@@ -249,7 +250,7 @@ router.post('/backup-codes', authenticateToken, async (req: AuthenticatedRequest
 
     logger.info('New backup codes generated', { userId: user._id });
 
-  } catch (error) {
+  } catch (error: unknown) {
     next(error);
   }
 });

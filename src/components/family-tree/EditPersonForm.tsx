@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { FamilyMember } from '../../types/genealogy'; // Adjust path
 import { Input, Button } from '../ui'; // Adjust path
+import PersonEventsList from '../../events/PersonEventsList'; // Import PersonEventsList
 
 interface EditPersonFormProps {
   person: FamilyMember;
@@ -115,6 +116,12 @@ const EditPersonForm: React.FC<EditPersonFormProps> = ({
            (!person.childIds || person.childIds.length === 0) && (
             <p className="text-xs text-gray-400 italic">No relationships defined.</p>
           )}
+        </div>
+
+        {/* Related Stories & Events Section */}
+        <div className="mt-3 pt-3 border-t">
+          <h4 className="text-md font-semibold text-gray-800 mb-2">Related Stories & Events</h4>
+          <PersonEventsList personId={person.id} />
         </div>
 
         {error && <p className="text-xs text-red-600 mt-2">{error}</p>}

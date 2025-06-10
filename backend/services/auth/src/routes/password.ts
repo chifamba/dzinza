@@ -1,6 +1,6 @@
-import { Router } from 'express';
+import express, { Router, Request, Response } from 'express'; // Added Request, Response
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
+// import crypto from 'crypto'; // Unused import
 import { body } from 'express-validator';
 import { User } from '../models/User';
 import { AuditLog } from '../models/AuditLog';
@@ -47,7 +47,7 @@ router.post('/forgot-password', [
     .normalizeEmail()
     .withMessage('Valid email is required'),
   validateRequest
-], async (req, res) => {
+], async (req: Request, res: Response) => { // Typed req, res
   try {
     const { email } = req.body;
     const correlationId = req.headers['x-correlation-id'] as string;
@@ -92,11 +92,12 @@ router.post('/forgot-password', [
       // Note: sendPasswordResetEmail expects (email, firstName, token)
       await sendPasswordResetEmail(user.email, user.firstName, resetToken);
       logger.info('Password reset email sent successfully', { email: user.email, correlationId });
-    } catch (emailError) {
+    } catch (emailError: unknown) {
+      const message = emailError instanceof Error ? emailError.message : 'Unknown email sending error';
       logger.error('Failed to send password reset email', {
         email, 
         correlationId,
-        error: emailError 
+        error: message
       });
       // Continue execution to avoid revealing email sending failures
     }
@@ -117,9 +118,10 @@ router.post('/forgot-password', [
       message: 'If an account with that email exists, a password reset link has been sent.'
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error('Password reset request failed', { 
-      error,
+      error: message,
       correlationId: req.headers['x-correlation-id']
     });
     res.status(500).json({ error: 'Internal server error' });
@@ -165,7 +167,7 @@ router.post('/reset-password/:token', [
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
     .withMessage('Password must be at least 8 characters with uppercase, lowercase, number, and special character'),
   validateRequest
-], async (req, res) => {
+], async (req: Request, res: Response) => { // Typed req, res
   try {
     const { token } = req.params;
     const { password } = req.body;
@@ -210,8 +212,9 @@ router.post('/reset-password/:token', [
     try {
       await RefreshToken.revokeAllForUser(user._id);
       logger.info(`All refresh tokens revoked for user ${user._id} after password reset`, { userId: user._id, correlationId });
-    } catch (revokeError) {
-      logger.error(`Failed to revoke refresh tokens for user ${user._id} after password reset`, { userId: user._id, error: revokeError, correlationId });
+    } catch (revokeError: unknown) {
+      const message = revokeError instanceof Error ? revokeError.message : 'Unknown error revoking tokens';
+      logger.error(`Failed to revoke refresh tokens for user ${user._id} after password reset`, { userId: user._id, error: message, correlationId });
       // Do not let this fail the entire operation
     }
 
@@ -237,9 +240,10 @@ router.post('/reset-password/:token', [
       message: 'Password has been reset successfully'
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error('Password reset failed', { 
-      error,
+      error: message,
       correlationId: req.headers['x-correlation-id']
     });
     res.status(500).json({ error: 'Internal server error' });
@@ -287,10 +291,10 @@ router.post('/change', [
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
     .withMessage('New password must be at least 8 characters with uppercase, lowercase, number, and special character'),
   validateRequest
-], async (req: AuthenticatedRequest, res) => { // Added AuthenticatedRequest type
+], async (req: AuthenticatedRequest, res: Response) => { // Typed res
   try {
     const { currentPassword, newPassword } = req.body;
-    const userId = req.user!.id; // Added non-null assertion as authenticateToken guarantees req.user
+    const userId = req.user!.id;
     const correlationId = req.headers['x-correlation-id'] as string;
 
     logger.info('Password change requested', {
@@ -359,10 +363,11 @@ router.post('/change', [
       message: 'Password changed successfully'
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error('Password change failed', {
-      error,
-      userId: (req as AuthenticatedRequest).user?.id, // Type assertion for safety
+      error: message,
+      userId: req.user?.id, // req is already AuthenticatedRequest here
       correlationId: req.headers['x-correlation-id']
     });
     res.status(500).json({ error: 'Internal server error' });
@@ -395,10 +400,9 @@ router.post('/validate', [
     .isLength({ min: 1 })
     .withMessage('Password is required'),
   validateRequest
-], async (req, res) => {
+], async (req: Request, res: Response) => { // Typed req, res
   try {
     const { password } = req.body;
-    
     const validation = {
       minLength: password.length >= 8,
       hasUppercase: /[A-Z]/.test(password),
@@ -422,8 +426,9 @@ router.post('/validate', [
       score
     });
 
-  } catch (error) {
-    logger.error('Password validation failed', { error });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('Password validation failed', { error: message });
     res.status(500).json({ error: 'Internal server error' });
   }
 });

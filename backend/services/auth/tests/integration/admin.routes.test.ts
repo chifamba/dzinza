@@ -1,7 +1,7 @@
 import request from 'supertest';
-import mongoose from 'mongoose';
+// import mongoose from 'mongoose'; // mongoose default import appears unused
 import { User, IUser } from '../../src/models/User';
-import { generateTestToken } from '../utils'; // Test utilities
+import { generateTestToken, TestTokenPayload } from '../utils'; // Test utilities, assuming TestTokenPayload is defined there
 import app from '../../src/server'; // Express app
 
 describe('Admin Routes - RBAC', () => {
@@ -20,7 +20,9 @@ describe('Admin Routes - RBAC', () => {
       roles: ['admin', 'user'], // Admin has both roles
       isEmailVerified: true,
     });
-    adminToken = generateTestToken(adminUser as any);
+    // Assuming generateTestToken expects an object with id, roles, email for payload
+    adminToken = generateTestToken({ _id: adminUser.id, roles: adminUser.roles, email: adminUser.email } as TestTokenPayload);
+
 
     // Create a regular user
     regularUser = await User.create({
@@ -31,7 +33,7 @@ describe('Admin Routes - RBAC', () => {
       roles: ['user'],
       isEmailVerified: true,
     });
-    userToken = generateTestToken(regularUser as any);
+    userToken = generateTestToken({ _id: regularUser.id, roles: regularUser.roles, email: regularUser.email } as TestTokenPayload);
   });
 
   afterAll(async () => {

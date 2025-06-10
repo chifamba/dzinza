@@ -58,12 +58,13 @@ router.get('/google/callback',
     passport.authenticate('google', {
       failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed`, // Redirect to frontend login page with error
       session: false
-    }, async (err: any, user: IUser | false, info: any) => {
+    }, async (err: unknown, user: IUser | false, info?: { message?: string }) => { // Typed err and info
       if (err) {
-        logger.error('Google OAuth callback error', { error: err, info });
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        logger.error('Google OAuth callback error', { error: errorMessage, info });
         await AuditLog.create({
             action: 'GOOGLE_LOGIN_FAILED',
-            details: { error: err.message, info },
+            details: { error: errorMessage, info: info?.message },
             ipAddress: req.ip,
             userAgent: req.get('User-Agent'),
         });

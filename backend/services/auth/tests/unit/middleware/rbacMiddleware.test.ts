@@ -1,6 +1,7 @@
-import { Response, NextFunction } from 'express';
+import { Response, NextFunction, Request } from 'express'; // Added Request for Partial type
 import { authorizeRoles } from '../../../src/middleware/rbacMiddleware';
 import { AuthenticatedRequest } from '../../../src/middleware/authMiddleware'; // For req.user structure
+import { AuthenticatedUserWithRoles } from '../../../middleware/adminAuth'; // For more flexible user type with optional roles
 import { logger } from '../../../src/utils/logger';
 
 // Mock logger
@@ -12,12 +13,13 @@ jest.mock('../../../src/utils/logger', () => ({
 }));
 
 describe('authorizeRoles Middleware', () => {
-  let mockRequest: Partial<AuthenticatedRequest>;
+  // Use a more specific type for mockRequest that aligns with AuthenticatedUserWithRoles for the user object
+  let mockRequest: Partial<Omit<AuthenticatedRequest, 'user'> & { user?: Partial<AuthenticatedUserWithRoles> }>;
   let mockResponse: Partial<Response>;
   let nextFunction: NextFunction = jest.fn();
 
   beforeEach(() => {
-    mockRequest = {}; // Will be populated with 'user' object in tests
+    mockRequest = {};
     mockResponse = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
@@ -84,7 +86,8 @@ describe('authorizeRoles Middleware', () => {
   });
 
   it('should return 403 if req.user.roles is not defined (e.g. null or undefined)', () => {
-    mockRequest.user = { id: '123', email: 'test@example.com', roles: undefined as any }; // Simulate roles being undefined
+    // Here, mockRequest.user is typed to allow roles to be optional/undefined
+    mockRequest.user = { id: '123', email: 'test@example.com', roles: undefined };
     const middleware = authorizeRoles('admin');
     middleware(mockRequest as AuthenticatedRequest, mockResponse as Response, nextFunction);
 

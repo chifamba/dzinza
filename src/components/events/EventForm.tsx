@@ -57,6 +57,7 @@ const EventForm: React.FC<EventFormProps> = ({
   const [personsLoading, setPersonsLoading] = useState<boolean>(false);
   const [personsError, setPersonsError] = useState<string | null>(null);
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
+  const [personSearchTerm, setPersonSearchTerm] = useState<string>('');
 
   // Initialize form data and selected persons from initialData
   useEffect(() => {
@@ -85,36 +86,59 @@ const EventForm: React.FC<EventFormProps> = ({
     }
   }, [initialData]);
 
-  // Fetch persons for selection
-  useEffect(() => {
-    const fetchPersons = async () => {
-      setPersonsLoading(true);
-      setPersonsError(null);
-      try {
-        // TODO: Adjust API endpoint if filtering by familyTreeId or other criteria is needed/possible
-        const response = await fetch('/api/persons'); // Assuming this fetches all persons for the user
-        if (!response.ok) {
-          throw new Error('Failed to fetch persons');
-        }
-        const data = await response.json();
-        // API response for persons is an object with a 'data' property which is an array
-        if (data && Array.isArray(data.data)) {
-             setAllPersons(data.data.map((p: any) => ({ id: p._id, name: `${p.firstName} ${p.lastName}`.trim() || 'Unnamed Person' })));
-        } else if (Array.isArray(data)) { // Fallback if API returns array directly
-             setAllPersons(data.map((p: any) => ({ id: p._id, name: `${p.firstName} ${p.lastName}`.trim() || 'Unnamed Person' })));
-        } else {
-            setAllPersons([]);
-            console.warn("Fetched persons data is not in expected array format:", data);
-        }
+  // useCallback for fetchPersons to stabilize its identity for useEffect dependencies
+  const fetchPersons = React.useCallback(async (currentFamilyTreeId?: string, currentSearchTerm?: string) => {
+    setPersonsLoading(true);
+    setPersonsError(null);
+    const queryParams = new URLSearchParams();
+    if (currentFamilyTreeId) {
+      queryParams.append('familyTreeId', currentFamilyTreeId);
+    }
+    if (currentSearchTerm && currentSearchTerm.trim()) {
+      queryParams.append('search', currentSearchTerm.trim());
+    }
+    queryParams.append('limit', '30'); // Default limit for search results
+    queryParams.append('page', '1'); // Always fetch first page for new search/filter context
 
-      } catch (err) {
-        setPersonsError(err instanceof Error ? err.message : 'An unknown error occurred');
-      } finally {
-        setPersonsLoading(false);
+    try {
+      const response = await fetch(`/api/persons?${queryParams.toString()}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch persons' }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
+      const data = await response.json();
+      if (data && Array.isArray(data.data)) {
+        setAllPersons(data.data.map((p: any) => ({ id: p._id, name: `${p.firstName} ${p.lastName}`.trim() || 'Unnamed Person' })));
+      } else {
+        setAllPersons([]); // Ensure it's an array even if response is unexpected
+        console.warn("Fetched persons data is not in expected array format or empty:", data);
+      }
+    } catch (err) {
+      setPersonsError(err instanceof Error ? err.message : 'An unknown error occurred');
+      setAllPersons([]); // Clear persons on error
+    } finally {
+      setPersonsLoading(false);
+    }
+  }, []); // No dependencies, relies on passed arguments
+
+  // Effect for initial fetch and when familyTreeId changes (maintaining current search)
+  useEffect(() => {
+    fetchPersons(formData.familyTreeId, personSearchTerm);
+  }, [formData.familyTreeId, fetchPersons]); // personSearchTerm is not added here to avoid loop with debounce; debounce effect handles search term changes.
+
+  // Effect for debounced search when personSearchTerm changes
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      // Fetch only if search term is not empty or if it became empty (to reset list)
+      // The initial load is handled by the effect above. This is for subsequent searches.
+      // Or, always fetch to ensure context (familyTreeId) is applied with new search term.
+      fetchPersons(formData.familyTreeId, personSearchTerm);
+    }, 500); // 500ms debounce
+
+    return () => {
+      clearTimeout(handler);
     };
-    fetchPersons();
-  }, []);
+  }, [personSearchTerm, formData.familyTreeId, fetchPersons]);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -260,14 +284,30 @@ const EventForm: React.FC<EventFormProps> = ({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Related Persons (Optional)</label>
+        <label htmlFor="personSearch" className="block text-sm font-medium text-gray-700">Search Related Persons</label>
+        <Input
+          type="text"
+          id="personSearch"
+          name="personSearch"
+          value={personSearchTerm}
+          onChange={(e) => setPersonSearchTerm(e.target.value)}
+          placeholder="Type to search..."
+          className="mt-1 mb-2"
+        />
         {personsLoading && <p className="text-sm text-gray-500">Loading persons...</p>}
-        {personsError && <p className="text-sm text-red-500">Error loading persons: {personsError}</p>}
-        {!personsLoading && !personsError && allPersons.length === 0 && <p className="text-sm text-gray-500">No persons available to select.</p>}
+        {personsError && <p className="text-sm text-red-500">Error: {personsError}</p>}
+
+        {!personsLoading && !personsError && allPersons.length === 0 && personSearchTerm && (
+          <p className="text-sm text-gray-500 mt-2">No persons found matching "{personSearchTerm}".</p>
+        )}
+        {!personsLoading && !personsError && allPersons.length === 0 && !personSearchTerm && (
+          <p className="text-sm text-gray-500 mt-2">No persons available. Try a different search or Family Tree ID.</p>
+        )}
+
         {!personsLoading && !personsError && allPersons.length > 0 && (
           <div className="mt-2 space-y-2 max-h-60 overflow-y-auto border border-gray-300 rounded-md p-2">
             {allPersons.map(person => (
-              <label key={person.id} className="flex items-center space-x-2 hover:bg-gray-50 p-1 rounded">
+              <label key={person.id} className="flex items-center space-x-2 hover:bg-gray-50 p-1 rounded cursor-pointer">
                 <input
                   type="checkbox"
                   value={person.id}

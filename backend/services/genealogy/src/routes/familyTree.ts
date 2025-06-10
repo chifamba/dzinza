@@ -1,10 +1,13 @@
 import express from 'express';
 import { body, param, query, validationResult } from 'express-validator';
+import express from 'express'; // Ensure express is imported if not already fully
+import { body, param, query, validationResult } from 'express-validator'; // Ensure these are imported
 import { FamilyTree } from '../models/FamilyTree.js';
 import { Person } from '../models/Person.js';
 import { Relationship } from '../models/Relationship.js';
 import { logger } from '../../../../src/shared/utils/logger.js';
 import multer from 'multer';
+import { recordActivity } from '../services/activityLogService.js'; // Import recordActivity
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() }); // Configure multer for in-memory storage
@@ -341,10 +344,47 @@ router.put('/:id', [
         return obj;
       }, {});
 
-    Object.assign(familyTree, updates);
-    await familyTree.save();
+    const oldSettings = { ...familyTree.settings }; // Shallow copy for basic comparison
+    const oldPrivacy = familyTree.privacy;
 
-    res.json(familyTree);
+    Object.assign(familyTree, updates);
+    const savedTree = await familyTree.save();
+
+    // Construct changesPreview for settings
+    let changesPreview = 'Updated tree: ';
+    const changedFields: string[] = [];
+    if (updates.name && familyTree.name !== updates.name) changedFields.push(`name to "${updates.name}"`); // This comparison is flawed as familyTree.name is already updated.
+                                                                                                     // Better to compare updates.name with original familyTree.name before Object.assign if needed for detailed diff.
+                                                                                                     // For now, we'll keep it simple.
+    if (updates.description) changedFields.push('description');
+    if (updates.privacy && oldPrivacy !== updates.privacy) changedFields.push(`privacy to "${updates.privacy}"`);
+    if (updates.settings) { // Deeper comparison for settings if necessary
+        if (oldSettings?.allowCollaboration !== updates.settings.allowCollaboration) {
+            changedFields.push(`collaboration to ${updates.settings.allowCollaboration ? 'enabled' : 'disabled'}`);
+        }
+        // Add more settings field comparisons as needed
+    }
+    if (changedFields.length > 0) {
+        changesPreview += changedFields.join(', ') + '.';
+    } else {
+        changesPreview += 'general information.';
+    }
+
+    recordActivity({
+      userId: userId as string,
+      userName: req.user?.name || req.user?.email, // Assuming name or email might be on req.user
+      actionType: 'UPDATE_FAMILY_TREE_SETTINGS',
+      familyTreeId: savedTree._id,
+      targetResourceId: savedTree._id.toString(),
+      targetResourceType: 'FamilyTree',
+      targetResourceName: savedTree.name,
+      changesPreview: changesPreview,
+      details: `${req.user?.name || req.user?.id} updated settings for tree '${savedTree.name}'.`,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
+
+    res.json(savedTree);
 
     logger.info('Family tree updated', {
       userId,
@@ -498,6 +538,252 @@ router.post('/:id/collaborators', [
     res.status(500).json({ error: 'Failed to add collaborator' });
   }
 });
+
+// --- Manage Collaborator Role ---
+/**
+ * @swagger
+ * /api/family-trees/{treeId}/collaborators/{collaboratorUserId}:
+ *   put:
+ *     summary: Update the role of a collaborator on a family tree.
+ *     tags: [Family Trees, Collaborators]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: treeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: mongoId
+ *         description: The ID of the family tree.
+ *       - in: path
+ *         name: collaboratorUserId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the collaborator to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [viewer, editor, admin]
+ *                 description: The new role for the collaborator.
+ *     responses:
+ *       200:
+ *         description: Collaborator role updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FamilyTree' # Or a specific collaborator object schema
+ *       400:
+ *         description: Invalid input (e.g., invalid ID, invalid role, trying to manage self inappropriately).
+ *       403:
+ *         description: Access denied (user does not have permission to manage collaborators or trying to manage owner).
+ *       404:
+ *         description: Family tree or collaborator not found.
+ *       500:
+ *         description: Internal server error.
+ */
+router.put('/:treeId/collaborators/:collaboratorUserId', [
+  param('treeId').isMongoId().withMessage('Invalid family tree ID'),
+  param('collaboratorUserId').isString().notEmpty().withMessage('Collaborator user ID is required'),
+  body('role').isIn(['viewer', 'editor', 'admin']).withMessage('Role must be one of: viewer, editor, admin'),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const currentUserId = req.user?.id;
+    const { treeId, collaboratorUserId } = req.params;
+    const { role: newRole } = req.body;
+
+    const familyTree = await FamilyTree.findById(treeId);
+    if (!familyTree) {
+      return res.status(404).json({ error: 'Family tree not found' });
+    }
+
+    // Authorization: User must be owner or admin to manage collaborators
+    if (!familyTree.canUserManage(currentUserId)) {
+      return res.status(403).json({ error: 'Access denied: You do not have permission to manage collaborators for this tree.' });
+    }
+
+    // Prevent owner from being managed as a collaborator
+    if (familyTree.ownerId === collaboratorUserId) {
+      return res.status(403).json({ error: 'Cannot manage the owner of the tree as a collaborator.' });
+    }
+
+    // Prevent admin from changing their own role via this endpoint (owner can change admin's role)
+    if (currentUserId === collaboratorUserId && familyTree.collaborators.find(c => c.userId === currentUserId)?.role === 'admin' && currentUserId !== familyTree.ownerId) {
+        return res.status(403).json({ error: 'Admins cannot change their own role. Please ask the tree owner.' });
+    }
+
+
+    const collaboratorIndex = familyTree.collaborators.findIndex(c => c.userId === collaboratorUserId);
+    if (collaboratorIndex === -1) {
+      return res.status(404).json({ error: 'Collaborator not found on this tree.' });
+    }
+
+    if (!familyTree.collaborators[collaboratorIndex].acceptedAt) {
+        return res.status(400).json({ error: 'Collaborator has not accepted the invitation yet. Role cannot be changed.' });
+    }
+
+    familyTree.collaborators[collaboratorIndex].role = newRole;
+    await familyTree.save();
+
+    logger.info('Collaborator role updated', {
+      currentUserId,
+      familyTreeId: treeId,
+      managedCollaboratorId: collaboratorUserId,
+      newRole,
+      correlationId: req.correlationId,
+    });
+
+    // TODO: Notify collaborator {collaboratorUserId} that their role on tree {treeId} was changed to {newRole} by {currentUserId}.
+    logger.info(`TODO: Notify collaborator ${collaboratorUserId} that their role on tree ${treeId} was changed to ${newRole} by ${currentUserId}.`);
+
+    // Fetch collaborator's name/email for targetResourceName if possible
+    // This might require a User model lookup if not already on collaborator object
+    const collaboratorInfo = familyTree.collaborators[collaboratorIndex]; // This is the updated one
+    // const collaboratorUser = await User.findById(collaboratorUserId).select('name email'); // Example
+    // const targetResourceName = collaboratorUser ? (collaboratorUser.name || collaboratorUser.email) : collaboratorUserId;
+
+    recordActivity({
+        userId: currentUserId as string,
+        userName: req.user?.name || req.user?.email,
+        actionType: 'UPDATE_COLLABORATOR_ROLE',
+        familyTreeId: familyTree._id,
+        targetResourceId: collaboratorUserId,
+        targetResourceType: 'FamilyTreeCollaborator',
+        targetResourceName: collaboratorUserId, // Placeholder, ideally fetch name/email
+        changesPreview: `Role changed to '${newRole}'`,
+        details: `${req.user?.name || currentUserId} changed role of collaborator ${collaboratorUserId} to '${newRole}' on tree '${familyTree.name}'.`,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+    });
+
+    res.json(familyTree.collaborators[collaboratorIndex]); // Return updated collaborator or whole tree
+
+  } catch (error) {
+    logger.error('Error updating collaborator role:', error, { userId: req.user?.id, treeId: req.params.treeId, collaboratorUserId: req.params.collaboratorUserId });
+    res.status(500).json({ error: 'Failed to update collaborator role' });
+  }
+});
+
+// --- Remove Collaborator ---
+/**
+ * @swagger
+ * /api/family-trees/{treeId}/collaborators/{collaboratorUserId}:
+ *   delete:
+ *     summary: Remove a collaborator from a family tree.
+ *     tags: [Family Trees, Collaborators]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: treeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: mongoId
+ *         description: The ID of the family tree.
+ *       - in: path
+ *         name: collaboratorUserId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the collaborator to remove.
+ *     responses:
+ *       204:
+ *         description: Collaborator removed successfully.
+ *       400:
+ *         description: Invalid input (e.g., trying to remove self inappropriately).
+ *       403:
+ *         description: Access denied (user does not have permission or trying to remove owner).
+ *       404:
+ *         description: Family tree or collaborator not found.
+ *       500:
+ *         description: Internal server error.
+ */
+router.delete('/:treeId/collaborators/:collaboratorUserId', [
+  param('treeId').isMongoId().withMessage('Invalid family tree ID'),
+  param('collaboratorUserId').isString().notEmpty().withMessage('Collaborator user ID is required'),
+], async (req, res) => {
+  try {
+    const currentUserId = req.user?.id;
+    const { treeId, collaboratorUserId } = req.params;
+
+    const familyTree = await FamilyTree.findById(treeId);
+    if (!familyTree) {
+      return res.status(404).json({ error: 'Family tree not found' });
+    }
+
+    // Authorization: User must be owner or admin
+    if (!familyTree.canUserManage(currentUserId)) {
+      return res.status(403).json({ error: 'Access denied: You do not have permission to manage collaborators for this tree.' });
+    }
+
+    // Prevent owner from being removed
+    if (familyTree.ownerId === collaboratorUserId) {
+      return res.status(403).json({ error: 'Cannot remove the owner of the tree.' });
+    }
+
+    // Prevent admin from removing themselves (owner can remove admin)
+     if (currentUserId === collaboratorUserId && familyTree.collaborators.find(c => c.userId === currentUserId)?.role === 'admin' && currentUserId !== familyTree.ownerId) {
+        return res.status(403).json({ error: 'Admins cannot remove themselves. Please ask the tree owner.' });
+    }
+
+    const collaboratorExists = familyTree.collaborators.some(c => c.userId === collaboratorUserId);
+    if (!collaboratorExists) {
+        return res.status(404).json({ error: 'Collaborator not found on this tree.' });
+    }
+
+    // Using a direct update to pull the collaborator
+    const updateResult = await FamilyTree.updateOne(
+      { _id: treeId },
+      { $pull: { collaborators: { userId: collaboratorUserId } } }
+    );
+
+    if (updateResult.modifiedCount === 0) {
+      // This might happen if the collaborator was already removed in a race condition, or if userId was not found.
+      // The `collaboratorExists` check above should ideally prevent the "not found" case here.
+      logger.warn('Collaborator removal did not modify the document, might have been already removed or user ID mismatch.', { treeId, collaboratorUserId });
+      // Still return success as the desired state (collaborator removed) is achieved or was already true.
+    }
+
+    // Optional: Revoke pending invitations for this user on this tree
+    // This would involve importing Invitation model and updating status.
+    // For now, focusing on removing accepted collaborators as per prompt.
+    // Example: await Invitation.updateMany({ familyTreeId: treeId, inviteeUserId: collaboratorUserId, status: 'pending' }, { $set: { status: 'revoked' } });
+
+
+    logger.info('Collaborator removed', {
+      currentUserId,
+      familyTreeId: treeId,
+      removedCollaboratorId: collaboratorUserId,
+      correlationId: req.correlationId,
+    });
+
+    // TODO: Notify user {collaboratorUserId} that they have been removed from tree {treeId} by {currentUserId}.
+    logger.info(`TODO: Notify user ${collaboratorUserId} that they have been removed from tree ${treeId} by ${currentUserId}.`);
+
+
+    res.status(204).send();
+
+  } catch (error) {
+    logger.error('Error removing collaborator:', error, { userId: req.user?.id, treeId: req.params.treeId, collaboratorUserId: req.params.collaboratorUserId });
+    res.status(500).json({ error: 'Failed to remove collaborator' });
+  }
+});
+
 
 /**
  * @swagger

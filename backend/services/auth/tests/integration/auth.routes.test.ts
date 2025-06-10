@@ -1,9 +1,9 @@
 import request from 'supertest';
-import express from 'express'; // For App type if needed, though usually not directly used in tests
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import mongoose from 'mongoose';
+// import express from 'express'; // Unused
+// import { MongoMemoryServer } from 'mongodb-memory-server'; // Unused due to global setup
+import mongoose from 'mongoose'; // Used for mongoose.model if User.hashPassword was actually used, but seems not. Retained for now if other mongoose utils are used.
 import { User, IUser } from '../../src/models/User';
-import { generateTestToken } from '../utils'; // Test utilities
+import { generateTestToken, TestTokenPayload } from '../utils'; // Test utilities, assuming TestTokenPayload
 import nodemailer from 'nodemailer'; // To check if sendMail was called
 import app from '../../src/server'; // Import the configured Express app
 
@@ -11,20 +11,10 @@ import app from '../../src/server'; // Import the configured Express app
 // The mock is already in jest.setup.ts, this is just to get the type for the mock
 const mockSendMail = nodemailer.createTransport({}).sendMail as jest.Mock;
 
-let mongoServer: MongoMemoryServer;
+// let mongoServer: MongoMemoryServer; // Unused due to global setup via jest.setup.ts
 
 beforeAll(async () => {
-  // Note: The global setup in jest.setup.ts already handles this.
-  // If running tests individually or without that global setup, you'd need this here.
-  // For this example, assuming jest.setup.ts is active.
-  // mongoServer = await MongoMemoryServer.create();
-  // const mongoUri = mongoServer.getUri();
-  // await mongoose.connect(mongoUri);
-});
-
-afterAll(async () => {
-  // await mongoose.disconnect();
-  // await mongoServer.stop();
+  // MongoDB connection is handled by global jest.setup.ts
 });
 
 afterEach(async () => {
@@ -43,16 +33,16 @@ describe('Auth Routes - Email Verification', () => {
 
   beforeEach(async () => {
     // Create a user directly in the DB for testing
-    const password = await mongoose.model('User').hashPassword('Password123!'); // Use a static method if available or hash here
+    // Password hashing is handled by the User model's pre-save hook
     testUser = await User.create({
       email: 'verify@example.com',
-      password: password,
+      password: 'Password123!', // Plain password
       firstName: 'Verify',
       lastName: 'User',
       isEmailVerified: false, // Important for these tests
       roles: ['user'],
     });
-    authToken = generateTestToken(testUser as any); // Cast to any if IUser doesn't perfectly match for generateTestToken
+    authToken = generateTestToken({ _id: testUser.id, roles: testUser.roles, email: testUser.email } as TestTokenPayload);
   });
 
   describe('POST /auth/request-verification', () => {
@@ -198,7 +188,7 @@ describe('Auth Routes - Logout', () => {
         isEmailVerified: true,
         roles: ['user'],
       });
-      authTokenLogout = generateTestToken(testUserLogout as any);
+      authTokenLogout = generateTestToken({ _id: testUserLogout.id, roles: testUserLogout.roles, email: testUserLogout.email } as TestTokenPayload);
     });
 
     it('POST /auth/logout should succeed for an authenticated user', async () => {

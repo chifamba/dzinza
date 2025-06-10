@@ -1,10 +1,18 @@
 import express, { Request, Response } from 'express';
+import mongoose from 'mongoose'; // Added for ObjectId and potentially other Mongoose utilities
 import { body, query, param, validationResult } from 'express-validator';
+import express, { Request, Response } from 'express'; // Ensure express is imported
+import mongoose from 'mongoose'; // Added for ObjectId and potentially other Mongoose utilities
+import { body, query, param, validationResult } from 'express-validator'; // Ensure validators are imported
 import { Event, IEvent } from '../models'; // Assuming index.ts in models exports Event and IEvent
+import { Person, IPerson } from '../models/Person'; // Added Person model import
 import { authMiddleware } from '@shared/middleware/auth'; // Path to shared auth middleware
 import { logger } from '@shared/utils/logger'; // Path to shared logger
+import { recordActivity } from '../services/activityLogService.js'; // Import recordActivity
+import fetch from 'node-fetch'; // For making HTTP requests to search service
 
 const router = express.Router();
+const SEARCH_SERVICE_URL = process.env.SEARCH_SERVICE_URL || 'http://localhost:SEARCH_PORT_PLACEHOLDER/api'; // Replace SEARCH_PORT_PLACEHOLDER or use actual discovery
 
 /**
  * @swagger
@@ -32,6 +40,9 @@ const router = express.Router();
  *         content:
  *           type: string
  *           description: The content of the event (e.g., HTML or JSON for Delta)
+ *         contentSnippet:
+ *           type: string
+ *           description: A plain text snippet of the event content (approx. 200 chars)
  *         date:
  *           type: string
  *           format: date-time
@@ -55,8 +66,13 @@ const router = express.Router();
  *         relatedPersons:
  *           type: array
  *           items:
- *             type: string
- *           description: IDs of persons involved in the event (optional)
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *           description: Populated details of persons involved in the event (optional)
  *         associatedMediaIds:
  *           type: array
  *           items:
@@ -216,6 +232,42 @@ router.post(
         }
       }
       // The main event creation is successful even if media association fails for some items.
+
+      // Record activity
+      recordActivity({
+        userId: req.user.id,
+        userName: req.user.name || req.user.email, // Assuming name or email on req.user
+        actionType: 'CREATE_EVENT',
+        familyTreeId: newEvent.familyTreeId ? newEvent.familyTreeId.toString() : undefined,
+        targetResourceId: newEvent._id.toString(),
+        targetResourceType: 'Event',
+        targetResourceName: newEvent.title,
+        details: `${req.user.name || req.user.id} created event '${newEvent.title}'.`,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      });
+
+      // Asynchronously index the new event
+      fetch(`${SEARCH_SERVICE_URL}/index`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'event',
+          documentId: newEvent._id.toString(),
+          document: newEvent.toObject(), // Send the full document or a relevant subset
+        }),
+      })
+      .then(async searchRes => {
+        if (!searchRes.ok) {
+          const errorBody = await searchRes.text();
+          logger.warn(`Failed to index new event ${newEvent._id}. Status: ${searchRes.status}. Body: ${errorBody}`);
+        } else {
+          logger.info(`Event ${newEvent._id} submitted for indexing successfully.`);
+        }
+      })
+      .catch(searchErr => {
+        logger.error(`Error calling search service to index new event ${newEvent._id}:`, searchErr);
+      });
 
       res.status(201).json(newEvent);
     } catch (error) {
@@ -438,6 +490,28 @@ router.put(
         }
       }
 
+      // Asynchronously update the index for the event
+      fetch(`${SEARCH_SERVICE_URL}/index`, {
+        method: 'POST', // Using POST to update/re-index
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'event',
+          documentId: updatedEvent._id.toString(),
+          document: updatedEvent.toObject(),
+        }),
+      })
+      .then(async searchRes => {
+        if (!searchRes.ok) {
+           const errorBody = await searchRes.text();
+           logger.warn(`Failed to update index for event ${updatedEvent._id}. Status: ${searchRes.status}. Body: ${errorBody}`);
+        } else {
+           logger.info(`Event ${updatedEvent._id} submitted for re-indexing successfully.`);
+        }
+      })
+      .catch(searchErr => {
+        logger.error(`Error calling search service to update index for event ${updatedEvent._id}:`, searchErr);
+      });
+
       res.status(200).json(updatedEvent);
     } catch (error) {
       logger.error(`Error updating event ${id}:`, error);
@@ -546,7 +620,24 @@ router.delete(
         }
       }
 
+      const eventIdToDelete = event._id.toString(); // Store before deleting
       await Event.findByIdAndDelete(id);
+
+      // Asynchronously delete the event from the index
+      fetch(`${SEARCH_SERVICE_URL}/index/event/${eventIdToDelete}`, {
+        method: 'DELETE',
+      })
+      .then(async searchRes => {
+        if (!searchRes.ok && searchRes.status !== 404) { // 404 (not found) is acceptable for delete
+           const errorBody = await searchRes.text();
+           logger.warn(`Failed to delete event ${eventIdToDelete} from index. Status: ${searchRes.status}. Body: ${errorBody}`);
+        } else {
+           logger.info(`Event ${eventIdToDelete} submitted for deletion from index successfully (or was not found).`);
+        }
+      })
+      .catch(searchErr => {
+        logger.error(`Error calling search service to delete event ${eventIdToDelete} from index:`, searchErr);
+      });
 
       res.status(200).json({ message: 'Event deleted successfully' });
       // Alternatively, use 204 No Content:
@@ -752,14 +843,81 @@ router.get(
       if (sortBy) sortOptions[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
 
       const totalEvents = await Event.countDocuments(queryFilter);
-      const events = await Event.find(queryFilter)
+      let eventsData = await Event.find(queryFilter)
         .sort(sortOptions)
         .skip((page - 1) * limit)
         .limit(limit)
-        .lean(); // Use .lean() for performance if not modifying docs
+        .lean<IEvent[]>(); // Use .lean() for performance and specify type
+
+      // Helper function to strip HTML and create a snippet
+      const createContentSnippet = (htmlContent: string, maxLength: number = 200): string => {
+        if (!htmlContent) return '';
+        const plainText = htmlContent.replace(/<[^>]+>/g, '');
+        return plainText.substring(0, maxLength) + (plainText.length > maxLength ? '...' : '');
+      };
+
+      // Collect all unique person IDs from the current batch of events
+      const personIdsToFetch: mongoose.Types.ObjectId[] = [];
+      if (eventsData && eventsData.length > 0) {
+        eventsData.forEach(event => {
+          if (event.relatedPersons && event.relatedPersons.length > 0) {
+            event.relatedPersons.forEach(personId => {
+              // Ensure personId is a valid ObjectId string before attempting to convert
+              if (personId && mongoose.Types.ObjectId.isValid(personId.toString())) {
+                const objectId = new mongoose.Types.ObjectId(personId.toString());
+                if (!personIdsToFetch.some(id => id.equals(objectId))) {
+                  personIdsToFetch.push(objectId);
+                }
+              }
+            });
+          }
+        });
+      }
+
+
+      let personsMap: Map<string, { id: string; name: string }> = new Map();
+      if (personIdsToFetch.length > 0) {
+        try {
+          // Assuming Person model is imported and available
+          const personsFromDb = await Person.find({ _id: { $in: personIdsToFetch } })
+            .select('_id firstName lastName')
+            .lean<IPerson[]>(); // Specify IPerson type for lean query result
+          personsFromDb.forEach(person => {
+            personsMap.set(person._id.toString(), {
+              id: person._id.toString(),
+              name: `${person.firstName || ''} ${person.lastName || ''}`.trim() || 'Unknown Name',
+            });
+          });
+        } catch (personFetchError) {
+          logger.error('Error fetching related persons:', personFetchError);
+          // Decide if this is a critical error or if the process can continue
+          // For now, we'll log and continue, meaning some persons might not be populated
+        }
+      }
+
+      // Transform events data
+      const processedEvents = eventsData.map(event => {
+        const contentSnippet = createContentSnippet(event.content);
+
+        let populatedRelatedPersons: { id: string; name: string }[] = [];
+        if (event.relatedPersons && event.relatedPersons.length > 0) {
+          populatedRelatedPersons = event.relatedPersons
+            .map(personId => {
+              // Ensure personId is valid and can be converted to string for map lookup
+              return personId ? personsMap.get(personId.toString()) : undefined;
+            })
+            .filter(person => person !== undefined) as { id: string; name: string }[];
+        }
+
+        return {
+          ...event,
+          contentSnippet,
+          relatedPersons: populatedRelatedPersons,
+        };
+      });
 
       res.status(200).json({
-        data: events,
+        data: processedEvents,
         pagination: {
           total: totalEvents,
           page,
@@ -798,6 +956,9 @@ router.get(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Event'
+ *               # Note: Ideally, this $ref would point to a more specific response schema
+ *               # that explicitly includes `contentSnippet` and the populated `relatedPersons` structure.
+ *               # For this exercise, the main Event schema JSDoc has been updated.
  *       400:
  *         description: Invalid event ID
  *       401:
