@@ -11,6 +11,7 @@ export interface IComment extends Document {
   content: string;
   parentId?: mongoose.Types.ObjectId; // For threaded replies
   edited: boolean;
+  moderationStatus: 'visible' | 'hidden_by_moderator'; // New field
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,6 +61,12 @@ const CommentSchema: Schema<IComment> = new Schema(
     edited: {
       type: Boolean,
       default: false,
+    },
+    moderationStatus: {
+      type: String,
+      enum: ['visible', 'hidden_by_moderator'],
+      default: 'visible',
+      index: true,
     },
   },
   { timestamps: true }

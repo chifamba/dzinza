@@ -1,12 +1,13 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, Settings as SettingsIcon, Activity as SystemHealthIcon } from 'lucide-react'; // Added SystemHealthIcon (Activity)
+import { LayoutDashboard, Users, Settings as SettingsIcon, Activity as SystemHealthIcon, ShieldAlert as ModerationIcon } from 'lucide-react'; // Added ModerationIcon
 
 const adminNavItems = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard size={18} /> },
   { label: 'User Management', path: '/admin/users', icon: <Users size={18} /> },
+  { label: 'Content Moderation', path: '/admin/moderation/flags', icon: <ModerationIcon size={18} /> },
   { label: 'System Health', path: '/admin/system-health', icon: <SystemHealthIcon size={18} /> },
-  { label: 'Site Settings', path: '/admin/settings', icon: <SettingsIcon size={18} /> }, // Moved settings down
+  { label: 'Site Settings', path: '/admin/settings', icon: <SettingsIcon size={18} /> },
 ];
 
 const AdminLayout: React.FC = () => {
