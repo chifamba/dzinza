@@ -1,64 +1,83 @@
-import { i18n } from 'i18next';
-import { render, RenderResult } from '@testing-library/react';
+import React from 'react';
+import i18nInstance, { i18n } from 'i18next'; // Import the actual i18next and type
+import { render, RenderResult, RenderOptions } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { ReactElement } from 'react';
 
+// Import mock translations to use in the mock i18n instance
+import enAuthTranslations from '../locales/en/auth.json';
+import enCommonTranslations from '../locales/en/common.json';
+// Add other namespaces/languages if they are commonly used in tests
+
 /**
- * Mock i18n instance for testing
+ * Creates a mock i18n instance for testing.
+ * This instance uses actual i18next.init but with minimal resources.
  */
+import { initReactI18next } from 'react-i18next'; // Import initReactI18next
+
 export const createMockI18n = (language: string = 'en'): i18n => {
-  const mockI18n = {
-    language,
-    languages: ['en', 'sn', 'nd'],
-    t: jest.fn((key: string, options?: any) => {
-      // Simple mock translation that returns the key with options interpolated
-      if (options && typeof options === 'object') {
-        let result = key;
-        Object.keys(options).forEach(optionKey => {
-          result = result.replace(`{{${optionKey}}}`, options[optionKey]);
-        });
-        return result;
-      }
-      return key;
-    }),
-    changeLanguage: jest.fn().mockResolvedValue(undefined),
-    exists: jest.fn().mockReturnValue(true),
-    getFixedT: jest.fn(),
-    hasResourceBundle: jest.fn().mockReturnValue(true),
-    loadNamespaces: jest.fn().mockResolvedValue(undefined),
-    loadLanguages: jest.fn().mockResolvedValue(undefined),
-    on: jest.fn(),
-    off: jest.fn(),
-    emit: jest.fn(),
-    isInitialized: true,
-    options: {
+  const instance = i18nInstance.createInstance(); // Create a new i18next instance
+  instance
+    .use(initReactI18next) // Add this line
+    .init({
       lng: language,
       fallbackLng: 'en',
-      debug: false,
+    ns: ['common', 'auth', 'profile', 'dashboard', 'familyTree', 'landing', 'dnaMatching', 'historicalRecords', 'photoEnhancement'], // Ensure all used namespaces are listed
+    defaultNS: 'common',
+    debug: false, // Set to true to see i18next logs in tests
+    resources: { // Provide minimal resources for testing
+      en: {
+        auth: enAuthTranslations, // Use actual translations for 'auth'
+        common: enCommonTranslations, // Use actual translations for 'common'
+        // Add other namespaces as needed for tests
+        // profile: { 'profile.title': 'Profile Page [mocked]' },
+      },
+      // sn: { auth: { 'login.title': 'Pinda muAkaundi Yako [mocked]' } }, // Example for other languages
     },
-  } as unknown as i18n;
-
-  return mockI18n;
+    interpolation: {
+      escapeValue: false, // React already safes from xss
+    },
+    react: {
+      useSuspense: false, // Tests generally don't need suspense
+    },
+    parseMissingKeyHandler: (key, defaultValue, options) => {
+      // If interpolation values are provided, append them to the key
+      if (options && Object.keys(options).length > 0) {
+        // Basic stringification of options for the test expectation
+        // A more sophisticated approach might be needed for complex objects
+        const interpolations = Object.entries(options)
+          .map(([optKey, optVal]) => `${optKey}=${optVal}`)
+          .join(', ');
+        return `${key} {${interpolations}}`; // Mimic common interpolation format
+      }
+      return key; // Default behavior: return the key itself
+    }
+  });
+  return instance;
 };
 
 /**
  * Custom render function that includes i18n provider
  */
-export const renderWithI18n = (
-  ui: ReactElement,
-  { language = 'en', ...renderOptions } = {}
-): RenderResult & { i18n: i18n } => {
-  const mockI18n = createMockI18n(language);
+export function renderWithI18n(
+  ui: ReactElement, // Use ReactElement for better type safety
+  options?: RenderOptions & { language?: string; i18nInstance?: i18n }
+): RenderResult & { i18n: i18n } {
+  // Use the provided i18n instance or create a new mock one
+  const i18nForTest = options?.i18nInstance || createMockI18n(options?.language || 'en');
   
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
-    <I18nextProvider i18n={mockI18n}>
+    <I18nextProvider i18n={i18nForTest}>
       {children}
     </I18nextProvider>
   );
 
+  // Extract custom options before passing to RTL's render
+  const { language, i18nInstance, ...rtlOptions } = options || {};
+
   return {
-    ...render(ui, { wrapper: Wrapper, ...renderOptions }),
-    i18n: mockI18n,
+    ...render(ui, { wrapper: Wrapper, ...rtlOptions }),
+    i18n: i18nForTest, // Return the instance used in this render
   };
 };
 

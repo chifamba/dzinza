@@ -11,13 +11,33 @@ const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(''); // For API errors
+  const [formError, setFormError] = useState(''); // For client-side validation errors
   const { t } = useTranslation('auth');
+
+  const validateEmail = () => {
+    if (!email) {
+      setFormError(t('validation.emailRequired'));
+      return false;
+    }
+    // Basic email regex, consider a more robust one if needed
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setFormError(t('validation.emailInvalid'));
+      return false;
+    }
+    setFormError('');
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(''); // Clear previous API errors
+    if (!validateEmail()) {
+      setIsLoading(false); // Ensure loading is stopped if validation fails
+      return;
+    }
     setIsLoading(true);
-    setError('');
 
     try {
       await authApi.requestPasswordReset({ email });
@@ -116,6 +136,7 @@ const ForgotPassword: React.FC = () => {
                   placeholder="Enter your email address"
                 />
               </div>
+              {formError && <p role="alert" className="text-red-500 text-xs mt-1">{formError}</p>}
             </div>
 
             <div>

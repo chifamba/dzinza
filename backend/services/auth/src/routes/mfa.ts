@@ -1,11 +1,12 @@
-import { Router } from 'express';
+import express, { Router, Response, NextFunction } from 'express'; // Added Response, NextFunction
 import { body } from 'express-validator';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import { User } from '../models/User';
 import { validateRequest } from '../middleware/validation';
 import { logger } from '../utils/logger';
-import { verifyAccessToken } from '../utils/jwt';
+// import { verifyAccessToken } from '../utils/jwt'; // No longer needed here
+import { authenticateToken, AuthenticatedRequest } from '../middleware/authMiddleware';
 
 const router = Router();
 
@@ -18,15 +19,10 @@ const router = Router();
  *     security:
  *       - bearerAuth: []
  */
-router.post('/setup', async (req, res, next) => {
+router.post('/setup', authenticateToken, async (req: AuthenticatedRequest, res: Response, _next: NextFunction) => { // Typed res, _next
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const decoded = verifyAccessToken(token);
-    const user = await User.findById(decoded.userId);
+    const userId = req.user!.id; // user is guaranteed by authenticateToken
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -58,8 +54,9 @@ router.post('/setup', async (req, res, next) => {
 
     logger.info('MFA setup initiated', { userId: user._id });
 
-  } catch (error) {
-    next(error);
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error('Unknown error during MFA setup.');
+    _next(err); // Pass to error handler
   }
 });
 
@@ -69,20 +66,16 @@ router.post('/setup', async (req, res, next) => {
  *   post:
  *     summary: Verify and enable MFA
  *     tags: [MFA]
+ *     security:
+ *       - bearerAuth: [] # Added to indicate auth requirement
  */
-router.post('/verify-setup', [
+router.post('/verify-setup', authenticateToken, [
   body('token').isLength({ min: 6, max: 6 }).isNumeric(),
-], validateRequest, async (req, res, next) => {
+], validateRequest, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => { // Typed res, next
   try {
     const { token: mfaToken } = req.body;
-    const authToken = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!authToken) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const decoded = verifyAccessToken(authToken);
-    const user = await User.findById(decoded.userId);
+    const userId = req.user!.id; // user is guaranteed by authenticateToken
+    const user = await User.findById(userId);
 
     if (!user || !user.mfaSecret) {
       return res.status(404).json({ error: 'MFA setup not found' });
@@ -117,8 +110,8 @@ router.post('/verify-setup', [
 
     logger.info('MFA enabled', { userId: user._id });
 
-  } catch (error) {
-    next(error);
+  } catch (error: unknown) {
+    next(error); // Let central error handler manage
   }
 });
 
@@ -132,7 +125,7 @@ router.post('/verify-setup', [
 router.post('/verify', [
   body('userId').notEmpty(),
   body('token').isLength({ min: 6, max: 6 }),
-], validateRequest, async (req, res, next) => {
+], validateRequest, async (req: express.Request, res: Response, next: NextFunction) => { // Typed req, res, next
   try {
     const { userId, token } = req.body;
 
@@ -167,7 +160,7 @@ router.post('/verify', [
 
     res.json({ verified: true });
 
-  } catch (error) {
+  } catch (error: unknown) {
     next(error);
   }
 });
@@ -178,21 +171,17 @@ router.post('/verify', [
  *   post:
  *     summary: Disable MFA for user account
  *     tags: [MFA]
+ *     security:
+ *       - bearerAuth: [] # Added to indicate auth requirement
  */
-router.post('/disable', [
+router.post('/disable', authenticateToken, [
   body('password').notEmpty(),
   body('token').isLength({ min: 6, max: 6 }),
-], validateRequest, async (req, res, next) => {
+], validateRequest, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => { // Typed res, next
   try {
     const { password, token } = req.body;
-    const authToken = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!authToken) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const decoded = verifyAccessToken(authToken);
-    const user = await User.findById(decoded.userId);
+    const userId = req.user!.id; // user is guaranteed by authenticateToken
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -226,7 +215,7 @@ router.post('/disable', [
 
     logger.info('MFA disabled', { userId: user._id });
 
-  } catch (error) {
+  } catch (error: unknown) {
     next(error);
   }
 });
@@ -237,17 +226,13 @@ router.post('/disable', [
  *   post:
  *     summary: Generate new backup codes
  *     tags: [MFA]
+ *     security:
+ *       - bearerAuth: [] # Added to indicate auth requirement
  */
-router.post('/backup-codes', async (req, res, next) => {
+router.post('/backup-codes', authenticateToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => { // Typed res, next
   try {
-    const authToken = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!authToken) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const decoded = verifyAccessToken(authToken);
-    const user = await User.findById(decoded.userId);
+    const userId = req.user!.id; // user is guaranteed by authenticateToken
+    const user = await User.findById(userId);
 
     if (!user || !user.mfaEnabled) {
       return res.status(400).json({ error: 'MFA not enabled' });
@@ -265,7 +250,7 @@ router.post('/backup-codes', async (req, res, next) => {
 
     logger.info('New backup codes generated', { userId: user._id });
 
-  } catch (error) {
+  } catch (error: unknown) {
     next(error);
   }
 });

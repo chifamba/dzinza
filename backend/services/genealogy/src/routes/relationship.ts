@@ -185,18 +185,73 @@ router.post('/', [
       return res.status(404).json({ error: 'Person2 not found in this family tree' });
     }
 
-    // Check for existing relationship between these persons
-    const existingRelationship = await Relationship.findOne({
-      $or: [
-        { person1Id, person2Id },
-        { person1Id: person2Id, person2Id: person1Id }
-      ],
-      familyTreeId
-    });
+    // Helper function to check for cyclical relationships
+    // Note: This is a simplified check. For very large trees, it might need optimization (e.g., limiting depth).
+    const isAncestor = async (potentialAncestorId: string, personId: string, treeId: string, visited: Set<string> = new Set()): Promise<boolean> => {
+      if (potentialAncestorId === personId) return true;
+      if (visited.has(personId)) return false; // Path already explored
+      visited.add(personId);
+
+      // Find direct parents of 'personId'
+      // Relationship.findParents returns RelationshipDoc[], where person1Id is the parent.
+      const parentRelationships = await Relationship.find({ person2Id: personId, type: { $in: ['parent-child', 'adoptive-parent-child', 'step-parent-child', 'foster-parent-child'] }, familyTreeId: treeId });
+
+      if (!parentRelationships || parentRelationships.length === 0) return false;
+
+      for (const parentRel of parentRelationships) {
+        if (await isAncestor(potentialAncestorId, parentRel.person1Id.toString(), treeId, visited)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Cyclical relationship check for parent-child type relationships
+    const parentChildTypes = ['parent-child', 'adoptive-parent-child', 'step-parent-child', 'foster-parent-child'];
+    if (parentChildTypes.includes(type)) {
+      const parentCandidateId = person1Id; // person1Id is defined as the parent in these relationships
+      const childCandidateId = person2Id;
+
+      // Check 1: Child cannot be an ancestor of the Parent
+      if (await isAncestor(childCandidateId, parentCandidateId, familyTreeId)) {
+        logger.warn('Cyclical relationship detected: Child is an ancestor of the Parent.', { userId, familyTreeId, parentCandidateId, childCandidateId, type, correlationId: req.correlationId });
+        return res.status(400).json({ error: 'Cyclical relationship detected: The child cannot be an ancestor of the parent.' });
+      }
+      // Check 2: Parent cannot be a descendant of the Child (i.e. child is not an ancestor of parent is already done)
+      // This also implies parent cannot be child of itself (which model validation should also catch)
+      // No, this check is not needed here as the first one covers it. Redundant.
+    }
+
+    // Check for existing relationship of the same type (or any for certain types)
+    // For parent-child, a person can't have the same individual as two different types of parent from person1's perspective.
+    // And a person can't be a child of the same parent twice.
+    // This logic might need refinement based on how specific types should interact.
+    // The original check was for *any* existing relationship.
+    // Let's refine to check for a relationship of the *same type* or conflicting parent-child.
+
+    let conflictingRelationshipQuery: any = {
+        $or: [
+            { person1Id, person2Id, type, familyTreeId },
+            { person1Id: person2Id, person2Id: person1Id, type, familyTreeId } // For symmetric types
+        ]
+    };
+
+    if (parentChildTypes.includes(type)) {
+        // If adding parent-child, ensure person2 (child) doesn't already have person1 (parent) as a parent of this type
+        // or any other parent-child type (a person usually has max 2 biological parents shown as 'parent-child')
+        // This rule might be too strict if we allow multiple step-parents for example.
+        // For now, let's assume only one 'parent-child' like relationship from P1 to P2.
+        conflictingRelationshipQuery = { person1Id, person2Id, type, familyTreeId };
+    }
+
+
+    const existingRelationship = await Relationship.findOne(conflictingRelationshipQuery);
 
     if (existingRelationship) {
-      return res.status(400).json({ error: 'Relationship already exists between these persons' });
+       logger.warn('Conflicting relationship detected', { userId, familyTreeId, person1Id, person2Id, type, correlationId: req.correlationId });
+      return res.status(400).json({ error: `A relationship of type '${type}' already exists or conflicts with an existing one.` });
     }
+
 
     // Create the relationship
     const relationship = new Relationship({

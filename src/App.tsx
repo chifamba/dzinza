@@ -8,7 +8,8 @@ import {
   ForgotPasswordPage,
   ResetPasswordPage,
   DashboardPage,
-  FamilyTreePage // Import FamilyTreePage
+  FamilyTreePage, // Import FamilyTreePage
+  OAuthCallbackPage // Import OAuthCallbackPage
 } from './pages';
 import { ProtectedRoute } from './components/auth'; // Adjust path as needed
 
@@ -22,6 +23,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+        <Route path="/auth/oauth/callback/:provider" element={<OAuthCallbackPage />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>

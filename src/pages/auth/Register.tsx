@@ -11,7 +11,7 @@ import { PasswordStrengthIndicator } from '../../components/ui/PasswordStrengthI
 const Register = () => {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
-  const { register, isLoading, error } = useAuth();
+  const { register, isLoading, error, signInWithProvider } = useAuth();
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -107,15 +107,15 @@ const Register = () => {
             <TreePine className="h-12 w-12" />
           </motion.div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900 font-display">
-            {t('register.title')}
+            {t('signUp.title')}
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            {t('register.subtitle')}{' '}
+            {t('signUp.subtitle')}{' '}
             <Link 
               to="/auth/login" 
               className="font-medium text-dzinza-600 hover:text-dzinza-500 transition-colors"
             >
-              {t('register.signInLink')}
+              {t('signUp.signInLink')}
             </Link>
           </p>
         </div>
@@ -137,7 +137,7 @@ const Register = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('register.firstName')}
+                  {t('signUp.firstName')}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -151,7 +151,7 @@ const Register = () => {
                     value={formData.firstName}
                     onChange={handleInputChange}
                     className="appearance-none relative block w-full pl-10 pr-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-dzinza-500 focus:border-dzinza-500 focus:z-10 sm:text-sm transition-colors"
-                    placeholder={t('register.firstNamePlaceholder')}
+                    placeholder={t('signUp.firstNamePlaceholder')}
                     disabled={isLoading}
                   />
                 </div>
@@ -159,7 +159,7 @@ const Register = () => {
 
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('register.lastName')}
+                  {t('signUp.lastName')}
                 </label>
                 <input
                   id="lastName"
@@ -169,7 +169,7 @@ const Register = () => {
                   value={formData.lastName}
                   onChange={handleInputChange}
                   className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-dzinza-500 focus:border-dzinza-500 focus:z-10 sm:text-sm transition-colors"
-                  placeholder={t('register.lastNamePlaceholder')}
+                  placeholder={t('signUp.lastNamePlaceholder')}
                   disabled={isLoading}
                 />
               </div>
@@ -178,7 +178,7 @@ const Register = () => {
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('register.email')}
+                {t('signUp.email')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -192,7 +192,7 @@ const Register = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   className="appearance-none relative block w-full pl-10 pr-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-dzinza-500 focus:border-dzinza-500 focus:z-10 sm:text-sm transition-colors"
-                  placeholder={t('register.emailPlaceholder')}
+                  placeholder={t('signUp.emailPlaceholder')}
                   disabled={isLoading}
                 />
               </div>
@@ -201,7 +201,7 @@ const Register = () => {
             {/* Preferred Language */}
             <div>
               <label htmlFor="preferredLanguage" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('register.preferredLanguage')}
+                {t('signUp.preferredLanguage')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -227,7 +227,7 @@ const Register = () => {
             {/* Password */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('register.password')}
+                {t('signUp.password')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -241,7 +241,7 @@ const Register = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   className="appearance-none relative block w-full pl-10 pr-10 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-dzinza-500 focus:border-dzinza-500 focus:z-10 sm:text-sm transition-colors"
-                  placeholder={t('register.passwordPlaceholder')}
+                  placeholder={t('signUp.passwordPlaceholder')}
                   disabled={isLoading}
                 />
                 <button
@@ -264,7 +264,7 @@ const Register = () => {
             {/* Confirm Password */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                {t('register.confirmPassword')}
+                {t('signUp.confirmPassword')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -282,7 +282,7 @@ const Register = () => {
                       ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
                       : 'border-gray-300'
                   }`}
-                  placeholder={t('register.confirmPasswordPlaceholder')}
+                  placeholder={t('signUp.confirmPasswordPlaceholder')}
                   disabled={isLoading}
                 />
                 <button
@@ -298,7 +298,7 @@ const Register = () => {
                 </button>
               </div>
               {formData.confirmPassword && !isPasswordMatch && (
-                <p className="mt-1 text-sm text-red-600">{t('register.passwordMismatch')}</p>
+                <p className="mt-1 text-sm text-red-600">{t('validation.passwordsNoMatch')}</p>
               )}
             </div>
           </div>
@@ -318,13 +318,14 @@ const Register = () => {
             </div>
             <div className="ml-3 text-sm">
               <label htmlFor="agreeToTerms" className="text-gray-700">
-                {t('register.agreeToTerms')}{' '}
+                {t('signUp.agreeTerms')}{' '}
+                {/* Assuming 'agreeTerms' includes the full phrase or adjust structure if 'termsOfService' and 'privacyPolicy' are separate links in the translation */}
                 <Link to="/terms" className="text-dzinza-600 hover:text-dzinza-500 font-medium">
-                  {t('register.termsOfService')}
+                  {t('common:termsOfService', 'Terms of Service')}
                 </Link>{' '}
-                {t('register.and')}{' '}
+                {t('common:and', 'and')}{' '}
                 <Link to="/privacy" className="text-dzinza-600 hover:text-dzinza-500 font-medium">
-                  {t('register.privacyPolicy')}
+                  {t('common:privacyPolicy', 'Privacy Policy')}
                 </Link>
               </label>
             </div>
@@ -341,7 +342,7 @@ const Register = () => {
             {isLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
-              t('register.createAccount')
+              t('signUp.createAccount')
             )}
           </motion.button>
 
@@ -352,13 +353,14 @@ const Register = () => {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">{t('register.orContinueWith')}</span>
+                <span className="px-2 bg-white text-gray-500">{t('signUp.orContinueWith')}</span>
               </div>
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 type="button"
+                onClick={() => signInWithProvider('google')}
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                 disabled={isLoading}
               >
@@ -373,6 +375,7 @@ const Register = () => {
 
               <button
                 type="button"
+                onClick={() => signInWithProvider('facebook')}
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                 disabled={isLoading}
               >

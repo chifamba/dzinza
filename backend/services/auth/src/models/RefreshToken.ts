@@ -58,4 +58,18 @@ RefreshTokenSchema.methods.revoke = function(reason: string = 'logout') {
   return this.save();
 };
 
+// Static method to revoke all tokens for a user
+RefreshTokenSchema.statics.revokeAllForUser = async function(userId: string, reason: string = 'security') {
+  return this.updateMany(
+    { userId, isRevoked: false },
+    {
+      $set: {
+        isRevoked: true,
+        revokedAt: new Date(),
+        revokedReason: reason
+      }
+    }
+  );
+};
+
 export const RefreshToken = mongoose.model<IRefreshToken>('RefreshToken', RefreshTokenSchema);
