@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { FamilyMember } from '../../types/genealogy'; // Adjust path
 import { Input, Button } from '../ui'; // Adjust path
-import PersonEventsList from '../../events/PersonEventsList'; // Import PersonEventsList
+import PersonEventsList from '../../components/events/PersonEventsList'; // Import PersonEventsList
 
 interface EditPersonFormProps {
   person: FamilyMember;

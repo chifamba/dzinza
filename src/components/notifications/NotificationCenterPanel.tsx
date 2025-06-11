@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { NotificationData, NotificationsApiResponse } from '../../types/notifications'; // Adjust path
 import NotificationItem from './NotificationItem';
-import { logger } from '@shared/utils/logger';
+import { logger } from '../../utils/logger';
 // import { Button } from '../ui/Button'; // Assuming a Button component
 
 // Dummy Button component if not available
@@ -69,7 +69,9 @@ const NotificationCenterPanel: React.FC<NotificationCenterPanelProps> = ({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
       setError(errorMessage);
-      logger.error('Error fetching notifications:', err);
+      if (logger?.error) {
+        logger.error('Error fetching notifications:', err);
+      }
       setNotifications([]); // Clear on error
     } finally {
       setIsLoading(false);
@@ -90,7 +92,9 @@ const NotificationCenterPanel: React.FC<NotificationCenterPanelProps> = ({
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
       onNotificationsUpdated?.(); // Inform parent to update unread count
     } catch (err) {
-      logger.error(`Error marking notification ${id} as read:`, err);
+      if (logger?.error) {
+        logger.error(`Error marking notification ${id} as read:`, err);
+      }
       // Potentially show a toast or small error message here
     }
   };
@@ -104,7 +108,9 @@ const NotificationCenterPanel: React.FC<NotificationCenterPanelProps> = ({
       fetchNotifications(1);
       onNotificationsUpdated?.(); // Inform parent to update unread count
     } catch (err) {
-      logger.error('Error marking all notifications as read:', err);
+      if (logger?.error) {
+        logger.error('Error marking all notifications as read:', err);
+      }
       setError(err instanceof Error ? err.message : 'Failed to mark all as read.');
     } finally {
       setIsLoading(false);

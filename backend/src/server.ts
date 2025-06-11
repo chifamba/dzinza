@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { logger } from './shared/utils/logger';
@@ -15,6 +14,9 @@ import { metricsMiddleware } from './shared/middleware/metrics';
 import { healthRoutes } from './routes/health';
 import { authRoutes } from './routes/auth';
 import { swaggerOptions } from './config/swagger';
+import { database } from './config/database';
+import { migrationRunner } from './config/migrations';
+import { getMetrics } from './shared/middleware/metrics';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -81,6 +83,12 @@ app.use('/health', healthRoutes);
 // Authentication routes (handled by gateway)
 app.use('/api/auth', authRoutes);
 
+// Metrics endpoint
+app.get('/metrics', getMetrics);
+
+// For now, comment out microservice proxies until services are ready
+// TODO: Uncomment when microservices are implemented
+/*
 // Microservice proxies with authentication
 app.use('/api/genealogy', 
   authMiddleware,
@@ -120,6 +128,7 @@ app.use('/api/storage',
     }
   })
 );
+*/
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -133,20 +142,51 @@ app.use('*', (req, res) => {
 app.use(errorHandler);
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  try {
+    await database.disconnect();
+  } catch (error) {
+    logger.error('Error disconnecting from database during shutdown:', error);
+  }
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
+  try {
+    await database.disconnect();
+  } catch (error) {
+    logger.error('Error disconnecting from database during shutdown:', error);
+  }
   process.exit(0);
 });
 
-app.listen(PORT, () => {
-  logger.info(`Dzinza API Gateway running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV}`);
-  logger.info(`API Documentation: http://localhost:${PORT}/api/docs`);
-});
+// Initialize server
+async function startServer() {
+  try {
+    // Connect to database
+    await database.connect();
+    logger.info('Database connected successfully');
+
+    // Run migrations
+    await migrationRunner.runMigrations();
+    logger.info('Database migrations completed');
+
+    // Start server
+    app.listen(PORT, () => {
+      logger.info(`Dzinza API Gateway running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV}`);
+      logger.info(`API Documentation: http://localhost:${PORT}/api/docs`);
+    });
+
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();
 
 export default app;

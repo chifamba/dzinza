@@ -1,6 +1,6 @@
-export default {
+module.exports = {
   testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
 
   moduleNameMapper: {
     '^@shared/(.*)$': '<rootDir>/backend/shared/$1',
@@ -12,6 +12,7 @@ export default {
     '^@tiptap/starter-kit$': '<rootDir>/src/__mocks__/@tiptap/starter-kit.js',
     '^@tiptap/core$': '<rootDir>/src/__mocks__/@tiptap/core.js',
     '^@tiptap/react$': '<rootDir>/src/__mocks__/@tiptap/react.js',
+    '../../utils/logger': '<rootDir>/src/__mocks__/utils/logger.ts',
   },
 
   transform: {

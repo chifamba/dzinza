@@ -100,15 +100,15 @@ describe('Internationalization', () => {
 
   describe('Cultural Formatting', () => {
     it('formats dates according to locale', () => {
-      const testDate = new Date('2023-12-25');
+      const testDate = new Date('2023-12-25T12:00:00Z'); // Use ISO string with time to avoid timezone issues
       
       // Test English formatting
-      const enDate = new Intl.DateTimeFormat('en').format(testDate);
+      const enDate = new Intl.DateTimeFormat('en', { timeZone: 'UTC' }).format(testDate);
       expect(enDate).toContain('12');
       expect(enDate).toContain('25');
       
       // Test Zimbabwean English formatting
-      const zwDate = new Intl.DateTimeFormat('en-ZW').format(testDate);
+      const zwDate = new Intl.DateTimeFormat('en-ZW', { timeZone: 'UTC' }).format(testDate);
       expect(zwDate).toBeDefined();
     });
 
