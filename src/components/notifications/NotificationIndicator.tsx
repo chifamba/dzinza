@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell } from 'lucide-react'; // Assuming lucide-react for icons
 import NotificationCenterPanel from './NotificationCenterPanel';
 import { UnreadNotificationsCountResponse } from '../../types/notifications'; // Adjust path
-import { logger } from '@shared/utils/logger';
+import { logger } from '../../utils/logger';
 
 const NotificationIndicator: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -27,7 +27,9 @@ const NotificationIndicator: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
       setErrorCount(errorMessage); // You might want to display this error somewhere or just log it
-      logger.error('Error fetching unread notification count:', err);
+      if (logger?.error) {
+        logger.error('Error fetching unread notification count:', err);
+      }
       setUnreadCount(0); // Reset count on error
     } finally {
       setIsLoadingCount(false);

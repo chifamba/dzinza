@@ -1,22 +1,32 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-// Ensure UserData includes id and optional profileImageUrl
-export interface UserData { // Export if not already
+// Updated UserData interface to match authService
+export interface UserData {
   id: string;
-  name: string;
+  name?: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
   profileImageUrl?: string;
+  emailVerified?: boolean;
+  createdAt?: string;
+  lastLogin?: string;
 }
 
 interface LoginSuccessPayload {
   user: UserData;
-  token: string;
+  tokens: {
+    accessToken: string;
+    refreshToken?: string;
+  };
 }
 
 interface AuthState {
   isAuthenticated: boolean;
   user: UserData | null; // This will hold the logged-in user's profile
-  token: string | null;
+  accessToken: string | null;
+  refreshToken: string | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed'; // For login/register
   error: string | null;    // For login/register
 
@@ -36,7 +46,8 @@ interface AuthState {
 const initialState: AuthState = {
   isAuthenticated: false,
   user: null,
-  token: null,
+  accessToken: null,
+  refreshToken: null,
   status: 'idle',
   error: null,
 
@@ -66,20 +77,23 @@ const authSlice = createSlice({
       state.status = 'succeeded';
       state.isAuthenticated = true;
       state.user = action.payload.user; // User profile is set here
-      state.token = action.payload.token;
+      state.accessToken = action.payload.tokens.accessToken;
+      state.refreshToken = action.payload.tokens.refreshToken || null;
       state.profileStatus = 'succeeded'; // Profile is implicitly fetched on login
     },
     loginFailure(state, action: PayloadAction<string>) {
       state.status = 'failed';
       state.isAuthenticated = false;
       state.user = null;
-      state.token = null;
+      state.accessToken = null;
+      state.refreshToken = null;
       state.error = action.payload;
     },
     logout(state) {
       state.isAuthenticated = false;
       state.user = null;
-      state.token = null;
+      state.accessToken = null;
+      state.refreshToken = null;
       state.status = 'idle';
       state.error = null;
       state.forgotPasswordStatus = 'idle';
@@ -99,11 +113,12 @@ const authSlice = createSlice({
     // Assuming registerSuccess might also log the user in or provide user data
     registerSuccess(state, action: PayloadAction<LoginSuccessPayload>) {
       state.status = 'succeeded';
-      // If registration also logs in:
-      // state.isAuthenticated = true;
-      // state.user = action.payload.user;
-      // state.token = action.payload.token;
-      // state.profileStatus = 'succeeded';
+      // Registration also logs in the user
+      state.isAuthenticated = true;
+      state.user = action.payload.user;
+      state.accessToken = action.payload.tokens.accessToken;
+      state.refreshToken = action.payload.tokens.refreshToken || null;
+      state.profileStatus = 'succeeded';
     },
     registerFailure(state, action: PayloadAction<string>) {
       state.status = 'failed';
@@ -132,7 +147,8 @@ const authSlice = createSlice({
       state.resetPasswordMessage = action.payload;
       state.isAuthenticated = false;
       state.user = null;
-      state.token = null;
+      state.accessToken = null;
+      state.refreshToken = null;
       state.status = 'idle';
       state.error = null;
     },
@@ -166,9 +182,13 @@ const authSlice = createSlice({
       state.profileStatus = 'failed';
       state.profileError = action.payload;
     },
+
+    // Token refresh action
+    refreshTokenSuccess(state, action: PayloadAction<{ accessToken: string }>) {
+      state.accessToken = action.payload.accessToken;
+    },
   },
 });
-
 export const {
   loginStart, loginSuccess, loginFailure,
   logout,
@@ -177,7 +197,8 @@ export const {
   resetPasswordStart, resetPasswordSuccess, resetPasswordFailure,
   // Export new profile actions
   fetchProfileStart, fetchProfileSuccess, fetchProfileFailure,
-  updateProfileStart, updateProfileSuccess, updateProfileFailure
+  updateProfileStart, updateProfileSuccess, updateProfileFailure,
+  refreshTokenSuccess
 } = authSlice.actions;
 
 export default authSlice.reducer;

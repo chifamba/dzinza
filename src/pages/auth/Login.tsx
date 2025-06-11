@@ -4,9 +4,7 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Mail, Lock, TreePine, Shield } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-// LoadingSpinner and Alert are already imported, but ensure path is correct if components are moved
-import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { Alert } from '../../components/ui/Alert';
+import { LoadingSpinner, Alert } from '../../components/ui';
 
 const Login = () => {
   const { t } = useTranslation('auth'); // Restored namespace
