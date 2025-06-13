@@ -1,18 +1,15 @@
 # Dzinza Genealogy Platform - Docker Compose Configuration
 # Complete development and production environment setup
 
-version: '3.8'
-
 services:
   # Frontend - React Application
   frontend:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
-      target: production
     container_name: dzinza-frontend
     ports:
-      - "3000:80"
+      - "8080:80"
     depends_on:
       - backend
       - redis
@@ -30,7 +27,7 @@ services:
   # Backend API Gateway
   backend:
     build:
-      context: ./backend
+      context: ./backend-service
       dockerfile: Dockerfile
     container_name: dzinza-backend
     ports:
@@ -43,12 +40,12 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://dzinza_user:${DB_PASSWORD}@postgres:5432/dzinza_db
       - MONGODB_URL=mongodb://dzinza_user:${MONGO_PASSWORD}@mongodb:27017/dzinza_genealogy
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
       - JWT_SECRET=${JWT_SECRET}
       - API_KEY=${API_KEY}
-      - CORS_ORIGIN=http://localhost:3000
+      - CORS_ORIGIN=http://localhost:8080
     volumes:
-      - ./backend/uploads:/app/uploads
+      - ./backend-service/uploads:/app/uploads
     networks:
       - dzinza-network
     restart: unless-stopped
@@ -61,8 +58,8 @@ services:
   # Authentication Service
   auth-service:
     build:
-      context: ./backend/services/auth
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: auth-service/Dockerfile
     container_name: dzinza-auth-service
     ports:
       - "3002:3002"
@@ -82,11 +79,11 @@ services:
   # Genealogy Service
   genealogy-service:
     build:
-      context: ./backend/services/genealogy
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: genealogy-service/Dockerfile
     container_name: dzinza-genealogy-service
     ports:
-      - "3003:3003"
+      - "3004:3004"
     depends_on:
       - mongodb
       - postgres
@@ -101,11 +98,11 @@ services:
   # Search Service (Elasticsearch-based)
   search-service:
     build:
-      context: ./backend/services/search
+      context: ./search-service
       dockerfile: Dockerfile
     container_name: dzinza-search-service
     ports:
-      - "3004:3004"
+      - "3003:3003"
     depends_on:
       - elasticsearch
     environment:
@@ -118,8 +115,8 @@ services:
   # File Storage Service
   storage-service:
     build:
-      context: ./backend/services/storage
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: storage-service/Dockerfile
     container_name: dzinza-storage-service
     ports:
       - "3005:3005"
@@ -130,14 +127,14 @@ services:
       - AWS_REGION=${AWS_REGION}
       - S3_BUCKET=${S3_BUCKET}
     volumes:
-      - ./storage:/app/storage
+      - ./storage-service/storage:/app/storage
     networks:
       - dzinza-network
     restart: unless-stopped
 
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17.5-alpine
     container_name: dzinza-postgres
     ports:
       - "5432:5432"
@@ -160,7 +157,7 @@ services:
 
   # MongoDB for Genealogy Data
   mongodb:
-    image: mongo:7-jammy
+    image: mongo:8.0-noble
     container_name: dzinza-mongodb
     ports:
       - "27017:27017"
@@ -182,7 +179,7 @@ services:
 
   # Redis Cache & Session Store
   redis:
-    image: redis:7-alpine
+    image: redis:8.0.2-alpine
     container_name: dzinza-redis
     ports:
       - "6379:6379"
@@ -200,7 +197,7 @@ services:
 
   # Elasticsearch for Search
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    image: elasticsearch:9.0.2
     container_name: dzinza-elasticsearch
     ports:
       - "9200:9200"
@@ -215,32 +212,33 @@ services:
       - dzinza-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   # Prometheus Monitoring
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.4.1
     container_name: dzinza-prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
     networks:
       - dzinza-network
     restart: unless-stopped
 
   # Grafana Dashboard
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.1.0
     container_name: dzinza-grafana
     ports:
       - "3000:3000"
@@ -248,8 +246,8 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
     networks:
       - dzinza-network
     restart: unless-stopped

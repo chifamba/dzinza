@@ -361,7 +361,13 @@ scrape_configs:
 
   - job_name: 'dzinza-genealogy-service'
     static_configs:
-      - targets: ['genealogy-service:3003']
+      - targets: ['genealogy-service:3004']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'dzinza-search-service'
+    static_configs:
+      - targets: ['search-service:3003']
     metrics_path: '/metrics'
     scrape_interval: 15s
 

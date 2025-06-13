@@ -1,0 +1,54 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "dzinza-frontend"
+    static_configs:
+      - targets: ["frontend:80"]
+    metrics_path: "/metrics"
+    scrape_interval: 30s
+
+  - job_name: "dzinza-backend"
+    static_configs:
+      - targets: ["backend:3001"]
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+
+  - job_name: "dzinza-auth-service"
+    static_configs:
+      - targets: ["auth-service:3002"]
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+
+  - job_name: "dzinza-genealogy-service"
+    static_configs:
+      - targets: ["genealogy-service:3004"]
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+
+  - job_name: "dzinza-search-service"
+    static_configs:
+      - targets: ["search-service:3003"]
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["postgres:5432"]
+    metrics_path: "/metrics"
+    scrape_interval: 30s
+
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis:6379"]
+    metrics_path: "/metrics"
+    scrape_interval: 30s

@@ -1,9 +1,9 @@
-// Health check for search service
+// Health check for storage service
 const http = require("http");
 
 const options = {
   hostname: "localhost",
-  port: 3003,
+  port: 3005,
   path: "/health",
   method: "GET",
   timeout: 3000,
