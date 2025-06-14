@@ -1,3 +1,12 @@
+// Load environment variables first
+import dotenv from "dotenv";
+import path from "path";
+
+// Load root .env file first (shared configuration)
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+// Then load service-specific .env file (overrides)
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -17,16 +26,22 @@ import { swaggerOptions } from "./config/swagger";
 import { database } from "./config/database";
 import { migrationRunner } from "./config/migrations";
 import { getMetrics } from "./shared/middleware/metrics";
-import { initTracer } from './utils/tracing'; // Import OpenTelemetry tracer initialization
+import { initTracer } from "./utils/tracing"; // Import OpenTelemetry tracer initialization
 
 // Initialize OpenTelemetry Tracer
 // IMPORTANT: This should be done as early as possible in the application lifecycle.
-const OTEL_SERVICE_NAME_BACKEND = process.env.OTEL_SERVICE_NAME || 'backend-service';
-const JAEGER_ENDPOINT_BACKEND = process.env.JAEGER_ENDPOINT || 'http://localhost:4318/v1/traces';
-const NODE_ENV_BACKEND = process.env.NODE_ENV || 'development';
+const OTEL_SERVICE_NAME_BACKEND =
+  process.env.OTEL_SERVICE_NAME || "backend-service";
+const JAEGER_ENDPOINT_BACKEND =
+  process.env.JAEGER_ENDPOINT || "http://localhost:4318/v1/traces";
+const NODE_ENV_BACKEND = process.env.NODE_ENV || "development";
 
-if (process.env.ENABLE_TRACING === 'true') {
-  initTracer(OTEL_SERVICE_NAME_BACKEND, JAEGER_ENDPOINT_BACKEND, NODE_ENV_BACKEND);
+if (process.env.ENABLE_TRACING === "true") {
+  initTracer(
+    OTEL_SERVICE_NAME_BACKEND,
+    JAEGER_ENDPOINT_BACKEND,
+    NODE_ENV_BACKEND
+  );
 }
 
 const app = express();
@@ -190,9 +205,9 @@ async function startServer() {
     await database.connect();
     logger.info("Database connected successfully");
 
-    // Run migrations
-    await migrationRunner.runMigrations();
-    logger.info("Database migrations completed");
+    // Run migrations (commented out since Docker handles initialization)
+    // await migrationRunner.runMigrations();
+    logger.info("Database initialization handled by Docker");
 
     // Start server
     app.listen(PORT, () => {

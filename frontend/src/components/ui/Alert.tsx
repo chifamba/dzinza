@@ -1,9 +1,9 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, CheckCircle, Info, X, AlertTriangle } from 'lucide-react';
+import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { AlertCircle, CheckCircle, Info, X, AlertTriangle } from "lucide-react";
 
 interface AlertProps {
-  variant: 'success' | 'error' | 'warning' | 'info';
+  variant: "success" | "error" | "warning" | "info";
   message: string;
   title?: string;
   onClose?: () => void;
@@ -15,37 +15,37 @@ export const Alert: React.FC<AlertProps> = ({
   message,
   title,
   onClose,
-  className = ''
+  className = "",
 }) => {
   const variants = {
     success: {
-      bg: 'bg-green-50',
-      border: 'border-green-200',
-      text: 'text-green-800',
+      bg: "bg-green-50",
+      border: "border-green-200",
+      text: "text-green-800",
       icon: CheckCircle,
-      iconColor: 'text-green-400'
+      iconColor: "text-green-400",
     },
     error: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
-      text: 'text-red-800',
+      bg: "bg-red-50",
+      border: "border-red-200",
+      text: "text-red-800",
       icon: AlertCircle,
-      iconColor: 'text-red-400'
+      iconColor: "text-red-400",
     },
     warning: {
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-200',
-      text: 'text-yellow-800',
+      bg: "bg-yellow-50",
+      border: "border-yellow-200",
+      text: "text-yellow-800",
       icon: AlertTriangle,
-      iconColor: 'text-yellow-400'
+      iconColor: "text-yellow-400",
     },
     info: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
-      text: 'text-blue-800',
+      bg: "bg-blue-50",
+      border: "border-blue-200",
+      text: "text-blue-800",
       icon: Info,
-      iconColor: 'text-blue-400'
-    }
+      iconColor: "text-blue-400",
+    },
   };
 
   const config = variants[variant];
@@ -70,9 +70,7 @@ export const Alert: React.FC<AlertProps> = ({
                 {title}
               </h3>
             )}
-            <div className={`text-sm ${config.text}`}>
-              {message}
-            </div>
+            <div className={`text-sm ${config.text}`}>{message}</div>
           </div>
           {onClose && (
             <div className="ml-auto pl-3">
@@ -93,3 +91,5 @@ export const Alert: React.FC<AlertProps> = ({
     </AnimatePresence>
   );
 };
+
+export default Alert;

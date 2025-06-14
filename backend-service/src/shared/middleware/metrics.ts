@@ -1,49 +1,49 @@
-import { Request, Response, NextFunction } from 'express';
-import client from 'prom-client';
-import { logger } from '../utils/logger';
+import { Request, Response, NextFunction } from "express";
+import client from "prom-client";
+import { logger } from "../utils/logger";
 
 // Create a Registry
 const register = new client.Registry();
 
 // Add default metrics (CPU, memory, etc.) with a service-specific prefix
-client.collectDefaultMetrics({ register, prefix: 'backend_service_' });
+client.collectDefaultMetrics({ register, prefix: "backend_service_" });
 
 // Custom metrics
 export const httpRequestDuration = new client.Histogram({
-  name: 'backend_service_http_request_duration_seconds',
-  help: 'Duration of HTTP requests in seconds for the backend service',
-  labelNames: ['method', 'route', 'status_code'],
-  buckets: [0.1, 0.5, 1, 2, 5, 10] // Consider standardizing buckets across services or using default
+  name: "backend_service_http_request_duration_seconds",
+  help: "Duration of HTTP requests in seconds for the backend service",
+  labelNames: ["method", "route", "status_code"],
+  buckets: [0.1, 0.5, 1, 2, 5, 10], // Consider standardizing buckets across services or using default
 });
 
 export const httpRequestsTotal = new client.Counter({
-  name: 'backend_service_http_requests_total',
-  help: 'Total number of HTTP requests for the backend service',
-  labelNames: ['method', 'route', 'status_code']
+  name: "backend_service_http_requests_total",
+  help: "Total number of HTTP requests for the backend service",
+  labelNames: ["method", "route", "status_code"],
 });
 
 export const activeConnections = new client.Gauge({
-  name: 'backend_service_http_active_connections',
-  help: 'Number of active HTTP connections for the backend service'
+  name: "backend_service_http_active_connections",
+  help: "Number of active HTTP connections for the backend service",
 });
 
 export const databaseConnectionsActive = new client.Gauge({
-  name: 'backend_service_database_connections_active',
-  help: 'Number of active database connections for the backend service'
+  name: "backend_service_database_connections_active",
+  help: "Number of active database connections for the backend service",
 });
 
 export const databaseQueryDuration = new client.Histogram({
-  name: 'backend_service_database_query_duration_seconds',
-  help: 'Duration of database queries in seconds for the backend service',
-  labelNames: ['operation', 'table'],
-  buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5]
+  name: "backend_service_database_query_duration_seconds",
+  help: "Duration of database queries in seconds for the backend service",
+  labelNames: ["operation", "table"],
+  buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5],
 });
 
 // --- New service-specific metrics for backend-service ---
 export const userProfileRequestsCounter = new client.Counter({
-  name: 'backend_service_user_profile_requests_total',
-  help: 'Total number of user profile requests processed by backend-service',
-  labelNames: ['profile_type'], // e.g., 'full', 'summary'
+  name: "backend_service_user_profile_requests_total",
+  help: "Total number of user profile requests processed by backend-service",
+  labelNames: ["profile_type"], // e.g., 'full', 'summary'
 });
 
 // Register metrics (prom-client typically auto-registers metrics defined with a 'name' unless `register` option is explicitly passed to constructor)
@@ -79,46 +79,46 @@ register.registerMetric(userProfileRequestsCounter); // Register the new metric
 /**
  * Middleware to collect HTTP metrics
  */
-export const metricsMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const metricsMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const start = Date.now();
-  
+
   // Increment active connections
   activeConnections.inc();
 
   // Override res.end to capture metrics when response is sent
   const originalEnd = res.end;
-  res.end = function(...args: any[]) {
+  res.end = function (this: any, ...args: any[]): any {
     const duration = (Date.now() - start) / 1000;
-    const route = req.route?.path || req.path || 'unknown';
+    const route = req.route?.path || req.path || "unknown";
     const method = req.method;
     const statusCode = res.statusCode.toString();
 
     // Record metrics
-    httpRequestDuration
-      .labels(method, route, statusCode)
-      .observe(duration);
+    httpRequestDuration.labels(method, route, statusCode).observe(duration);
 
-    httpRequestsTotal
-      .labels(method, route, statusCode)
-      .inc();
+    httpRequestsTotal.labels(method, route, statusCode).inc();
 
     // Decrement active connections
     activeConnections.dec();
 
     // Log performance metrics
-    logger.debug('HTTP request completed', {
-      service: 'metrics',
+    logger.debug("HTTP request completed", {
+      service: "metrics",
       method,
       route,
       statusCode,
       duration: `${duration}s`,
       ip: req.ip,
-      userAgent: req.get('User-Agent')
+      userAgent: req.get("User-Agent"),
     });
 
     // Call original end method
-    originalEnd.apply(res, args);
-  };
+    return originalEnd.apply(this, args as any);
+  } as any;
 
   next();
 };
@@ -128,12 +128,12 @@ export const metricsMiddleware = (req: Request, res: Response, next: NextFunctio
  */
 export const getMetrics = async (req: Request, res: Response) => {
   try {
-    res.set('Content-Type', register.contentType);
+    res.set("Content-Type", register.contentType);
     const metrics = await register.metrics();
     res.end(metrics);
   } catch (error) {
-    logger.error('Error generating metrics:', error, { service: 'metrics' });
-    res.status(500).json({ error: 'Failed to generate metrics' });
+    logger.error("Error generating metrics:", error, { service: "metrics" });
+    res.status(500).json({ error: "Failed to generate metrics" });
   }
 };
 
@@ -147,10 +147,12 @@ export const updateDatabaseMetrics = (activeConnections: number) => {
 /**
  * Record database query metrics
  */
-export const recordDatabaseQuery = (operation: string, table: string, duration: number) => {
-  databaseQueryDuration
-    .labels(operation, table)
-    .observe(duration / 1000); // Convert ms to seconds
+export const recordDatabaseQuery = (
+  operation: string,
+  table: string,
+  duration: number
+) => {
+  databaseQueryDuration.labels(operation, table).observe(duration / 1000); // Convert ms to seconds
 };
 
 /**
@@ -159,32 +161,37 @@ export const recordDatabaseQuery = (operation: string, table: string, duration: 
 export const getMetricsSnapshot = async () => {
   try {
     const metrics = await register.getMetricsAsJSON();
-    
+
     const snapshot: any = {
       httpRequestsTotal: 0,
       activeConnections: 0,
       databaseConnectionsActive: 0,
-      averageResponseTime: 0
+      averageResponseTime: 0,
     };
 
     metrics.forEach((metric: any) => {
       switch (metric.name) {
-        case 'http_requests_total':
+        case "http_requests_total":
           snapshot.httpRequestsTotal = metric.values.reduce(
-            (sum: number, val: any) => sum + val.value, 0
+            (sum: number, val: any) => sum + val.value,
+            0
           );
           break;
-        case 'http_active_connections':
+        case "http_active_connections":
           snapshot.activeConnections = metric.values[0]?.value || 0;
           break;
-        case 'database_connections_active':
+        case "database_connections_active":
           snapshot.databaseConnectionsActive = metric.values[0]?.value || 0;
           break;
-        case 'http_request_duration_seconds':
+        case "http_request_duration_seconds":
           // Calculate average from histogram
           if (metric.values.length > 0) {
-            const sum = metric.values.find((v: any) => v.labels.quantile === undefined)?.value || 0;
-            const count = metric.values.find((v: any) => v.metricName?.endsWith('_count'))?.value || 1;
+            const sum =
+              metric.values.find((v: any) => v.labels.quantile === undefined)
+                ?.value || 0;
+            const count =
+              metric.values.find((v: any) => v.metricName?.endsWith("_count"))
+                ?.value || 1;
             snapshot.averageResponseTime = sum / count;
           }
           break;
@@ -193,7 +200,9 @@ export const getMetricsSnapshot = async () => {
 
     return snapshot;
   } catch (error) {
-    logger.error('Error getting metrics snapshot:', error, { service: 'metrics' });
+    logger.error("Error getting metrics snapshot:", error, {
+      service: "metrics",
+    });
     return null;
   }
 };

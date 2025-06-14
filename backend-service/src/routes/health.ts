@@ -1,7 +1,7 @@
-import { Router } from 'express';
-import { database } from '../config/database';
-import { migrationRunner } from '../config/migrations';
-import { logger } from '../shared/utils/logger';
+import { Router } from "express";
+import { database } from "../config/database";
+import { migrationRunner } from "../config/migrations";
+import { logger } from "../shared/utils/logger";
 
 const router = Router();
 
@@ -15,12 +15,12 @@ const router = Router();
  *       200:
  *         description: Service is healthy
  */
-router.get('/', (req, res) => {
+router.get("/", (req, res) => {
   res.json({
-    status: 'healthy',
+    status: "healthy",
     timestamp: new Date().toISOString(),
-    service: 'dzinza-api-gateway',
-    version: process.env.npm_package_version || '1.0.0'
+    service: "dzinza-api-gateway",
+    version: process.env.npm_package_version || "1.0.0",
   });
 });
 
@@ -36,13 +36,13 @@ router.get('/', (req, res) => {
  *       503:
  *         description: One or more dependencies are unhealthy
  */
-router.get('/detailed', async (req, res) => {
+router.get("/detailed", async (req, res) => {
   const healthStatus: any = {
-    status: 'healthy',
+    status: "healthy",
     timestamp: new Date().toISOString(),
-    service: 'dzinza-api-gateway',
-    version: process.env.npm_package_version || '1.0.0',
-    dependencies: {}
+    service: "dzinza-api-gateway",
+    version: process.env.npm_package_version || "1.0.0",
+    dependencies: {},
   };
 
   let overallHealthy = true;
@@ -51,25 +51,28 @@ router.get('/detailed', async (req, res) => {
   try {
     const dbHealth = await database.healthCheck();
     healthStatus.dependencies.database = {
-      status: 'healthy',
+      status: "healthy",
       latency: dbHealth.latency,
-      timestamp: dbHealth.timestamp
+      timestamp: dbHealth.timestamp,
     };
   } catch (error) {
     overallHealthy = false;
     healthStatus.dependencies.database = {
-      status: 'unhealthy',
-      error: error instanceof Error ? error.message : 'Database connection failed'
+      status: "unhealthy",
+      error:
+        error instanceof Error ? error.message : "Database connection failed",
     };
   }
 
   // Check environment variables
-  const requiredEnvVars = ['JWT_SECRET', 'DB_HOST', 'DB_NAME', 'DB_USER'];
-  const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
-  
+  const requiredEnvVars = ["JWT_SECRET", "DB_HOST", "DB_NAME", "DB_USER"];
+  const missingEnvVars = requiredEnvVars.filter(
+    (varName) => !process.env[varName]
+  );
+
   healthStatus.dependencies.environment = {
-    status: missingEnvVars.length === 0 ? 'healthy' : 'unhealthy',
-    missingVariables: missingEnvVars
+    status: missingEnvVars.length === 0 ? "healthy" : "unhealthy",
+    missingVariables: missingEnvVars,
   };
 
   if (missingEnvVars.length > 0) {
@@ -80,27 +83,27 @@ router.get('/detailed', async (req, res) => {
   try {
     const migrationStatus = await migrationRunner.getMigrationStatus();
     healthStatus.dependencies.migrations = {
-      status: migrationStatus.pending === 0 ? 'healthy' : 'warning',
-      ...migrationStatus
+      status: migrationStatus.pending === 0 ? "healthy" : "warning",
+      ...migrationStatus,
     };
   } catch (error) {
     healthStatus.dependencies.migrations = {
-      status: 'unhealthy',
-      error: error instanceof Error ? error.message : 'Migration check failed'
+      status: "unhealthy",
+      error: error instanceof Error ? error.message : "Migration check failed",
     };
   }
 
   // Set overall status
-  healthStatus.status = overallHealthy ? 'healthy' : 'unhealthy';
+  healthStatus.status = overallHealthy ? "healthy" : "unhealthy";
 
   // Log health check
-  logger.info('Health check performed', {
-    service: 'health',
+  logger.info("Health check performed", {
+    service: "health",
     status: healthStatus.status,
-    dependencies: Object.keys(healthStatus.dependencies).map(dep => ({
+    dependencies: Object.keys(healthStatus.dependencies).map((dep) => ({
       name: dep,
-      status: healthStatus.dependencies[dep].status
-    }))
+      status: healthStatus.dependencies[dep].status,
+    })),
   });
 
   const statusCode = overallHealthy ? 200 : 503;
@@ -119,10 +122,10 @@ router.get('/detailed', async (req, res) => {
  *       503:
  *         description: Database is unhealthy
  */
-router.get('/database', async (req, res) => {
+router.get("/database", async (req, res) => {
   try {
     const dbHealth = await database.healthCheck();
-    
+
     // Additional database checks
     const tableCheckResult = await database.query(`
       SELECT table_name 
@@ -131,32 +134,34 @@ router.get('/database', async (req, res) => {
       AND table_name IN ('users', 'migrations')
     `);
 
-    const tablesExist = tableCheckResult.rows.map(row => row.table_name);
+    const tablesExist = tableCheckResult.rows.map((row: any) => row.table_name);
 
     res.json({
-      status: 'healthy',
+      status: "healthy",
       database: {
         ...dbHealth,
         requiredTables: {
-          users: tablesExist.includes('users'),
-          migrations: tablesExist.includes('migrations')
+          users: tablesExist.includes("users"),
+          migrations: tablesExist.includes("migrations"),
         },
         connectionPool: {
           totalCount: database.getPool().totalCount,
           idleCount: database.getPool().idleCount,
-          waitingCount: database.getPool().waitingCount
-        }
-      }
+          waitingCount: database.getPool().waitingCount,
+        },
+      },
     });
-
   } catch (error) {
-    logger.error('Database health check failed:', error, { service: 'health' });
-    
+    logger.error("Database health check failed:", error, { service: "health" });
+
     res.status(503).json({
-      status: 'unhealthy',
+      status: "unhealthy",
       database: {
-        error: error instanceof Error ? error.message : 'Database health check failed'
-      }
+        error:
+          error instanceof Error
+            ? error.message
+            : "Database health check failed",
+      },
     });
   }
 });
@@ -171,21 +176,25 @@ router.get('/database', async (req, res) => {
  *       200:
  *         description: Migration status retrieved
  */
-router.get('/migrations', async (req, res) => {
+router.get("/migrations", async (req, res) => {
   try {
     const migrationStatus = await migrationRunner.getMigrationStatus();
-    
+
     res.json({
-      status: migrationStatus.pending === 0 ? 'healthy' : 'pending',
-      migrations: migrationStatus
+      status: migrationStatus.pending === 0 ? "healthy" : "pending",
+      migrations: migrationStatus,
+    });
+  } catch (error) {
+    logger.error("Migration status check failed:", error, {
+      service: "health",
     });
 
-  } catch (error) {
-    logger.error('Migration status check failed:', error, { service: 'health' });
-    
     res.status(503).json({
-      status: 'unhealthy',
-      error: error instanceof Error ? error.message : 'Migration status check failed'
+      status: "unhealthy",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Migration status check failed",
     });
   }
 });

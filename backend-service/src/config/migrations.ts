@@ -1,7 +1,7 @@
-import { readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
-import { database } from './database';
-import { logger } from '../shared/utils/logger';
+import { readFileSync, readdirSync } from "fs";
+import { join } from "path";
+import { database } from "./database";
+import { logger } from "../shared/utils/logger";
 
 export interface Migration {
   id: string;
@@ -13,7 +13,9 @@ export interface Migration {
 export class MigrationRunner {
   private migrationsPath: string;
 
-  constructor(migrationsPath: string = join(__dirname, '../../database/init')) {
+  constructor(
+    migrationsPath: string = join(__dirname, "../../../../database/init")
+  ) {
     this.migrationsPath = migrationsPath;
   }
 
@@ -28,9 +30,11 @@ export class MigrationRunner {
 
     try {
       await database.query(createTableQuery);
-      logger.info('Migrations table ready', { service: 'migrations' });
+      logger.info("Migrations table ready", { service: "migrations" });
     } catch (error) {
-      logger.error('Failed to create migrations table:', error, { service: 'migrations' });
+      logger.error("Failed to create migrations table:", error, {
+        service: "migrations",
+      });
       throw error;
     }
   }
@@ -38,11 +42,13 @@ export class MigrationRunner {
   async getExecutedMigrations(): Promise<string[]> {
     try {
       const result = await database.query(
-        'SELECT id FROM migrations ORDER BY executed_at ASC'
+        "SELECT id FROM migrations ORDER BY executed_at ASC"
       );
       return result.rows.map((row: any) => row.id);
     } catch (error) {
-      logger.error('Failed to get executed migrations:', error, { service: 'migrations' });
+      logger.error("Failed to get executed migrations:", error, {
+        service: "migrations",
+      });
       throw error;
     }
   }
@@ -50,32 +56,34 @@ export class MigrationRunner {
   async loadMigrationFiles(): Promise<Migration[]> {
     try {
       const files = readdirSync(this.migrationsPath)
-        .filter(file => file.endsWith('.sql'))
+        .filter((file) => file.endsWith(".sql"))
         .sort();
 
       const migrations: Migration[] = [];
 
       for (const file of files) {
         const filePath = join(this.migrationsPath, file);
-        const sql = readFileSync(filePath, 'utf8');
-        const id = file.replace('.sql', '');
-        
+        const sql = readFileSync(filePath, "utf8");
+        const id = file.replace(".sql", "");
+
         migrations.push({
           id,
           name: file,
           sql,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
       }
 
-      logger.info(`Loaded ${migrations.length} migration files`, { 
-        service: 'migrations',
-        files: migrations.map(m => m.name)
+      logger.info(`Loaded ${migrations.length} migration files`, {
+        service: "migrations",
+        files: migrations.map((m) => m.name),
       });
 
       return migrations;
     } catch (error) {
-      logger.error('Failed to load migration files:', error, { service: 'migrations' });
+      logger.error("Failed to load migration files:", error, {
+        service: "migrations",
+      });
       throw error;
     }
   }
@@ -85,22 +93,22 @@ export class MigrationRunner {
       await database.transaction(async (client) => {
         // Execute the migration SQL
         await client.query(migration.sql);
-        
+
         // Record the migration as executed
         await client.query(
-          'INSERT INTO migrations (id, name) VALUES ($1, $2)',
+          "INSERT INTO migrations (id, name) VALUES ($1, $2)",
           [migration.id, migration.name]
         );
       });
 
-      logger.info(`Migration executed successfully: ${migration.name}`, { 
-        service: 'migrations',
-        migrationId: migration.id
+      logger.info(`Migration executed successfully: ${migration.name}`, {
+        service: "migrations",
+        migrationId: migration.id,
       });
     } catch (error) {
-      logger.error(`Failed to execute migration: ${migration.name}`, error, { 
-        service: 'migrations',
-        migrationId: migration.id
+      logger.error(`Failed to execute migration: ${migration.name}`, error, {
+        service: "migrations",
+        migrationId: migration.id,
       });
       throw error;
     }
@@ -108,16 +116,16 @@ export class MigrationRunner {
 
   async runMigrations(): Promise<void> {
     try {
-      logger.info('Starting database migrations', { service: 'migrations' });
+      logger.info("Starting database migrations", { service: "migrations" });
 
       // Ensure migrations table exists
       await this.ensureMigrationsTable();
 
       // Get executed migrations
       const executedMigrations = await this.getExecutedMigrations();
-      logger.info(`Found ${executedMigrations.length} executed migrations`, { 
-        service: 'migrations',
-        executed: executedMigrations
+      logger.info(`Found ${executedMigrations.length} executed migrations`, {
+        service: "migrations",
+        executed: executedMigrations,
       });
 
       // Load all migration files
@@ -125,17 +133,17 @@ export class MigrationRunner {
 
       // Find pending migrations
       const pendingMigrations = allMigrations.filter(
-        migration => !executedMigrations.includes(migration.id)
+        (migration) => !executedMigrations.includes(migration.id)
       );
 
       if (pendingMigrations.length === 0) {
-        logger.info('No pending migrations', { service: 'migrations' });
+        logger.info("No pending migrations", { service: "migrations" });
         return;
       }
 
-      logger.info(`Running ${pendingMigrations.length} pending migrations`, { 
-        service: 'migrations',
-        pending: pendingMigrations.map(m => m.name)
+      logger.info(`Running ${pendingMigrations.length} pending migrations`, {
+        service: "migrations",
+        pending: pendingMigrations.map((m) => m.name),
       });
 
       // Execute pending migrations
@@ -143,32 +151,32 @@ export class MigrationRunner {
         await this.executeMigration(migration);
       }
 
-      logger.info('All migrations completed successfully', { 
-        service: 'migrations',
-        totalExecuted: pendingMigrations.length
+      logger.info("All migrations completed successfully", {
+        service: "migrations",
+        totalExecuted: pendingMigrations.length,
       });
-
     } catch (error) {
-      logger.error('Migration process failed:', error, { service: 'migrations' });
+      logger.error("Migration process failed:", error, {
+        service: "migrations",
+      });
       throw error;
     }
   }
 
   async rollbackMigration(migrationId: string): Promise<void> {
     try {
-      await database.query(
-        'DELETE FROM migrations WHERE id = $1',
-        [migrationId]
-      );
+      await database.query("DELETE FROM migrations WHERE id = $1", [
+        migrationId,
+      ]);
 
-      logger.info(`Migration rolled back: ${migrationId}`, { 
-        service: 'migrations',
-        migrationId
+      logger.info(`Migration rolled back: ${migrationId}`, {
+        service: "migrations",
+        migrationId,
       });
     } catch (error) {
-      logger.error(`Failed to rollback migration: ${migrationId}`, error, { 
-        service: 'migrations',
-        migrationId
+      logger.error(`Failed to rollback migration: ${migrationId}`, error, {
+        service: "migrations",
+        migrationId,
       });
       throw error;
     }
@@ -183,19 +191,21 @@ export class MigrationRunner {
     try {
       const allMigrations = await this.loadMigrationFiles();
       const executedMigrations = await this.getExecutedMigrations();
-      
+
       const lastExecutedResult = await database.query(
-        'SELECT name FROM migrations ORDER BY executed_at DESC LIMIT 1'
+        "SELECT name FROM migrations ORDER BY executed_at DESC LIMIT 1"
       );
 
       return {
         total: allMigrations.length,
         executed: executedMigrations.length,
         pending: allMigrations.length - executedMigrations.length,
-        lastExecuted: lastExecutedResult.rows[0]?.name
+        lastExecuted: lastExecutedResult.rows[0]?.name,
       };
     } catch (error) {
-      logger.error('Failed to get migration status:', error, { service: 'migrations' });
+      logger.error("Failed to get migration status:", error, {
+        service: "migrations",
+      });
       throw error;
     }
   }
