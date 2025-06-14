@@ -1,12 +1,26 @@
 import mongoose from 'mongoose';
-import { generateTokens, verifyRefreshToken, TokenPayload, TokenPair } from '../../../src/utils/jwt';
+import { generateTokens, verifyRefreshToken, revokeRefreshToken, rotateRefreshToken, TokenPayload, TokenPair } from '../../../src/utils/jwt';
 import { RefreshToken, IRefreshToken } from '../../../src/models/RefreshToken';
 import jwt, { JwtPayload } from 'jsonwebtoken'; // Import JwtPayload
 
 // Mock the RefreshToken model
 jest.mock('../../../src/models/RefreshToken');
+// Mock parts of the jwt utility itself for some tests
+jest.mock('../../../src/utils/jwt', () => {
+  const originalJwtUtils = jest.requireActual('../../../src/utils/jwt');
+  return {
+    ...originalJwtUtils,
+    __esModule: true,
+    verifyRefreshToken: jest.fn(),
+    revokeRefreshToken: jest.fn(),
+    // generateTokens is NOT mocked here, we want to test its actual implementation for some cases
+    // rotateRefreshToken will be tested, so we use its actual implementation
+  };
+});
 
 const mockedRefreshTokenModel = RefreshToken as jest.Mocked<typeof RefreshToken>;
+const mockedVerifyRefreshToken = verifyRefreshToken as jest.Mock;
+const mockedRevokeRefreshToken = revokeRefreshToken as jest.Mock;
 
 // Use a fixed secret for testing purposes
 const TEST_JWT_SECRET = 'test-jwt-secret-for-utils';
@@ -27,6 +41,9 @@ describe('JWT Utilities', () => {
     process.env.REFRESH_TOKEN_EXPIRY = '7d';
 
     jest.clearAllMocks();
+    // Reset mocks for those part of jwt.ts we are mocking
+    mockedVerifyRefreshToken.mockReset();
+    mockedRevokeRefreshToken.mockReset();
   });
 
   describe('generateTokens', () => {
@@ -171,6 +188,117 @@ describe('JWT Utilities', () => {
         await new Promise(r => setTimeout(r, 50));
 
         await expect(verifyRefreshToken(expiredToken)).rejects.toThrow('Refresh token expired');
+    });
+  });
+
+  describe('rotateRefreshToken', () => {
+    const oldRefreshTokenString = 'dummy-old-refresh-token';
+    const oldTokenId = 'old-token-id';
+    const oldSessionId = 'old-session-id';
+
+    const mockVerifiedOldToken = {
+      userId,
+      sessionId: oldSessionId,
+      tokenId: oldTokenId,
+    };
+
+    beforeEach(() => {
+      // Reset specific mocks for jwt utils before each test in this block
+      mockedVerifyRefreshToken.mockReset();
+      mockedRevokeRefreshToken.mockReset();
+      mockedRefreshTokenModel.create.mockReset(); // Reset DB mock
+    });
+
+    it('should successfully rotate a refresh token', async () => {
+      // 1. Setup mocks
+      mockedVerifyRefreshToken.mockResolvedValue(mockVerifiedOldToken);
+      mockedRevokeRefreshToken.mockResolvedValue(undefined); // Simulate successful revocation
+      mockedRefreshTokenModel.create.mockResolvedValue({} as IRefreshToken); // Simulate successful DB save of new token
+
+      // 2. Call the function
+      const newTokens: TokenPair = await rotateRefreshToken(
+        oldRefreshTokenString,
+        email,
+        roles,
+        ipAddress,
+        userAgent
+      );
+
+      // 3. Assertions
+      expect(mockedVerifyRefreshToken).toHaveBeenCalledWith(oldRefreshTokenString);
+      expect(mockedRevokeRefreshToken).toHaveBeenCalledWith(oldTokenId, 'rotated');
+
+      expect(newTokens.accessToken).toBeDefined();
+      expect(newTokens.refreshToken).toBeDefined();
+      expect(newTokens.expiresIn).toBe(15 * 60);
+
+      // Verify new access token payload
+      const decodedAccess = jwt.verify(newTokens.accessToken, TEST_JWT_SECRET) as TokenPayload;
+      expect(decodedAccess.userId).toBe(userId);
+      expect(decodedAccess.email).toBe(email);
+      expect(decodedAccess.roles).toEqual(expect.arrayContaining(roles));
+      expect(decodedAccess.sessionId).toBe(oldSessionId); // SessionId should be preserved from old token
+      expect(decodedAccess.iss).toBe('dzinza-auth');
+      expect(decodedAccess.aud).toBe('dzinza-app');
+
+      // Verify new refresh token payload
+      interface DecodedTestRefreshToken extends JwtPayload {
+        userId: string;
+        sessionId: string;
+        tokenId: string;
+      }
+      const decodedRefresh = jwt.verify(newTokens.refreshToken, TEST_JWT_REFRESH_SECRET) as DecodedTestRefreshToken;
+      expect(decodedRefresh.userId).toBe(userId);
+      expect(decodedRefresh.sessionId).toBe(oldSessionId); // SessionId preserved
+      expect(decodedRefresh.tokenId).toBeDefined();
+      expect(decodedRefresh.tokenId).not.toBe(oldTokenId); // New token ID must be different
+      expect(decodedRefresh.iss).toBe('dzinza-auth');
+      expect(decodedRefresh.aud).toBe('dzinza-app');
+
+      // Check if new refresh token was "stored"
+      expect(mockedRefreshTokenModel.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId,
+        token: decodedRefresh.tokenId, // The new token ID
+        expiresAt: expect.any(Date),
+        ipAddress,
+        userAgent,
+      }));
+    });
+
+    it('should throw an error if old refresh token verification fails', async () => {
+      mockedVerifyRefreshToken.mockRejectedValue(new Error('Invalid refresh token'));
+
+      await expect(
+        rotateRefreshToken(oldRefreshTokenString, email, roles, ipAddress, userAgent)
+      ).rejects.toThrow('Failed to rotate refresh token: Invalid refresh token');
+
+      expect(mockedRevokeRefreshToken).not.toHaveBeenCalled();
+      expect(mockedRefreshTokenModel.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw an error if revoking old token fails', async () => {
+      mockedVerifyRefreshToken.mockResolvedValue(mockVerifiedOldToken);
+      mockedRevokeRefreshToken.mockRejectedValue(new Error('DB error during revoke'));
+
+      await expect(
+        rotateRefreshToken(oldRefreshTokenString, email, roles, ipAddress, userAgent)
+      ).rejects.toThrow('Failed to rotate refresh token'); // General error because the specific error message is not one of the handled ones
+
+      expect(mockedRevokeRefreshToken).toHaveBeenCalledWith(oldTokenId, 'rotated');
+      expect(mockedRefreshTokenModel.create).not.toHaveBeenCalled(); // Should not proceed to create new token
+    });
+
+    it('should throw an error if storing new refresh token fails', async () => {
+        mockedVerifyRefreshToken.mockResolvedValue(mockVerifiedOldToken);
+        mockedRevokeRefreshToken.mockResolvedValue(undefined);
+        mockedRefreshTokenModel.create.mockRejectedValue(new Error('DB error during create'));
+
+        await expect(
+            rotateRefreshToken(oldRefreshTokenString, email, roles, ipAddress, userAgent)
+        ).rejects.toThrow('Failed to rotate refresh token');
+
+        expect(mockedRevokeRefreshToken).toHaveBeenCalledWith(oldTokenId, 'rotated');
+        // Potentially, the old token is revoked, but new one isn't created. This is a state to be aware of.
     });
   });
 });

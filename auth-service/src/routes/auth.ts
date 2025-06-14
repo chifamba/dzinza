@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express'; // Import Request, Response, NextFunction
+import { trace, SpanStatusCode, context, Span } from '@opentelemetry/api'; // Import OpenTelemetry API
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
@@ -78,12 +79,21 @@ router.post('/register', [
     .withMessage('Preferred language must be en, sn, or nd'),
   validateRequest,
   rateLimitByEmail
-], async (req, res, next) => {
-  try {
-    const { email, password, firstName, lastName, preferredLanguage = 'en' } = req.body;
+], async (req: Request, res: Response, next: NextFunction) => { // Typed req, res, next
+  const tracer = trace.getTracer('auth-service-routes');
+  await tracer.startActiveSpan('auth.register.handler', async (span: Span) => {
+    try {
+      const { email, password, firstName, lastName, preferredLanguage = 'en' } = req.body;
+      span.setAttributes({
+        'user.email': email,
+        'user.firstName': firstName,
+        'user.lastName': lastName,
+        'http.method': 'POST',
+        'http.route': '/auth/register'
+      });
 
-    // Check if user already exists
-    const existingUser = await User.findByEmail(email);
+      // Check if user already exists
+      const existingUser = await User.findByEmail(email);
     if (existingUser) {
       return res.status(409).json({
         error: 'Conflict',
@@ -146,10 +156,15 @@ router.post('/register', [
         refreshToken,
         expiresIn: 3600 // 1 hour
       }
-    });
-  } catch (error) {
-    next(error);
-  }
+      span.end();
+    } catch (error) {
+      const err = error as Error;
+      span.recordException(err);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+      span.end();
+      next(err); // Call next to pass control to the error handler
+    }
+  });
 });
 
 /**
@@ -298,12 +313,19 @@ router.post('/login', [
     .withMessage('Password is required'),
   validateRequest,
   rateLimitByEmail
-], async (req, res, next) => {
-  try {
-    const { email, password, mfaCode } = req.body;
+], async (req: Request, res: Response, next: NextFunction) => { // Typed req, res, next
+  const tracer = trace.getTracer('auth-service-routes');
+  await tracer.startActiveSpan('auth.login.handler', async (span: Span) => {
+    try {
+      const { email, password, mfaCode } = req.body;
+      span.setAttributes({
+        'user.email': email,
+        'http.method': 'POST',
+        'http.route': '/auth/login'
+      });
 
-    // Find user
-    const user = await User.findByEmail(email);
+      // Find user
+      const user = await User.findByEmail(email);
     if (!user) {
       await AuditLog.create({
         userId: null,
@@ -422,10 +444,15 @@ router.post('/login', [
         refreshToken,
         expiresIn: 3600 // 1 hour
       }
-    });
-  } catch (error) {
-    next(error);
-  }
+      span.end();
+    } catch (error) {
+      const err = error as Error;
+      span.recordException(err);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+      span.end();
+      next(err); // Call next to pass control to the error handler
+    }
+  });
 });
 
 /**

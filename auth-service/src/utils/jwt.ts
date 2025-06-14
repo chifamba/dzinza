@@ -88,6 +88,94 @@ export const generateTokens = async (
 };
 
 /**
+ * Rotate refresh token: Verifies an old refresh token, generates new tokens,
+ * revokes the old token, and stores the new one.
+ */
+export const rotateRefreshToken = async (
+  oldRefreshToken: string,
+  email: string, // Needed for new access token
+  roles: string[] = ['user'], // Needed for new access token
+  ipAddress?: string,
+  userAgent?: string
+): Promise<TokenPair> => {
+  try {
+    // 1. Verify the old refresh token
+    const verifiedOldToken = await verifyRefreshToken(oldRefreshToken);
+
+    // 2. Revoke the old refresh token
+    // It's generally safer to revoke the old token *after* successfully generating new ones,
+    // or handle potential failures in new token generation carefully.
+    // However, the prompt asks to revoke first. If new token generation fails, the user has to log in again.
+    await revokeRefreshToken(verifiedOldToken.tokenId, 'rotated');
+
+    // 3. Generate new access and refresh tokens
+    // We need to use the userId from the verified old token.
+    // The sessionId can be reused or a new one generated. Reusing sessionId links the tokens.
+    const sessionId = verifiedOldToken.sessionId; // Or uuidv4() for a new session
+
+    // Create new access token payload
+    const accessPayload: TokenPayload = {
+      userId: verifiedOldToken.userId,
+      email,
+      roles,
+      sessionId,
+    };
+
+    const accessToken = jwt.sign(accessPayload, JWT_SECRET, {
+      expiresIn: ACCESS_TOKEN_EXPIRY,
+      issuer: 'dzinza-auth',
+      audience: 'dzinza-app',
+    });
+
+    // Generate new refresh token
+    const newRefreshTokenId = uuidv4();
+    const newRefreshTokenValue = jwt.sign(
+      { userId: verifiedOldToken.userId, sessionId, tokenId: newRefreshTokenId },
+      JWT_REFRESH_SECRET,
+      {
+        expiresIn: REFRESH_TOKEN_EXPIRY,
+        issuer: 'dzinza-auth',
+        audience: 'dzinza-app',
+      }
+    );
+
+    // Calculate expiry times
+    const expiresIn = getTokenExpiryTime(ACCESS_TOKEN_EXPIRY);
+    const newRefreshExpiresAt = new Date(Date.now() + getTokenExpiryTime(REFRESH_TOKEN_EXPIRY) * 1000);
+
+    // 4. Store the new refresh token in the database
+    await RefreshToken.create({
+      userId: verifiedOldToken.userId,
+      token: newRefreshTokenId,
+      expiresAt: newRefreshExpiresAt,
+      ipAddress,
+      userAgent,
+      // We might want to link the new token to the old session or note that it's a rotation
+      // For now, it's a new entry similar to generateTokens
+    });
+
+    // 5. Return the new token pair
+    return {
+      accessToken,
+      refreshToken: newRefreshTokenValue,
+      expiresIn,
+    };
+
+  } catch (error: unknown) {
+    // Log the error appropriately
+    const message = error instanceof Error ? error.message : 'Unknown error during token rotation';
+    logger.error('Error rotating refresh token:', { error: message, oldTokenPreview: oldRefreshToken.substring(0, 10) }); // Avoid logging full token
+
+    // Rethrow a more specific error or the original one
+    if (error instanceof Error && (error.message === 'Refresh token not found or revoked' || error.message === 'Refresh token expired' || error.message === 'Invalid refresh token')) {
+      throw new Error(`Failed to rotate refresh token: ${error.message}`);
+    }
+    throw new Error('Failed to rotate refresh token');
+  }
+};
+
+
+/**
  * Verify access token
  */
 export const verifyAccessToken = (token: string): TokenPayload => {

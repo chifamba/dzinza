@@ -1,11 +1,8 @@
-import express from 'express';
+import express, { Request, Response } from 'express'; // Added Response
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import express, { Request } from 'express'; // Added Request for typing
-import cors from 'cors';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+// Removed duplicate imports
 import { authRoutes } from './routes/auth';
 import { mfaRoutes } from './routes/mfa';
 import { passwordRoutes } from './routes/password';
@@ -17,6 +14,19 @@ import { logger } from './utils/logger';
 import { connectDB } from './config/database';
 import { connectRedis } from './config/redis';
 import { AuthenticatedRequest } from './middleware/authMiddleware'; // Assuming this is where it's defined
+import metricsRegistry, { httpRequestCounter, httpRequestDurationMicroseconds } from './utils/metrics'; // Import registry and specific metrics
+import { initTracer } from './utils/tracing'; // Import OpenTelemetry tracer initialization
+
+// Initialize OpenTelemetry Tracer
+// IMPORTANT: This should be done as early as possible in the application lifecycle.
+const OTEL_SERVICE_NAME = process.env.OTEL_SERVICE_NAME || 'auth-service';
+const JAEGER_ENDPOINT = process.env.JAEGER_ENDPOINT || 'http://localhost:4318/v1/traces'; // Default OTLP HTTP endpoint
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+if (process.env.ENABLE_TRACING === 'true') { // Add a flag to enable/disable tracing
+  initTracer(OTEL_SERVICE_NAME, JAEGER_ENDPOINT, NODE_ENV);
+}
+
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -97,8 +107,37 @@ app.use(express.urlencoded({ extended: true }));
 // Initialize Passport
 app.use(passport.initialize());
 
+// HTTP Metrics Collection Middleware
+app.use((req: Request, res: Response, next: Function) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const durationSeconds = (Date.now() - start) / 1000;
+    // Try to get the matched route path, otherwise fall back to the URL path
+    const route = req.route?.path || req.path;
+    const statusCode = res.statusCode.toString();
+
+    httpRequestDurationMicroseconds
+      .labels(req.method, route, statusCode) // Ensure 'code' label in metric definition matches or use statusCode here
+      .observe(durationSeconds);
+    httpRequestCounter
+      .labels(req.method, route, statusCode)
+      .inc();
+  });
+  next();
+});
+
+// Metrics endpoint
+app.get('/metrics', async (req: Request, res: Response) => {
+  try {
+    res.set('Content-Type', metricsRegistry.contentType);
+    res.end(await metricsRegistry.metrics());
+  } catch (ex) {
+    res.status(500).end(ex);
+  }
+});
+
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
     service: 'auth-service',

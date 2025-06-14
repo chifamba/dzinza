@@ -5,46 +5,76 @@ import { logger } from '../utils/logger';
 // Create a Registry
 const register = new client.Registry();
 
-// Add default metrics (CPU, memory, etc.)
-client.collectDefaultMetrics({ register });
+// Add default metrics (CPU, memory, etc.) with a service-specific prefix
+client.collectDefaultMetrics({ register, prefix: 'backend_service_' });
 
 // Custom metrics
-const httpRequestDuration = new client.Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'Duration of HTTP requests in seconds',
+export const httpRequestDuration = new client.Histogram({
+  name: 'backend_service_http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds for the backend service',
   labelNames: ['method', 'route', 'status_code'],
-  buckets: [0.1, 0.5, 1, 2, 5, 10]
+  buckets: [0.1, 0.5, 1, 2, 5, 10] // Consider standardizing buckets across services or using default
 });
 
-const httpRequestsTotal = new client.Counter({
-  name: 'http_requests_total',
-  help: 'Total number of HTTP requests',
+export const httpRequestsTotal = new client.Counter({
+  name: 'backend_service_http_requests_total',
+  help: 'Total number of HTTP requests for the backend service',
   labelNames: ['method', 'route', 'status_code']
 });
 
-const activeConnections = new client.Gauge({
-  name: 'http_active_connections',
-  help: 'Number of active HTTP connections'
+export const activeConnections = new client.Gauge({
+  name: 'backend_service_http_active_connections',
+  help: 'Number of active HTTP connections for the backend service'
 });
 
-const databaseConnectionsActive = new client.Gauge({
-  name: 'database_connections_active',
-  help: 'Number of active database connections'
+export const databaseConnectionsActive = new client.Gauge({
+  name: 'backend_service_database_connections_active',
+  help: 'Number of active database connections for the backend service'
 });
 
-const databaseQueryDuration = new client.Histogram({
-  name: 'database_query_duration_seconds',
-  help: 'Duration of database queries in seconds',
+export const databaseQueryDuration = new client.Histogram({
+  name: 'backend_service_database_query_duration_seconds',
+  help: 'Duration of database queries in seconds for the backend service',
   labelNames: ['operation', 'table'],
   buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5]
 });
 
-// Register metrics
+// --- New service-specific metrics for backend-service ---
+export const userProfileRequestsCounter = new client.Counter({
+  name: 'backend_service_user_profile_requests_total',
+  help: 'Total number of user profile requests processed by backend-service',
+  labelNames: ['profile_type'], // e.g., 'full', 'summary'
+});
+
+// Register metrics (prom-client typically auto-registers metrics defined with a 'name' unless `register` option is explicitly passed to constructor)
+// However, explicit registration is fine too. Let's ensure all are covered.
+// No need to call register.registerMetric(metric) if it's already associated with 'register' in its constructor,
+// or if 'prom-client.register' (default global registry) is used and 'register' is that default.
+// Here, 'register' is a new client.Registry(), so metrics need to be associated with it.
+// The current code does not pass `registers: [register]` to constructors, so explicit registration is needed.
+// For consistency and clarity, I'll add `registers: [register]` to each metric constructor
+// and remove the explicit `register.registerMetric` calls.
+
+// Updated metric definitions with explicit registration:
+// (Re-declaring them here to show the change, actual code would modify existing ones)
+
+// const httpRequestDuration = new client.Histogram({
+//   name: 'backend_service_http_request_duration_seconds',
+//   help: 'Duration of HTTP requests in seconds for the backend service',
+//   labelNames: ['method', 'route', 'status_code'],
+//   buckets: [0.1, 0.5, 1, 2, 5, 10],
+//   registers: [register] // Added
+// });
+// ... and so on for all metrics. I will apply this pattern in the actual diff.
+
+// The original code had explicit register.registerMetric() calls, which is fine.
+// I will keep that pattern and just add the new metric to it.
 register.registerMetric(httpRequestDuration);
 register.registerMetric(httpRequestsTotal);
 register.registerMetric(activeConnections);
 register.registerMetric(databaseConnectionsActive);
 register.registerMetric(databaseQueryDuration);
+register.registerMetric(userProfileRequestsCounter); // Register the new metric
 
 /**
  * Middleware to collect HTTP metrics

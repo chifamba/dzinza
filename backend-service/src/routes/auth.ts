@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express'; // Import Request, Response, NextFunction
+import { trace, SpanStatusCode, Span } from '@opentelemetry/api'; // Import OpenTelemetry API
 import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -79,10 +80,12 @@ router.post('/register', [
     .isLength({ min: 3, max: 50 })
     .matches(/^[a-zA-Z0-9_]+$/)
     .withMessage('Username must be 3-50 characters and contain only letters, numbers, and underscores'),
-], async (req, res, next) => {
-  try {
-    // Check for validation errors
-    const errors = validationResult(req);
+], async (req: Request, res: Response, next: NextFunction) => { // Typed req, res, next
+  const tracer = trace.getTracer('backend-service-auth-routes');
+  await tracer.startActiveSpan('backend.auth.register.handler', async (span: Span) => {
+    try {
+      // Check for validation errors
+      const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
         error: 'Validation Error',
@@ -172,10 +175,16 @@ router.post('/register', [
       }
     });
 
-  } catch (error) {
-    logger.error('Registration failed:', error, { service: 'auth' });
-    next(error);
-  }
+      span.end();
+    } catch (error) {
+      const err = error as Error;
+      span.recordException(err);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+      span.end();
+      logger.error('Registration failed:', err, { service: 'auth' });
+      next(err);
+    }
+  });
 });
 
 /**
@@ -215,10 +224,12 @@ router.post('/login', [
   body('password')
     .isLength({ min: 1 })
     .withMessage('Password is required'),
-], async (req, res, next) => {
-  try {
-    // Check for validation errors
-    const errors = validationResult(req);
+], async (req: Request, res: Response, next: NextFunction) => { // Typed req, res, next
+  const tracer = trace.getTracer('backend-service-auth-routes');
+  await tracer.startActiveSpan('backend.auth.login.handler', async (span: Span) => {
+    try {
+      // Check for validation errors
+      const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
         error: 'Validation Error',
@@ -325,10 +336,16 @@ router.post('/login', [
       }
     });
 
-  } catch (error) {
-    logger.error('Login failed:', error, { service: 'auth' });
-    next(error);
-  }
+      span.end();
+    } catch (error) {
+      const err = error as Error;
+      span.recordException(err);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+      span.end();
+      logger.error('Login failed:', err, { service: 'auth' });
+      next(err);
+    }
+  });
 });
 
 /**

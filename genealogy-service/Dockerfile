@@ -6,9 +6,10 @@ WORKDIR /app
 
 # Copy package files
 COPY genealogy-service/package.json ./
+COPY genealogy-service/package-lock.json ./
 
 # Install all dependencies (including dev dependencies for build)
-RUN npm install
+RUN npm ci && npm cache clean --force
 
 # Copy shared utilities
 COPY backend-service/shared ./shared
@@ -22,9 +23,9 @@ RUN npm run build
 # Production image
 FROM node:18-alpine AS production
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+# Create non-root user and group
+RUN addgroup -S appgroup && \
+    adduser -S appuser -G appgroup
 
 # Set working directory
 WORKDIR /app
@@ -33,16 +34,17 @@ WORKDIR /app
 RUN apk add --no-cache dumb-init
 
 # Copy package files and install production dependencies only
-COPY genealogy-service/package.json ./
-RUN npm install --production
+COPY --chown=appuser:appgroup genealogy-service/package.json ./
+COPY --chown=appuser:appgroup genealogy-service/package-lock.json ./
+RUN npm ci --production && npm cache clean --force
 
 # Copy built application and shared utilities
-COPY --from=builder /app/dist ./dist/
-COPY --from=builder /app/shared ./shared/
+COPY --chown=appuser:appgroup --from=builder /app/dist ./dist/
+COPY --chown=appuser:appgroup --from=builder /app/shared ./shared/
 
-# Change ownership of the app directory
-RUN chown -R nextjs:nodejs /app
-USER nextjs
+# Ensure the /app directory itself is owned by appuser
+RUN chown appuser:appgroup /app
+USER appuser
 
 # Expose port
 EXPOSE 3004
@@ -51,5 +53,6 @@ EXPOSE 3004
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node dist/healthcheck.js || exit 1
 
-# Start the application
+# Start the application with dumb-init
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["npm", "start"]

@@ -1,4 +1,5 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express"; // Added NextFunction
+import { trace, SpanStatusCode, Span, Attributes } from '@opentelemetry/api'; // Import OpenTelemetry API
 import { body, query, validationResult } from "express-validator";
 import {
   ElasticsearchService,
@@ -199,10 +200,22 @@ router.post(
     body("page").optional().isInt({ min: 1 }),
     body("size").optional().isInt({ min: 1, max: 100 }),
   ],
-  async (req: Request, res: Response) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
+  async (req: Request, res: Response, next: NextFunction) => { // Added next
+    const tracer = trace.getTracer('search-service-routes');
+    await tracer.startActiveSpan('search.general.handler', async (span: Span) => {
+      try {
+        span.setAttributes({
+          'http.method': 'POST',
+          'http.route': '/',
+          'search.query': req.body.query,
+          'search.types': req.body.type?.join(','),
+          'user.id': (req as any).user?.id,
+        });
+
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          span.setStatus({ code: SpanStatusCode.ERROR, message: 'Validation failed' });
+          span.end();
         return res.status(400).json({
           error: "Validation failed",
           details: errors.array(),
@@ -232,7 +245,24 @@ router.post(
         },
       });
 
-      const result = await ElasticsearchService.search(searchQuery);
+      const result = await tracer.startActiveSpan('elasticsearch.search', async (esSpan: Span) => {
+        try {
+          esSpan.setAttributes({
+            'db.system': 'elasticsearch',
+            'db.statement': JSON.stringify(searchQuery) // Or a more concise representation
+          });
+          const searchResult = await ElasticsearchService.search(searchQuery);
+          esSpan.setStatus({ code: SpanStatusCode.OK });
+          esSpan.end();
+          return searchResult;
+        } catch (dbError) {
+          const dbe = dbError as Error;
+          esSpan.recordException(dbe);
+          esSpan.setStatus({ code: SpanStatusCode.ERROR, message: dbe.message });
+          esSpan.end();
+          throw dbe;
+        }
+      });
 
       res.json({
         success: true,
@@ -245,13 +275,19 @@ router.post(
       });
     } catch (error) {
       logger.error("Search error:", error);
-      res.status(500).json({
         error: "Search failed",
         message: "An error occurred while searching",
       });
+      span.setStatus({ code: SpanStatusCode.ERROR, message: (error as Error).message });
+      span.end();
+      // No next(error) here as response is sent.
+    } finally {
+      if (!span.ended) { // Ensure parent span is always ended
+        span.end();
+      }
     }
-  }
-);
+  });
+});
 
 /**
  * @swagger

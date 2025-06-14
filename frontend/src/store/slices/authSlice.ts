@@ -41,6 +41,10 @@ interface AuthState {
   // New fields for profile management
   profileStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
   profileError: string | null;
+
+  // MFA specific state
+  mfaRequired: boolean;
+  tempMfaData: { emailForMfa: string } | null; // Store email or other temp data needed for MFA step
 }
 
 const initialState: AuthState = {
@@ -61,6 +65,9 @@ const initialState: AuthState = {
 
   profileStatus: 'idle',
   profileError: null,
+
+  mfaRequired: false,
+  tempMfaData: null,
 };
 
 const authSlice = createSlice({
@@ -72,6 +79,8 @@ const authSlice = createSlice({
       state.error = null;
       state.profileStatus = 'idle'; // Reset profile status on new login attempt
       state.profileError = null;
+      state.mfaRequired = false; // Reset MFA flag on new login attempt
+      state.tempMfaData = null;
     },
     loginSuccess(state, action: PayloadAction<LoginSuccessPayload>) {
       state.status = 'succeeded';
@@ -80,6 +89,17 @@ const authSlice = createSlice({
       state.accessToken = action.payload.tokens.accessToken;
       state.refreshToken = action.payload.tokens.refreshToken || null;
       state.profileStatus = 'succeeded'; // Profile is implicitly fetched on login
+      state.mfaRequired = false; // Clear MFA flag on successful login
+      state.tempMfaData = null;
+    },
+    loginMfaRequired(state, action: PayloadAction<{ emailForMfa: string }>) {
+      state.status = 'succeeded'; // Or a new status like 'mfaPending'
+      state.isAuthenticated = false; // Not fully authenticated yet
+      state.mfaRequired = true;
+      state.tempMfaData = action.payload; // Store data needed for MFA submission step
+      state.user = null; // No user data until MFA is complete
+      state.accessToken = null;
+      state.refreshToken = null;
     },
     loginFailure(state, action: PayloadAction<string>) {
       state.status = 'failed';
@@ -88,6 +108,8 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.refreshToken = null;
       state.error = action.payload;
+      state.mfaRequired = false; // Clear MFA flag on failure
+      state.tempMfaData = null;
     },
     logout(state) {
       state.isAuthenticated = false;
@@ -105,10 +127,15 @@ const authSlice = createSlice({
       // Reset profile status on logout
       state.profileStatus = 'idle';
       state.profileError = null;
+      // Reset MFA state on logout
+      state.mfaRequired = false;
+      state.tempMfaData = null;
     },
     registerStart(state) {
       state.status = 'loading';
       state.error = null;
+      state.mfaRequired = false; // Reset MFA flag
+      state.tempMfaData = null;
     },
     // Assuming registerSuccess might also log the user in or provide user data
     registerSuccess(state, action: PayloadAction<LoginSuccessPayload>) {
@@ -119,6 +146,8 @@ const authSlice = createSlice({
       state.accessToken = action.payload.tokens.accessToken;
       state.refreshToken = action.payload.tokens.refreshToken || null;
       state.profileStatus = 'succeeded';
+      state.mfaRequired = false; // Clear MFA flag
+      state.tempMfaData = null;
     },
     registerFailure(state, action: PayloadAction<string>) {
       state.status = 'failed';
@@ -190,7 +219,7 @@ const authSlice = createSlice({
   },
 });
 export const {
-  loginStart, loginSuccess, loginFailure,
+  loginStart, loginSuccess, loginFailure, loginMfaRequired,
   logout,
   registerStart, registerSuccess, registerFailure,
   forgotPasswordStart, forgotPasswordSuccess, forgotPasswordFailure,

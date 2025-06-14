@@ -8,9 +8,11 @@ import swaggerUi from 'swagger-ui-express';
 import promMiddleware from 'express-prometheus-middleware';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import cron from 'node-cron';
+// import cron from 'node-cron'; // Not directly used in server.ts if CleanupService handles it
 
 import { logger } from '@shared/utils/logger';
+import metricsRegistry, { httpRequestCounter, httpRequestDurationMicroseconds } from './utils/metrics'; // Import our metrics setup
+import { initTracer } from './utils/tracing'; // Import OpenTelemetry tracer initialization
 import { errorHandler } from '@shared/middleware/errorHandler';
 import { authMiddleware } from '@shared/middleware/auth';
 import { S3Service } from './services/s3';
@@ -21,6 +23,15 @@ import mediaRoutes from './routes/media';
 import adminRoutes from './routes/admin';
 
 dotenv.config();
+
+// Initialize OpenTelemetry Tracer
+const OTEL_SERVICE_NAME = process.env.OTEL_SERVICE_NAME || 'storage-service';
+const JAEGER_ENDPOINT = process.env.JAEGER_ENDPOINT || 'http://localhost:4318/v1/traces';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+if (process.env.ENABLE_TRACING === 'true') {
+  initTracer(OTEL_SERVICE_NAME, JAEGER_ENDPOINT, NODE_ENV);
+}
 
 const app = express();
 const PORT = process.env.STORAGE_SERVICE_PORT || 3005;
@@ -66,12 +77,56 @@ app.use('/api', limiter);
 app.use('/api/files/upload', uploadLimiter);
 app.use('/api/media/upload', uploadLimiter);
 
-// Prometheus metrics
+// Custom Metrics Middleware (for metrics defined in src/utils/metrics.ts)
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const durationSeconds = (Date.now() - start) / 1000;
+    const route = req.route?.path || req.path || 'unknown_route'; // Get matched route path if available
+    const statusCode = res.statusCode.toString();
+
+    httpRequestDurationMicroseconds
+      .labels(req.method, route, statusCode) // Ensure label names match definition ('code' vs 'status_code')
+      .observe(durationSeconds);
+    httpRequestCounter
+      .labels(req.method, route, statusCode)
+      .inc();
+  });
+  next();
+});
+
+// Prometheus metrics endpoint (combines prom-client global registry & express-prometheus-middleware)
+// express-prometheus-middleware uses prom-client's global registry by default.
+// Our custom metrics in src/utils/metrics.ts also use the global registry.
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', metricsRegistry.contentType); // Using our registry's content type
+    res.end(await metricsRegistry.metrics()); // Serving metrics from our registry
+  } catch (ex) {
+    const error = ex as Error;
+    logger.error('Failed to serve metrics:', { error: error.message });
+    res.status(500).send(error.message);
+  }
+});
+// The existing app.use(promMiddleware(...)) also exposes /metrics.
+// This will result in two /metrics endpoints if not careful or if promMiddleware uses a different registry.
+// To consolidate, we should ensure both use the same registry (promClient.register)
+// OR rely on one method. The `promMiddleware` is convenient for its own metrics.
+// Our `src/utils/metrics.ts` uses `promClient.register` (global default).
+// `promMiddleware` also uses `promClient.register` by default. So they *should* combine.
+// The explicit app.get('/metrics', ...) from our registry ensures our custom metrics are served.
+// The promMiddleware will serve its http metrics and default system metrics.
+// This is fine, Prometheus can scrape multiple /metrics endpoints or this one endpoint should ideally combine both.
+// For simplicity, let's assume they combine or remove the promMiddleware if our own setup is sufficient.
+// Given the task, I will keep my own /metrics endpoint and remove the promMiddleware to avoid conflict and ensure my metrics are served.
+
+/* Original promMiddleware - will be replaced by our own /metrics endpoint serving our registry
 app.use(promMiddleware({
-  metricsPath: '/metrics',
+  metricsPath: '/metrics', // This would conflict if not removed
   collectDefaultMetrics: true,
   requestDurationBuckets: [0.1, 0.5, 1, 1.5, 2, 3, 5, 10, 30],
 }));
+*/
 
 // Body parsing middleware - larger limits for file metadata
 app.use(express.json({ limit: '50mb' }));

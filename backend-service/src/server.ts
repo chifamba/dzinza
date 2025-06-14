@@ -17,6 +17,17 @@ import { swaggerOptions } from "./config/swagger";
 import { database } from "./config/database";
 import { migrationRunner } from "./config/migrations";
 import { getMetrics } from "./shared/middleware/metrics";
+import { initTracer } from './utils/tracing'; // Import OpenTelemetry tracer initialization
+
+// Initialize OpenTelemetry Tracer
+// IMPORTANT: This should be done as early as possible in the application lifecycle.
+const OTEL_SERVICE_NAME_BACKEND = process.env.OTEL_SERVICE_NAME || 'backend-service';
+const JAEGER_ENDPOINT_BACKEND = process.env.JAEGER_ENDPOINT || 'http://localhost:4318/v1/traces';
+const NODE_ENV_BACKEND = process.env.NODE_ENV || 'development';
+
+if (process.env.ENABLE_TRACING === 'true') {
+  initTracer(OTEL_SERVICE_NAME_BACKEND, JAEGER_ENDPOINT_BACKEND, NODE_ENV_BACKEND);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;

@@ -8,8 +8,11 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import promMiddleware from 'express-prometheus-middleware';
 import dotenv from 'dotenv';
+import { trace, SpanStatusCode, Span, Attributes, Context, ROOT_CONTEXT } from '@opentelemetry/api'; // Import OpenTelemetry API
 
 import { logger } from '../../../shared/utils/logger';
+import { proxiedRequestsCounter } from './utils/metrics'; // Import the custom counter
+import { initTracer as initGatewayTracer } from './utils/tracing'; // Import OpenTelemetry tracer initialization for gateway
 import { errorHandler } from '../../../shared/middleware/errorHandler';
 import { authMiddleware } from '../../../shared/middleware/auth';
 import { serviceDiscovery } from './config/services';
@@ -18,6 +21,16 @@ import { swaggerConfig } from './config/swagger';
 import monitorRoutes from './routes/monitor';
 
 dotenv.config();
+
+// Initialize OpenTelemetry Tracer for Gateway
+// IMPORTANT: This should be done as early as possible.
+const OTEL_GATEWAY_SERVICE_NAME = process.env.OTEL_GATEWAY_SERVICE_NAME || 'gateway-service';
+const JAEGER_ENDPOINT_GATEWAY = process.env.JAEGER_ENDPOINT_GATEWAY || process.env.JAEGER_ENDPOINT || 'http://localhost:4318/v1/traces'; // Fallback to general JAEGER_ENDPOINT
+const NODE_ENV_GATEWAY = process.env.NODE_ENV || 'development';
+
+if (process.env.ENABLE_TRACING_GATEWAY === 'true' || process.env.ENABLE_TRACING === 'true') { // Allow specific or general flag
+  initGatewayTracer(OTEL_GATEWAY_SERVICE_NAME, JAEGER_ENDPOINT_GATEWAY, NODE_ENV_GATEWAY);
+}
 
 const app = express();
 const PORT = process.env.GATEWAY_PORT || 3000;
@@ -109,6 +122,11 @@ app.use('/api/auth', createProxyMiddleware({
     // Add correlation ID for tracing
     const correlationId = req.headers['x-correlation-id'] || `gateway-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     proxyReq.setHeader('X-Correlation-ID', correlationId);
+  },
+  onProxyRes: (proxyRes, req, res) => {
+    const path = req.originalUrl.split('?')[0]; // Get path without query params
+    // Increment after response, to capture status code
+    proxiedRequestsCounter.labels('auth', path, String(proxyRes.statusCode)).inc();
   }
 }));
 
@@ -130,17 +148,46 @@ protectedServices.forEach(({ path, target }) => {
       logger.error(`${path} service proxy error:`, { error: err.message });
       res.status(503).json({ error: `${path.replace('/api/', '')} service unavailable` });
     },
-    onProxyReq: (proxyReq, req) => {
-      // Forward user information from auth middleware
-      if (req.user) {
-        proxyReq.setHeader('X-User-ID', req.user.id);
-        proxyReq.setHeader('X-User-Email', req.user.email);
-        proxyReq.setHeader('X-User-Role', req.user.role);
-      }
+    onProxyReq: (proxyReq, req: express.Request, res: express.Response) => { // Typed req, res
+      const tracer = trace.getTracer('gateway-service-proxy');
+      const parentSpan = trace.getSpan(trace.setSpan(ROOT_CONTEXT, parentSpan)); // Get current span if any, or use ROOT_CONTEXT
       
-      // Add correlation ID for tracing
-      const correlationId = req.headers['x-correlation-id'] || `gateway-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      proxyReq.setHeader('X-Correlation-ID', correlationId);
+      tracer.startActiveSpan(`proxy.request_to.${serviceName}`, { parent: parentSpan }, (span: Span) => {
+        span.setAttributes({
+          'http.method': req.method,
+          'http.url': target + (proxyReq.path || ''), // target + original path part
+          'target.service': serviceName,
+          'user.id': (req as any).user?.id, // If available
+        });
+
+        // Forward user information from auth middleware
+        if ((req as any).user) { // Type assertion for req.user
+          proxyReq.setHeader('X-User-ID', (req as any).user.id);
+          proxyReq.setHeader('X-User-Email', (req as any).user.email);
+          proxyReq.setHeader('X-User-Role', (req as any).user.role);
+          span.setAttribute('user.forwarded', true);
+        }
+
+        // Add correlation ID for tracing
+        const correlationId = (req.headers['x-correlation-id'] as string) || `gateway-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        proxyReq.setHeader('X-Correlation-ID', correlationId);
+        span.setAttribute('correlation.id', correlationId);
+
+        // The span will be ended automatically when the active span scope ends.
+        // However, for proxy requests, it's better to end it in onProxyRes or onError.
+        // For this example, let's assume HttpInstrumentation handles the actual client request span.
+        // This custom span is more for the gateway's decision/action to proxy.
+        // To correctly link with client spans from HttpInstrumentation, more advanced context propagation might be needed
+        // or ensure this span ends before HttpInstrumentation's client span starts.
+        // For simplicity, we'll end it here. More robust would be to pass span to onProxyRes/onError.
+        span.end();
+      });
+    },
+    onProxyRes: (proxyRes, req: express.Request, res: express.Response) => { // Typed req, res
+      const serviceName = path.replace('/api/', '').split('/')[0] || 'unknown';
+      const routePath = req.originalUrl.split('?')[0];
+      proxiedRequestsCounter.labels(serviceName, routePath, String(proxyRes.statusCode)).inc();
+      // If span was passed from onProxyReq, could end it here and set status from proxyRes.statusCode
     }
   }));
 });

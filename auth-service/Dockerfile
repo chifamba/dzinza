@@ -23,9 +23,9 @@ RUN npm run build
 # Production image
 FROM node:18-alpine AS production
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
+# Create non-root user and group
+RUN addgroup -S appgroup && \
+    adduser -S appuser -G appgroup
 
 # Set working directory
 WORKDIR /app
@@ -34,16 +34,19 @@ WORKDIR /app
 RUN apk add --no-cache dumb-init
 
 # Copy package files and install production dependencies only
-COPY auth-service/package*.json ./
+# Ensure files copied are owned by the non-root user
+COPY --chown=appuser:appgroup auth-service/package*.json ./
 RUN npm ci --production && npm cache clean --force
 
-# Copy built application and shared utilities
-COPY --from=builder /app/dist ./dist/
-COPY --from=builder /app/shared ./shared/
+# Copy built application and shared utilities from builder stage
+# Ensure these are also owned by the non-root user
+COPY --chown=appuser:appgroup --from=builder /app/dist ./dist/
+COPY --chown=appuser:appgroup --from=builder /app/shared ./shared/
 
-# Change ownership of the app directory
-RUN chown -R nextjs:nodejs /app
-USER nextjs
+# Ensure the /app directory itself is owned by appuser.
+# WORKDIR creates /app as root, COPY --chown handles contents.
+RUN chown appuser:appgroup /app
+USER appuser
 
 # Expose port
 EXPOSE 3002
@@ -52,5 +55,6 @@ EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node dist/healthcheck.js || exit 1
 
-# Start the application
+# Start the application with dumb-init
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["npm", "start"]

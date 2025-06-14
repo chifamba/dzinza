@@ -7,37 +7,46 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm ci --production
+# Install dependencies (including devDependencies for build)
+RUN npm ci && npm cache clean --force
 
 # Copy source code
 COPY src/ ./src/
 
 # Build the application
 RUN npm run build
+# Optional: Prune dev dependencies if node_modules are copied directly
+# RUN npm prune --production && npm cache clean --force
+
 
 # Production stage
 FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodeuser -u 1001
+# Create non-root user and group
+RUN addgroup -S appgroup && \
+    adduser -S appuser -G appgroup
 
-# Copy built application
-COPY --from=build --chown=nodeuser:nodejs /app/dist ./dist
-COPY --from=build --chown=nodeuser:nodejs /app/node_modules ./node_modules
-COPY --from=build --chown=nodeuser:nodejs /app/package.json ./
+# Install dumb-init for signal handling and curl for healthcheck
+RUN apk add --no-cache dumb-init curl
 
-# Create uploads directory
-RUN mkdir -p uploads && chown nodeuser:nodejs uploads
+# Copy built application, node_modules, and package files from build stage
+COPY --chown=appuser:appgroup --from=build /app/dist ./dist
+COPY --chown=appuser:appgroup --from=build /app/node_modules ./node_modules
+COPY --chown=appuser:appgroup --from=build /app/package.json ./package.json
+# Also copy package-lock.json if it's used by npm start or for consistency
+COPY --chown=appuser:appgroup --from=build /app/package-lock.json ./package-lock.json
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+
+# Create uploads directory and set ownership
+RUN mkdir -p uploads && chown appuser:appgroup uploads
+
+# Ensure /app directory itself is owned by appuser
+RUN chown appuser:appgroup /app
 
 # Switch to non-root user
-USER nodeuser
+USER appuser
 
 EXPOSE 3001
 
@@ -45,4 +54,6 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
+# Start the application with dumb-init
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["npm", "start"]

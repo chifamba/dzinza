@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express'; // Added NextFunction
+import { trace, SpanStatusCode, Span, Attributes } from '@opentelemetry/api'; // Import OpenTelemetry API
 import multer from 'multer';
 import { body, query, param, validationResult } from 'express-validator';
 import { fileTypeFromBuffer } from 'file-type';
@@ -167,10 +168,21 @@ router.post('/upload', upload.array('files', 10), [
   body('relatedEvents').optional().isString(),
   body('description').optional().isString().trim().isLength({ max: 1000 }),
   body('generateThumbnails').optional().isBoolean()
-], async (req: Request, res: Response) => {
+], async (req: Request, res: Response, next: NextFunction) => { // Added next
+  const tracer = trace.getTracer('storage-service-file-routes');
+  const parentSpan = tracer.startSpan('files.upload.handler');
   try {
+    parentSpan.setAttributes({
+      'http.method': 'POST',
+      'http.route': '/upload',
+      'files.count': (req.files as Express.Multer.File[])?.length || 0,
+      'user.id': req.user?.id,
+    });
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      parentSpan.setStatus({ code: SpanStatusCode.ERROR, message: 'Validation failed' });
+      parentSpan.end();
       return res.status(400).json({
         error: 'Validation failed',
         details: errors.array()
@@ -203,9 +215,16 @@ router.post('/upload', upload.array('files', 10), [
     const uploadedFiles = [];
 
     for (const file of files) {
-      try {
-        // Validate file type
-        const detectedType = await fileTypeFromBuffer(file.buffer);
+      await tracer.startActiveSpan(`files.processAndUpload.${file.originalname}`, async (fileSpan: Span) => {
+        try {
+          fileSpan.setAttributes({
+            'file.originalName': file.originalname,
+            'file.size': file.size,
+            'file.mimetype': file.mimetype,
+          });
+
+          // Validate file type
+          const detectedType = await fileTypeFromBuffer(file.buffer);
         const actualMimeType = detectedType?.mime || file.mimetype;
 
         // Upload options
@@ -292,13 +311,21 @@ router.post('/upload', upload.array('files', 10), [
           description
         });
 
-        await fileRecord.save();
-        uploadedFiles.push(fileRecord);
+          await fileRecord.save();
+          uploadedFiles.push(fileRecord);
 
-      } catch (fileError) {
-        logger.error(`Error uploading file ${file.originalname}:`, fileError);
-        // Continue with other files
-      }
+          fileSpan.setAttribute('file.s3Key', s3Result.key);
+          fileSpan.setStatus({ code: SpanStatusCode.OK });
+          fileSpan.end();
+        } catch (fileError) {
+          const err = fileError as Error;
+          logger.error(`Error uploading file ${file.originalname}:`, err);
+          fileSpan.recordException(err);
+          fileSpan.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+          fileSpan.end();
+          // Continue with other files
+        }
+      });
     }
 
     if (uploadedFiles.length === 0) {
@@ -322,6 +349,14 @@ router.post('/upload', upload.array('files', 10), [
       error: 'Upload failed',
       message: 'An error occurred while uploading files'
     });
+    parentSpan.setStatus({ code: SpanStatusCode.ERROR, message: (error as Error).message });
+    parentSpan.end();
+    // No next(error) here as response is already sent.
+  } finally {
+    // Ensure parent span is ended if not already (e.g. due to early return)
+    if (!parentSpan.ended) {
+        parentSpan.end();
+    }
   }
 });
 

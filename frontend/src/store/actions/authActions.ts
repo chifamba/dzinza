@@ -5,6 +5,7 @@ import {
   loginStart,
   loginSuccess,
   loginFailure,
+  loginMfaRequired, // Import the new action
   registerStart,
   registerSuccess,
   registerFailure,
@@ -22,19 +23,33 @@ import {
 } from '../slices/authSlice';
 
 // Login action
-export const login = (identifier: string, password: string) => {
+export const login = (email: string, password: string, mfaCode?: string) => { // Changed identifier to email, added mfaCode
   return async (dispatch: Dispatch) => {
     try {
       dispatch(loginStart());
       
-      const response = await authService.login({ identifier, password });
+      // Pass email, password, and mfaCode to authService.login
+      // authService.login payload (FrontendLoginPayload) expects: email, password, mfaCode?
+      const response = await authService.login({ email, password, mfaCode });
+
+      // MFA handling will be added here in the next step.
+      // MFA handling
+      if (response.requireMfa) {
+        // Dispatch action to indicate MFA is required.
+        // Store email used for this login attempt, so MFA form can prefill or use it.
+        dispatch(loginMfaRequired({ emailForMfa: email }));
+      } else if (response.user && response.tokens) {
+        // If no MFA is required and login is successful (user and tokens are present)
+        dispatch(loginSuccess({
+          user: response.user,
+          tokens: response.tokens,
+        }));
+      } else {
+        // This case should ideally not be reached if API guarantees user/tokens or requireMfa
+        throw new Error('Login response incomplete.');
+      }
       
-      dispatch(loginSuccess({
-        user: response.user,
-        tokens: response.tokens,
-      }));
-      
-      return response;
+      return response; // Return the full response for UI to handle MFA or success
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed';
       dispatch(loginFailure(message));
@@ -44,17 +59,19 @@ export const login = (identifier: string, password: string) => {
 };
 
 // Register action
-export const register = (userData: {
+export const register = (userData: { // Removed username from parameter type
   email: string;
   password: string;
   firstName: string;
   lastName: string;
-  username: string;
+  // preferredLanguage?: 'en' | 'sn' | 'nd'; // Optional: can be added if UI supports it
 }) => {
   return async (dispatch: Dispatch) => {
     try {
       dispatch(registerStart());
       
+      // userData for authService.register (FrontendRegisterPayload) expects: email, password, firstName, lastName
+      // It internally adds preferredLanguage: 'en' for now.
       const response = await authService.register(userData);
       
       dispatch(registerSuccess({

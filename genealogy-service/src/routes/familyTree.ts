@@ -1,7 +1,7 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express'; // Added NextFunction
 import { body, param, query, validationResult } from 'express-validator';
-import express from 'express'; // Ensure express is imported if not already fully
-import { body, param, query, validationResult } from 'express-validator'; // Ensure these are imported
+// Removed duplicate express and express-validator imports
+import { trace, SpanStatusCode, Span } from '@opentelemetry/api'; // Import OpenTelemetry API
 import { FamilyTree } from '../models/FamilyTree.js';
 import { Person } from '../models/Person.js';
 import { Relationship } from '../models/Relationship.js';
@@ -235,20 +235,51 @@ router.post('/', [
  */
 router.get('/:id', [
   param('id').isMongoId().withMessage('Invalid family tree ID'),
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+], async (req: Request, res: Response, next: NextFunction) => { // Added types and next
+  const tracer = trace.getTracer('genealogy-service-familytree-routes');
+  await tracer.startActiveSpan('familyTree.getById.handler', async (span: Span) => {
+    try {
+      span.setAttributes({
+        'familytree.id': req.params.id,
+        'user.id': req.user?.id,
+        'http.method': 'GET',
+        'http.route': '/:id'
+      });
 
-    const userId = req.user?.id;
-    const familyTreeId = req.params.id;
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Validation failed' });
+        span.end();
+        return res.status(400).json({ errors: errors.array() });
+      }
 
-    const familyTree = await FamilyTree.findById(familyTreeId)
-      .populate('rootPersonId', 'firstName lastName profilePhoto');
+      const userId = req.user?.id;
+      const familyTreeId = req.params.id;
 
-    if (!familyTree) {
+      const familyTree = await tracer.startActiveSpan('familyTree.findById.db', async (dbSpan: Span) => {
+        try {
+          dbSpan.setAttributes({
+            'db.system': 'mongodb',
+            'db.operation': 'findById',
+            'db.statement': `FamilyTree.findById(${familyTreeId})`
+          });
+          const tree = await FamilyTree.findById(familyTreeId)
+            .populate('rootPersonId', 'firstName lastName profilePhoto');
+          dbSpan.setStatus({ code: SpanStatusCode.OK });
+          dbSpan.end();
+          return tree;
+        } catch (dbError) {
+          const dbe = dbError as Error;
+          dbSpan.recordException(dbe);
+          dbSpan.setStatus({ code: SpanStatusCode.ERROR, message: dbe.message });
+          dbSpan.end();
+          throw dbe;
+        }
+      });
+
+      if (!familyTree) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Family tree not found' });
+        span.end();
       return res.status(404).json({ error: 'Family tree not found' });
     }
 
@@ -267,11 +298,18 @@ router.get('/:id', [
       userId,
       familyTreeId,
       correlationId: req.correlationId
-    });
-  } catch (error) {
-    logger.error('Error retrieving family tree:', error, { userId: req.user?.id });
-    res.status(500).json({ error: 'Failed to retrieve family tree' });
-  }
+      span.setStatus({ code: SpanStatusCode.OK });
+      span.end();
+    } catch (error) {
+      const err = error as Error;
+      span.recordException(err);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+      span.end();
+      logger.error('Error retrieving family tree:', err, { userId: req.user?.id });
+      // next(err); // Call next if you want global error handler to respond
+      res.status(500).json({ error: 'Failed to retrieve family tree' });
+    }
+  });
 });
 
 /**

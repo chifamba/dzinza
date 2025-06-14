@@ -11,7 +11,9 @@ on:
 env:
   NODE_VERSION: '20'
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # IMAGE_NAME is now set per service in the matrix strategy
+  # Using github.repository_owner for the image name prefix for better organization context
+  IMAGE_OWNER: ${{ github.repository_owner }}
 
 jobs:
   # Code Quality and Testing
@@ -48,8 +50,8 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage/lcov.info
-        flags: frontend
-        name: frontend-coverage
+        flags: frontend # Consider parameterizing if running coverage for multiple services/backends
+        name: frontend-coverage # Consider parameterizing
         
   # Security Scanning
   security:
@@ -79,10 +81,43 @@ jobs:
       with:
         args: --severity-threshold=high
         
-  # Build Application
-  build:
-    name: Build Application
+  # Build Application (REMOVED - Docker builds handle individual service builds)
+  # build:
+  #   name: Build Application
+  #   runs-on: ubuntu-latest
+  #   needs: [test, security]
+    
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v4
+      
+  #   - name: Setup Node.js
+  #     uses: actions/setup-node@v4
+  #     with:
+  #       node-version: ${{ env.NODE_VERSION }}
+  #       cache: 'npm'
+        
+  #   - name: Install dependencies
+  #     run: npm ci # Installs all monorepo dependencies
+      
+  #   - name: Build application
+  #     run: npm run build # This would typically build the frontend or specific workspace
+  #     # If specific builds are needed for E2E outside Docker, E2E job should handle it.
+      
+  #   - name: Upload build artifacts
+  #     uses: actions/upload-artifact@v3
+  #     with:
+  #       name: build-files # This artifact is no longer used by deploy jobs
+  #       path: dist/ # Or specific service dist: e.g., packages/frontend/dist
+  #       retention-days: 7
+        
+  # End-to-End Testing
+  e2e:
+    name: E2E Tests
     runs-on: ubuntu-latest
+    # needs: build # 'build' job is removed.
+    # E2E tests might run against a deployed staging environment later, or use docker-compose to spin up services.
+    # For now, it will run after 'test' and 'security'.
     needs: [test, security]
     
     steps:
@@ -95,43 +130,16 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
         
-    - name: Install dependencies
+    - name: Install dependencies (for E2E tools and potentially running services locally if needed)
       run: npm ci
       
-    - name: Build application
-      run: npm run build
-      
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: build-files
-        path: dist/
-        retention-days: 7
-        
-  # End-to-End Testing
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    needs: build
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Download build artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: build-files
-        path: dist/
+    # - name: Download build artifacts # This step is removed as the 'build' job is removed.
+    #   uses: actions/download-artifact@v3
+    #   with:
+    #     name: build-files
+    #     path: dist/
+    # If E2E tests need to build a specific part of the application (e.g., frontend),
+    # add a build step here: e.g., npm run build --workspace=frontend
         
     - name: Install Playwright
       run: npx playwright install --with-deps
@@ -147,70 +155,164 @@ jobs:
         path: test-results/
         retention-days: 7
         
-  # Docker Build and Push
+  # Docker Build and Push (Multi-Service)
   docker:
-    name: Build and Push Docker Image
+    name: Build and Push Docker Image for ${{ matrix.service_name }}
     runs-on: ubuntu-latest
-    needs: [test, security, build]
+    needs: [test, security] # Removed 'build' dependency
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-    
     permissions:
       contents: read
       packages: write
-      
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service_name: auth-service
+            dockerfile_path: ./auth-service/Dockerfile
+          - service_name: backend-service
+            dockerfile_path: ./backend-service/Dockerfile
+          - service_name: gateway-service # Processed as a top-level service image
+            dockerfile_path: ./backend-service/services/gateway/Dockerfile
+          - service_name: frontend
+            dockerfile_path: ./frontend/Dockerfile
+          - service_name: genealogy-service
+            dockerfile_path: ./genealogy-service/Dockerfile
+          - service_name: search-service
+            dockerfile_path: ./search-service/Dockerfile
+          - service_name: storage-service
+            dockerfile_path: ./storage-service/Dockerfile
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Log in to Container Registry
+    - name: Log in to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
+        username: ${{ github.actor }} # github.actor is fine for personal repos, for orgs consider a specific service account or GITHUB_TOKEN permissions
         password: ${{ secrets.GITHUB_TOKEN }}
         
-    - name: Extract metadata
+    - name: Extract metadata for Docker
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.service_name }}
         tags: |
-          type=ref,event=branch
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
-          
-    - name: Build and push Docker image
+          type=sha,prefix=sha-,suffix=,format=short # e.g., sha-abcdef
+          type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+          # For develop branch, tag with 'develop' and a short SHA
+          type=raw,value=develop-sha-${{ github.sha }},enable=${{ github.ref == 'refs/heads/develop' }}
+          type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+
+    - name: Build and push Docker image for ${{ matrix.service_name }}
+      id: build-and-push
       uses: docker/build-push-action@v5
       with:
-        context: .
+        context: . # Monorepo root context
+        file: ${{ matrix.dockerfile_path }}
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
-        
+        # build-args: | # Example if build args were needed
+        #   SERVICE_NAME=${{ matrix.service_name }}
+
   # Deploy to Staging
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [e2e, docker]
+    needs: [docker] # Staging deployment depends on Docker images being available
+    # The e2e job dependency on deploy-staging can be added if E2E tests run post-deployment.
+    # For now, deploy-staging depends on 'docker', and 'e2e' runs in parallel to 'docker' (after test/security).
     if: github.ref == 'refs/heads/develop'
     environment: staging
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
-    - name: Deploy to staging
+
+    - name: Configure kubectl for Staging
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBE_CONFIG_DATA_STAGING }}" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+        kubectl version --client
+      env:
+        KUBECONFIG: $HOME/.kube/config
+
+    - name: Database Migrations (Staging)
+      run: |
+        echo "Running database migrations for staging..."
+        # This is a placeholder. Actual migration might involve:
+        # 1. Ensure your Kubernetes cluster can access your GHCR images.
+        # 2. Define a Kubernetes Job manifest (e.g., k8s/base/jobs/migrate-job.yaml).
+        #    This job should use a service image that contains your migration scripts (e.g., auth-service or backend-service).
+        #    The image for the job should be tagged with sha-${{ github.sha }} (short version).
+        #
+        # Example steps (conceptual):
+        # Update migrate-job.yaml with the correct image:
+        #   sed -i 's|image: .*\(service-with-migrations\):.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/<service-with-migrations>:sha-${{ github.sha }}|g' k8s/base/jobs/migrate-job.yaml
+        # Or use kustomize to set the image for the job.
+        #
+        # Apply the job:
+        #   kubectl apply -f k8s/base/jobs/migrate-job.yaml -n staging
+        # Wait for completion:
+        #   kubectl wait --for=condition=complete job/migrate-db-staging --timeout=5m -n staging
+        # Optional: Delete the job after completion
+        #   kubectl delete job/migrate-db-staging -n staging
+        echo "Migration step placeholder. Implement with K8s Job, correct image tagging, and namespace."
+
+    - name: Deploy to Staging Environment
       run: |
         echo "Deploying to staging environment..."
-        # Add staging deployment commands here
-        # Example: kubectl apply -f k8s/staging/
+        IMAGE_TAG_SUFFIX=$(echo $GITHUB_SHA | cut -c1-7) # Get short SHA
+        IMAGE_TAG="sha-${IMAGE_TAG_SUFFIX}"
+        echo "Using image tag: $IMAGE_TAG for k8s manifests if not using Kustomize to set images"
         
-    - name: Run staging smoke tests
+        # Option 1: Using Kustomize (Recommended)
+        # Create a kustomization.yaml in k8s/overlays/staging that references base manifests.
+        # Then, before applying, update images using kustomize edit set image:
+        # echo "Updating images with Kustomize..."
+        # cd k8s/overlays/staging
+        # kustomize edit set image ghcr.io/OWNER_PLACEHOLDER/auth-service=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/auth-service:$IMAGE_TAG
+        # kustomize edit set image ghcr.io/OWNER_PLACEHOLDER/backend-service=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/backend-service:$IMAGE_TAG
+        # kustomize edit set image ghcr.io/OWNER_PLACEHOLDER/gateway-service=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/gateway-service:$IMAGE_TAG
+        # kustomize edit set image ghcr.io/OWNER_PLACEHOLDER/frontend=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/frontend:$IMAGE_TAG
+        # kustomize edit set image ghcr.io/OWNER_PLACEHOLDER/genealogy-service=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/genealogy-service:$IMAGE_TAG
+        # kustomize edit set image ghcr.io/OWNER_PLACEHOLDER/search-service=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/search-service:$IMAGE_TAG
+        # kustomize edit set image ghcr.io/OWNER_PLACEHOLDER/storage-service=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/storage-service:$IMAGE_TAG
+        # kubectl apply -k . -n staging
+        # cd ../../.. # Go back to repo root
+
+        # Option 2: Plain kubectl apply (assumes manifests are in k8s/staging/ and image tags are manually updated or templated)
+        # If using this, you MUST have a process to update image tags in your YAML files before applying.
+        # For example, using `sed` or `envsubst` if your YAMLs are templates.
+        # This example just applies all files in a directory - NOT PRODUCTION READY without image updates.
+        echo "Applying raw manifests from k8s/staging/ (ensure images are correctly tagged in these files)..."
+        if [ -d "k8s/staging" ]; then
+          kubectl apply -R -f k8s/staging/ -n staging
+        elif [ -d "k8s/overlays/staging" ]; then
+          echo "Found k8s/overlays/staging. Consider using Kustomize for deployment."
+          kubectl apply -k k8s/overlays/staging -n staging # This will work if kustomization.yaml sets images
+        else
+          echo "Error: No k8s/staging or k8s/overlays/staging directory found."
+          exit 1
+        fi
+        echo "Deployment to staging initiated. Ensure your Kubernetes manifests reference the correct new image tags."
+
+    - name: Run Staging Smoke Tests
       run: |
         echo "Running staging smoke tests..."
-        # Add smoke test commands here
+        # Example: Wait for deployment rollout and then curl health endpoints
+        # kubectl rollout status deployment/auth-service -n staging --timeout=2m
+        # AUTH_SERVICE_URL=$(kubectl get svc auth-service -n staging -o jsonpath='{.status.loadBalancer.ingress[0].ip}') # Or other ways to get URL/IP
+        # if [ -z "$AUTH_SERVICE_URL" ]; then echo "Failed to get auth-service URL"; exit 1; fi
+        # curl -sfL http://$AUTH_SERVICE_URL/health || exit 1
+        # Repeat for other critical services
+        echo "Smoke test placeholder. Implement actual health checks for deployed services."
         
     - name: Notify deployment status
       uses: 8398a7/action-slack@v3
@@ -224,25 +326,70 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [e2e, docker]
+    needs: [docker] # Production deployment depends on Docker images
+    # Similar to staging, e2e could be a gate for production or run concurrently.
     if: github.ref == 'refs/heads/main'
     environment: production
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
-    - name: Deploy to production
+
+    - name: Configure kubectl for Production
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBE_CONFIG_DATA_PRODUCTION }}" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+        kubectl version --client
+      env:
+        KUBECONFIG: $HOME/.kube/config
+
+    - name: Database Migrations (Production)
+      run: |
+        echo "Running database migrations for production..."
+        # Similar to staging, implement with K8s Job or equivalent, targeting production DB.
+        # Ensure the migration job uses the correct production-tagged service image.
+        # Example:
+        # kubectl apply -f k8s/base/jobs/migrate-job.yaml -n production
+        # kubectl set image job/migrate-db-prod <container_name>=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/<service-with-migrations>:sha-${{ github.sha }} -n production
+        # kubectl wait --for=condition=complete job/migrate-db-prod --timeout=5m -n production
+        # kubectl delete job/migrate-db-prod -n production
+        echo "Migration step placeholder. Implement with K8s Job, correct image tagging, and namespace."
+
+    - name: Deploy to Production Environment
       run: |
         echo "Deploying to production environment..."
-        # Add production deployment commands here
-        # Example: kubectl apply -f k8s/production/
+        IMAGE_TAG_SUFFIX=$(echo $GITHUB_SHA | cut -c1-7) # Get short SHA
+        IMAGE_TAG="sha-${IMAGE_TAG_SUFFIX}" # This is the specific image version built. 'latest' also pushed for main.
+        echo "Using image tag: $IMAGE_TAG for k8s manifests if not using Kustomize to set images (or 'latest' if appropriate for your strategy)"
+
+        # Option 1: Using Kustomize (Recommended)
+        # echo "Updating images with Kustomize for production..."
+        # cd k8s/overlays/production
+        # kustomize edit set image ghcr.io/OWNER_PLACEHOLDER/auth-service=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/auth-service:$IMAGE_TAG # Or :latest
+        # ... for all services
+        # kubectl apply -k . -n production
+        # cd ../../..
+
+        # Option 2: Plain kubectl apply (ensure images are updated in manifests)
+        echo "Applying raw manifests from k8s/production/ (ensure images are correctly tagged in these files)..."
+        if [ -d "k8s/production" ]; then
+          kubectl apply -R -f k8s/production/ -n production
+        elif [ -d "k8s/overlays/production" ]; then
+          echo "Found k8s/overlays/production. Consider using Kustomize for deployment."
+          kubectl apply -k k8s/overlays/production -n production # This will work if kustomization.yaml sets images
+        else
+          echo "Error: No k8s/production or k8s/overlays/production directory found."
+          exit 1
+        fi
+        echo "Deployment to production initiated. Ensure your Kubernetes manifests reference the correct new image tags."
         
-    - name: Run production smoke tests
+    - name: Run Production Smoke Tests
       run: |
         echo "Running production smoke tests..."
-        # Add smoke test commands here
-        
+        # Similar to staging, implement actual health checks for deployed production services.
+        echo "Smoke test placeholder."
+
     - name: Create GitHub release
       if: github.ref == 'refs/heads/main'
       uses: actions/create-release@v1
@@ -277,16 +424,46 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
-    - name: Run Lighthouse CI
+
+    - name: Setup k6
+      uses: k6io/setup-k6@v0.2.0 # Or latest version
+      with:
+        k6-version: 'latest' # Specify a k6 version or use 'latest'
+
+    - name: Run Lighthouse CI # This can run in parallel or before/after k6 if desired
       uses: treosh/lighthouse-ci-action@v10
       with:
-        configPath: './lighthouserc.js'
+        configPath: './lighthouserc.js' # Ensure this file exists if Lighthouse is used
         uploadArtifacts: true
         temporaryPublicStorage: true
         
-    - name: Run load tests
+    - name: Run k6 Auth Service Load Test
       run: |
-        echo "Running load tests..."
-        # Add load testing commands here
-        # Example: k6 run load-test.js
+        k6 run load-tests/auth-service-test.js \
+          -e BASE_URL=${{ secrets.STAGING_AUTH_SERVICE_URL }} \
+          --summary-export=auth-k6-summary.json \
+          --out json=auth-k6-results.json
+      continue-on-error: true # Allow pipeline to continue even if load tests have check failures, for reporting
+
+    - name: Run k6 Genealogy Service Load Test
+      run: |
+        k6 run load-tests/genealogy-service-test.js \
+          -e BASE_URL=${{ secrets.STAGING_GENEALOGY_SERVICE_URL }} \
+          -e TREE_ID=${{ secrets.TEST_TREE_ID }} \
+          -e PERSON_ID=${{ secrets.TEST_PERSON_ID }} \
+          -e AUTH_TOKEN=${{ secrets.TEST_USER_AUTH_TOKEN }} \
+          --summary-export=genealogy-k6-summary.json \
+          --out json=genealogy-k6-results.json
+      continue-on-error: true # Allow pipeline to continue for reporting
+
+    - name: Upload k6 Test Results
+      uses: actions/upload-artifact@v3
+      if: always() # Upload results even if previous steps failed (e.g., k6 checks failed)
+      with:
+        name: k6-load-test-results
+        path: |
+          auth-k6-summary.json
+          auth-k6-results.json
+          genealogy-k6-summary.json
+          genealogy-k6-results.json
+        retention-days: 7

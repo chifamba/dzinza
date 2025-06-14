@@ -7,7 +7,10 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
-import promClient from "prom-client";
+// promClient removed, will use registry from our metrics utility
+// import promClient from "prom-client";
+import metricsRegistry, { httpRequestCounter, httpRequestDurationMicroseconds } from './utils/metrics'; // Import our metrics setup
+import { initTracer } from './utils/tracing'; // Import OpenTelemetry tracer initialization
 
 // Import routes
 import familyTreeRoutes from "./routes/familyTree.js";
@@ -22,6 +25,15 @@ import { authMiddleware } from "../../../src/shared/middleware/auth.js";
 import { logger } from "../../../src/shared/utils/logger.js";
 
 dotenv.config();
+
+// Initialize OpenTelemetry Tracer
+const OTEL_SERVICE_NAME = process.env.OTEL_SERVICE_NAME || 'genealogy-service';
+const JAEGER_ENDPOINT = process.env.JAEGER_ENDPOINT || 'http://localhost:4318/v1/traces';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+if (process.env.ENABLE_TRACING === 'true') {
+  initTracer(OTEL_SERVICE_NAME, JAEGER_ENDPOINT, NODE_ENV);
+}
 
 const app = express();
 const PORT = process.env.GENEALOGY_PORT || 3004;
@@ -71,47 +83,22 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-// Prometheus metrics
-const register = new promClient.Registry();
-register.setDefaultLabels({
-  app: "genealogy-service",
-});
-promClient.collectDefaultMetrics({ register });
-
-// Custom metrics
-const httpRequestDuration = new promClient.Histogram({
-  name: "http_request_duration_ms",
-  help: "Duration of HTTP requests in ms",
-  labelNames: ["method", "route", "status"],
-  buckets: [0.1, 5, 15, 50, 100, 500],
-});
-
-const httpRequestsTotal = new promClient.Counter({
-  name: "http_requests_total",
-  help: "Total number of HTTP requests",
-  labelNames: ["method", "route", "status"],
-});
-
-register.registerMetric(httpRequestDuration);
-register.registerMetric(httpRequestsTotal);
-
-// Metrics middleware
+// Metrics middleware (using imported metrics)
 app.use((req, res, next) => {
   const start = Date.now();
+  res.on('finish', () => {
+    const durationSeconds = (Date.now() - start) / 1000; // Convert to seconds
+    const route = req.route?.path || req.path || 'unknown_route';
+    const statusCode = res.statusCode.toString();
 
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    const route = req.route?.path || req.path;
+    httpRequestDurationMicroseconds
+      .labels(req.method, route, statusCode) // Use 'code' as label name if that's what histogram expects, or change histogram
+      .observe(durationSeconds);
 
-    httpRequestDuration
-      .labels(req.method, route, res.statusCode.toString())
-      .observe(duration);
-
-    httpRequestsTotal
-      .labels(req.method, route, res.statusCode.toString())
+    httpRequestCounter
+      .labels(req.method, route, statusCode)
       .inc();
   });
-
   next();
 });
 
@@ -161,13 +148,15 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Metrics endpoint
+// Metrics endpoint (using imported registry)
 app.get("/metrics", async (req, res) => {
   try {
-    res.set("Content-Type", register.contentType);
-    res.end(await register.metrics());
+    res.set("Content-Type", metricsRegistry.contentType);
+    res.end(await metricsRegistry.metrics());
   } catch (err) {
-    res.status(500).end(err);
+    const error = err as Error;
+    logger.error('Failed to serve metrics:', { error: error.message, stack: error.stack });
+    res.status(500).send(error.message);
   }
 });
 

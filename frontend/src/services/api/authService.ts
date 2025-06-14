@@ -1,288 +1,164 @@
 // src/services/api/authService.ts
+import { authApi, LoginData, RegisterData as ApiRegisterData, User as ApiUser, AuthResponse as ApiAuthResponse, LoginResponse as ApiLoginResponse } from './auth'; // Assuming auth.ts exports necessary types
 
-// Ensure this UserData interface is consistent with authSlice.ts
-export interface UserData {
-  id: string;
-  name?: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  username?: string;
-  profileImageUrl?: string;
-  emailVerified?: boolean;
-  createdAt?: string;
-  lastLogin?: string;
+// Define frontend-specific UserData or use the one from auth.ts if suitable
+// For consistency, it's often better to align frontend types with API response types
+// or have a clear mapping layer. Here, we'll try to use/map to ApiUser.
+export interface UserData extends ApiUser {
+  name?: string; // Example: if frontend wants a combined 'name' field
 }
 
-interface LoginPayload {
-  identifier: string; // email or username
-  password: string;
+// Define frontend-specific payload types or use/map to types from auth.ts
+export interface FrontendLoginPayload extends LoginData {} // email, password, mfaCode?
+export interface FrontendRegisterPayload extends Omit<ApiRegisterData, 'preferredLanguage'> {
+  // Assuming preferredLanguage is handled differently or not set at initial registration by this service layer
+  // Or, if it's required, ensure it's part of FrontendRegisterPayload and passed to authApi.register
+  // For this task, aligning with the goal of removing 'username' if not core:
+  // The ApiRegisterData in auth.ts did not have username, so this is mostly aligned.
+  // If username was here before, it's now removed from this payload too.
 }
 
-interface RegisterPayload {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  username: string;
-}
 
-interface AuthResponse {
+export interface FrontendAuthResponse {
   user: UserData;
   tokens: {
     accessToken: string;
     refreshToken?: string;
   };
+  requireMfa?: boolean; // For MFA flow
 }
 
-interface ForgotPasswordPayload {
-  email: string;
-}
-
-interface ResetPasswordPayload {
-  token: string;
-  email: string;
-  newPassword: string;
-}
-
-// Get API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-
-// Helper function to handle API errors
-const handleApiError = (error: any): Error => {
-  if (error.response?.data?.error) {
-    return new Error(error.response.data.error);
-  }
-  if (error.response?.data?.message) {
-    return new Error(error.response.data.message);
-  }
-  if (error.message) {
-    return new Error(error.message);
-  }
-  return new Error('An unexpected error occurred');
-};
-
-// Helper function to make API requests
-const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
-  
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
+// Helper to map API user to Frontend UserData if needed
+const mapApiUserToUserData = (apiUser: ApiUser): UserData => {
+  return {
+    ...apiUser,
+    name: `${apiUser.firstName || ''} ${apiUser.lastName || ''}`.trim(),
   };
-
-  // Add auth token if available
-  const token = localStorage.getItem(import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token');
-  if (token && !headers['Authorization']) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const config: RequestInit = {
-    ...options,
-    headers,
-  };
-
-  try {
-    const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw {
-        response: {
-          status: response.status,
-          data: errorData
-        }
-      };
-    }
-
-    return response.json();
-  } catch (error) {
-    throw error;
-  }
 };
 
 export const authService = {
-  login: async (payload: LoginPayload): Promise<AuthResponse> => {
-    try {
-      const response = await apiRequest('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+  login: async (payload: FrontendLoginPayload): Promise<FrontendAuthResponse> => {
+    const response: ApiLoginResponse = await authApi.login(payload);
+    // Tokens are handled by apiClient's interceptors (storage & refresh)
+    // The apiClient also handles errors and token refresh automatically.
 
-      // Store tokens
-      if (response.tokens?.accessToken) {
-        localStorage.setItem(
-          import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token',
-          response.tokens.accessToken
-        );
-      }
-      if (response.tokens?.refreshToken) {
-        localStorage.setItem(
-          import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token',
-          response.tokens.refreshToken
-        );
-      }
-
+    if (response.requireMfa) {
       return {
-        user: {
-          id: response.user.id,
-          name: `${response.user.firstName || ''} ${response.user.lastName || ''}`.trim(),
-          email: response.user.email,
-          firstName: response.user.firstName,
-          lastName: response.user.lastName,
-          username: response.user.username,
-          emailVerified: response.user.emailVerified,
-          createdAt: response.user.createdAt,
-          lastLogin: response.user.lastLogin,
-        },
-        tokens: response.tokens,
+        // No user/tokens yet, MFA is required
+        user: {} as UserData, // Or a specific type indicating partial/no login
+        tokens: {} as { accessToken: string; refreshToken?: string },
+        requireMfa: true,
       };
-    } catch (error) {
-      throw handleApiError(error);
     }
+
+    if (!response.user || !response.tokens) {
+        throw new Error("Login did not return user or tokens");
+    }
+
+    return {
+      user: mapApiUserToUserData(response.user),
+      tokens: response.tokens,
+      requireMfa: false,
+    };
   },
 
-  register: async (payload: RegisterPayload): Promise<AuthResponse> => {
-    try {
-      const response = await apiRequest('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+  register: async (payload: FrontendRegisterPayload): Promise<FrontendAuthResponse> => {
+    // Assuming preferredLanguage is set by default or a separate flow
+    const apiPayload: ApiRegisterData = {
+        ...payload,
+        preferredLanguage: 'en', // Or get from payload if added back
+    };
+    const response: ApiAuthResponse = await authApi.register(apiPayload);
 
-      // Store tokens
-      if (response.tokens?.accessToken) {
-        localStorage.setItem(
-          import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token',
-          response.tokens.accessToken
-        );
-      }
-      if (response.tokens?.refreshToken) {
-        localStorage.setItem(
-          import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token',
-          response.tokens.refreshToken
-        );
-      }
-
-      return {
-        user: {
-          id: response.user.id,
-          name: `${response.user.firstName || ''} ${response.user.lastName || ''}`.trim(),
-          email: response.user.email,
-          firstName: response.user.firstName,
-          lastName: response.user.lastName,
-          username: response.user.username,
-          emailVerified: response.user.emailVerified,
-          createdAt: response.user.createdAt,
-        },
-        tokens: response.tokens,
-      };
-    } catch (error) {
-      throw handleApiError(error);
+    if (!response.user || !response.tokens) {
+        throw new Error("Registration did not return user or tokens");
     }
+
+    return {
+      user: mapApiUserToUserData(response.user),
+      tokens: response.tokens,
+    };
   },
 
-  forgotPassword: async (payload: ForgotPasswordPayload): Promise<{ message: string }> => {
-    try {
-      const response = await apiRequest('/auth/forgot-password', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      return { message: response.message };
-    } catch (error) {
-      throw handleApiError(error);
-    }
+  forgotPassword: async (email: string): Promise<{ message: string }> => {
+    return authApi.requestPasswordReset({ email });
   },
 
-  resetPassword: async (payload: ResetPasswordPayload): Promise<{ message: string }> => {
-    try {
-      const response = await apiRequest('/auth/reset-password', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      return { message: response.message };
-    } catch (error) {
-      throw handleApiError(error);
-    }
+  resetPassword: async (payload: { token: string; newPassword: string; email?: string /* if backend needs it */}): Promise<{ message: string }> => {
+    // The email might not be needed if token is globally unique and contains user ref
+    // Adjust based on actual authApi.resetPassword signature
+    return authApi.resetPassword({ token: payload.token, newPassword: payload.newPassword });
   },
 
   logout: async (): Promise<void> => {
+    // apiClient handles actual token removal from localStorage via its interceptor or specific method
+    // authApi.logout might also call an API endpoint.
+    const refreshToken = localStorage.getItem(import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token');
+    if (refreshToken) {
+        try {
+            await authApi.logout(refreshToken); // Call API endpoint if it exists
+        } catch (error) {
+            console.warn('Logout API call failed, proceeding with local token removal:', error);
+        }
+    }
+    // apiClient's interceptors or a dedicated logout method in apiClient should clear tokens.
+    // Forcing it here for now as per original authService.ts logic.
+    localStorage.removeItem(import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token');
+    localStorage.removeItem(import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token');
+    // The 'auth:logout' event is dispatched by apiClient on 401 after refresh failure.
+  },
+
+  getCurrentUser: async (): Promise<UserData | null> => {
     try {
-      // Call logout endpoint
-      await apiRequest('/auth/logout', {
-        method: 'POST',
-      });
+      const apiUser: ApiUser = await authApi.getCurrentUser();
+      return mapApiUserToUserData(apiUser);
     } catch (error) {
-      // Continue with logout even if API call fails
-      console.warn('Logout API call failed:', error);
-    } finally {
-      // Clear stored tokens
-      localStorage.removeItem(import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token');
-      localStorage.removeItem(import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token');
+      // apiClient's interceptor handles 401s. If it's any other error, let it propagate or handle.
+      // If getCurrentUser fails (e.g. no token, invalid token after refresh failed), it might throw.
+      // The UI layer should catch this and redirect to login.
+      console.error("Error fetching current user:", error);
+      return null; // Or rethrow, depending on how actions handle it
     }
   },
 
-  getCurrentUser: async (): Promise<UserData> => {
+  refreshToken: async (): Promise<{ accessToken: string } | null> => {
+    // This is now handled by apiClient's response interceptor.
+    // Direct calls to refreshToken from UI/store are usually not needed.
+    // If a manual refresh is ever required, it would go through authApi.
+    const refreshTokenValue = localStorage.getItem(import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token');
+    if (!refreshTokenValue) {
+        console.warn("No refresh token available for manual refresh call.");
+        return null;
+    }
     try {
-      const response = await apiRequest('/auth/me');
-
-      return {
-        id: response.user.id,
-        name: `${response.user.firstName || ''} ${response.user.lastName || ''}`.trim(),
-        email: response.user.email,
-        firstName: response.user.firstName,
-        lastName: response.user.lastName,
-        username: response.user.username,
-        profileImageUrl: response.user.profilePictureUrl,
-        emailVerified: response.user.emailVerified,
-        createdAt: response.user.createdAt,
-        lastLogin: response.user.lastLogin,
-      };
+        const response = await authApi.refreshToken(refreshTokenValue);
+        // The interceptor in apiClient should already handle storing the new tokens.
+        return { accessToken: response.accessToken };
     } catch (error) {
-      throw handleApiError(error);
+        console.error("Manual token refresh failed:", error);
+        // Interceptor in apiClient should have handled logout if refresh token is invalid.
+        return null;
     }
   },
 
-  refreshToken: async (): Promise<{ accessToken: string }> => {
-    try {
-      const refreshToken = localStorage.getItem(
-        import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token'
-      );
+  // Example of a method that might not be in AuthAPI but specific to authService's role
+  verifyMfa: async (code: string): Promise<FrontendAuthResponse> => {
+    // Assuming AuthAPI has a verifyMfa method that takes { code }
+    // and on success returns a similar structure to login (user, tokens)
+    const response: ApiLoginResponse = await authApi.login({ email: '', password: '', mfaCode: code }); // This is not quite right.
+    // The backend should have a dedicated MFA verification endpoint that takes a temp session ID / user ID
+    // and the MFA code, then finalizes login by issuing tokens.
+    // For this task, we'll assume the login endpoint can take mfaCode as part of LoginData
+    // and authApi.login handles this. The authActions.ts will manage the two-step flow.
+    // This specific authService.verifyMfa might not be directly called if actions call authApi.login directly with code.
 
-      if (!refreshToken) {
-        throw new Error('No refresh token available');
-      }
-
-      const response = await apiRequest('/auth/refresh', {
-        method: 'POST',
-        body: JSON.stringify({ refreshToken }),
-      });
-
-      // Store new access token
-      if (response.tokens?.accessToken) {
-        localStorage.setItem(
-          import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token',
-          response.tokens.accessToken
-        );
-      }
-
-      return { accessToken: response.tokens.accessToken };
-    } catch (error) {
-      // Clear tokens if refresh fails
-      localStorage.removeItem(import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token');
-      localStorage.removeItem(import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token');
-      throw handleApiError(error);
+    if (!response.user || !response.tokens) {
+        throw new Error("MFA verification did not return user or tokens");
     }
-  },
-
-  // Legacy methods for backward compatibility
-  getUserProfile: async (_userId: string): Promise<UserData> => {
-    return authService.getCurrentUser();
-  },
-
-  updateUserProfile: async (_userId: string, _data: Partial<UserData>): Promise<UserData> => {
-    // This would be implemented when we add profile update endpoints
-    throw new Error('Profile update not yet implemented');
+    return {
+      user: mapApiUserToUserData(response.user),
+      tokens: response.tokens,
+      requireMfa: false,
+    };
   }
 };

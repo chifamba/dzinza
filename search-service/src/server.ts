@@ -11,6 +11,9 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 
 import { logger } from "./utils/logger";
+import { initTracer } from './utils/tracing'; // Import OpenTelemetry tracer initialization
+// Metrics utils are not directly used in server.ts if relying on express-prometheus-middleware and global registry for custom metrics.
+// Custom metrics like searchQueriesCounter would be imported and used in specific route handlers.
 import { errorHandler } from "./middleware/errorHandler";
 import { authMiddleware } from "./middleware/auth";
 import { ElasticsearchService } from "./services/elasticsearch";
@@ -18,6 +21,15 @@ import searchRoutes from "./routes/search";
 import analyticsRoutes from "./routes/analytics";
 
 dotenv.config();
+
+// Initialize OpenTelemetry Tracer
+const OTEL_SERVICE_NAME = process.env.OTEL_SERVICE_NAME || 'search-service';
+const JAEGER_ENDPOINT = process.env.JAEGER_ENDPOINT || 'http://localhost:4318/v1/traces';
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+if (process.env.ENABLE_TRACING === 'true') {
+  initTracer(OTEL_SERVICE_NAME, JAEGER_ENDPOINT, NODE_ENV);
+}
 
 const app = express();
 const PORT = process.env.SEARCH_SERVICE_PORT || 3003;

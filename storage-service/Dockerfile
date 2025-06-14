@@ -6,6 +6,7 @@ WORKDIR /app
 
 # Copy package files
 COPY storage-service/package*.json ./
+COPY storage-service/package-lock.json ./ # Add package-lock.json
 COPY storage-service/tsconfig.json ./
 
 # Install all dependencies (including dev dependencies for build)
@@ -21,9 +22,9 @@ RUN npm run build
 # Production image
 FROM node:18-alpine AS production
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S storage && \
-    adduser -S storage -u 1001
+# Create non-root user and group for security
+RUN addgroup -S appgroup && \
+    adduser -S appuser -G appgroup
 
 # Set working directory
 WORKDIR /app
@@ -32,19 +33,21 @@ WORKDIR /app
 RUN apk add --no-cache dumb-init
 
 # Copy package files and install production dependencies
-COPY storage-service/package*.json ./
+COPY --chown=appuser:appgroup storage-service/package*.json ./
+COPY --chown=appuser:appgroup storage-service/package-lock.json ./ # Add package-lock.json
 RUN npm ci --production && npm cache clean --force
 
 # Copy built application
-COPY --from=builder /app/dist ./dist/
-COPY --from=builder /app/shared ./shared/
+COPY --chown=appuser:appgroup --from=builder /app/dist ./dist/
+COPY --chown=appuser:appgroup --from=builder /app/shared ./shared/
 
-# Create necessary directories
+# Create necessary directories and ensure /app is owned by appuser
+# The chown on /app will also cover subdirectories created here.
 RUN mkdir -p /app/uploads /app/temp && \
-    chown -R storage:storage /app
+    chown -R appuser:appgroup /app
 
 # Switch to non-root user
-USER storage
+USER appuser
 
 # Expose port
 EXPOSE 3005
