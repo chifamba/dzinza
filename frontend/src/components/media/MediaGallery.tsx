@@ -1,180 +1,190 @@
-import React, { useState, useEffect } from 'react';
-import { Lightbox } from '../ui'; // Assuming index.ts in ../ui exports Lightbox
+import React, { useState, useEffect, useCallback } from 'react';
+import { mediaService, ApiFile, UpdateMediaMetadataPayload } from '../../services/api/mediaService'; // Import service and types
+import { Lightbox } from '../ui';
+import { Button } from '../ui/Button'; // Assuming Button component
+import EditMediaModal from './EditMediaModal'; // Import the new modal
+import { Edit3, Download, Loader2, AlertTriangle } from 'lucide-react'; // Icons
 
-interface MediaFile {
-  id: string;
-  url: string;
-  thumbnailUrl?: string;
-  originalName: string;
-  category: 'photo' | 'video' | 'document' | 'audio' | 'other'; // Match File.ts category
-}
+// Using ApiFile directly as the primary type for media items
+// interface MediaFile { // This can be removed if ApiFile is used directly
+//   id: string; // _id from ApiFile
+//   url: string;
+//   thumbnailUrl?: string;
+//   originalName: string;
+//   category: ApiFile['category'];
+// }
 
-// This is the expected structure from your API's File model
-interface ApiFile {
-  _id: string;
-  url: string;
-  originalName: string;
-  category: 'photo' | 'video' | 'document' | 'audio' | 'other'; // Match File.ts category
-  mimeType: string;
-  metadata: {
-    thumbnails?: {
-      small?: string;
-      medium?: string;
-      large?: string;
-    };
-    // other metadata properties
-  };
-  // other properties from IFile
-}
-
-interface ApiResponse {
-  success: boolean;
-  data: ApiFile[];
-  meta?: { // Optional meta object based on your route
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
 
 const MediaGallery: React.FC = () => {
-  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+  const [mediaFiles, setMediaFiles] = useState<ApiFile[]>([]); // Use ApiFile type
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
   const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
-  const handleMediaItemClick = (file: MediaFile) => {
-    if (file.category === 'photo') {
-      setSelectedImageUrl(file.url); // Use the full original URL for lightbox
-      setLightboxOpen(true);
-    } else if (file.category === 'video') {
-      console.log('Video clicked:', file.originalName, file.url);
-      // Future: Implement video player modal
-    } else if (file.category === 'document') {
-      const downloadUrl = `/api/files/${file.id}/download`;
-      window.open(downloadUrl, '_blank');
-      console.log('Document clicked, attempting download:', file.originalName, downloadUrl);
-    }
-    // Other categories can be handled here if needed
-  };
+  // State for Edit Media Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [selectedMediaForEdit, setSelectedMediaForEdit] = useState<ApiFile | null>(null);
+  const [editLoading, setEditLoading] = useState<boolean>(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [detailLoading, setDetailLoading] = useState<boolean>(false); // For loading full details before edit
 
-  useEffect(() => {
-    const fetchMedia = async () => {
-      setLoading(true);
-      setError(null);
-      const fetchedFiles: MediaFile[] = [];
-
-      try {
-        // Fetch photos
-        const photoResponse = await fetch('/api/files?category=photo');
-        if (!photoResponse.ok) {
-          throw new Error(`Failed to fetch photos: ${photoResponse.statusText}`);
-        }
-        const photoData: ApiResponse = await photoResponse.json();
-        if (photoData.success && Array.isArray(photoData.data)) {
-          const photos = photoData.data.map((file: ApiFile) => ({
-            id: file._id,
-            url: file.url,
-            thumbnailUrl: file.metadata?.thumbnails?.small || file.metadata?.thumbnails?.medium || file.url,
-            originalName: file.originalName,
-            category: file.category,
-          }));
-          fetchedFiles.push(...photos);
-        } else {
-          console.warn('Photo data is not in expected format:', photoData);
-        }
-
-        // Fetch videos
-        const videoResponse = await fetch('/api/files?category=video');
-        if (!videoResponse.ok) {
-          throw new Error(`Failed to fetch videos: ${videoResponse.statusText}`);
-        }
-        const videoData: ApiResponse = await videoResponse.json();
-        if (videoData.success && Array.isArray(videoData.data)) {
-          const videos = videoData.data.map((file: ApiFile) => ({
-            id: file._id,
-            url: file.url,
-            thumbnailUrl: file.metadata?.thumbnails?.small || file.metadata?.thumbnails?.medium || file.url, // Videos might have poster images as thumbnails
-            originalName: file.originalName,
-            category: file.category,
-          }));
-          fetchedFiles.push(...videos);
-        } else {
-          console.warn('Video data is not in expected format:', videoData);
-        }
-
-        // Fetch documents
-        const documentResponse = await fetch('/api/files?category=document');
-        if (!documentResponse.ok) {
-          throw new Error(`Failed to fetch documents: ${documentResponse.statusText}`);
-        }
-        const documentData: ApiResponse = await documentResponse.json();
-        if (documentData.success && Array.isArray(documentData.data)) {
-          const documents = documentData.data.map((file: ApiFile) => ({
-            id: file._id,
-            url: file.url,
-            thumbnailUrl: file.metadata?.thumbnails?.small || file.metadata?.thumbnails?.medium || file.url, // Documents might not have relevant thumbnails
-            originalName: file.originalName,
-            category: file.category,
-          }));
-          fetchedFiles.push(...documents);
-        } else {
-          console.warn('Document data is not in expected format:', documentData);
-        }
-
-        setMediaFiles(fetchedFiles);
-      } catch (err) {
-        console.error('Error fetching media:', err);
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-      } finally {
-        setLoading(false);
+  const fetchMedia = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Example: Fetch all categories or specific ones as needed
+      // For simplicity, fetching all and then can be filtered on client or by API param
+      const response = await mediaService.listMedia({ limit: 50 }); // Adjust params as needed
+      if (response.data) {
+        setMediaFiles(response.data);
+      } else {
+        setMediaFiles([]);
       }
-    };
-
-    fetchMedia();
+    } catch (err) {
+      console.error('Error fetching media:', err);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchMedia();
+  }, [fetchMedia]);
+
+  const handleMediaItemClick = (file: ApiFile) => {
+    if (file.category === 'photo') {
+      setSelectedImageUrl(file.url);
+      setLightboxOpen(true);
+    } else if (file.category === 'video') {
+      // Implement video player modal or direct link
+      window.open(file.url, '_blank');
+    } else if (file.category === 'document' || file.category === 'audio' || file.category === 'other') {
+      // For documents/audio/other, provide a download link or open in new tab
+      // Assuming backend provides a direct download mechanism or pre-signed URL for these
+      window.open(file.url, '_blank');
+    }
+  };
+
+  const handleEditClick = async (event: React.MouseEvent, file: ApiFile) => {
+    event.stopPropagation(); // Prevent triggering handleMediaItemClick
+    setDetailLoading(true);
+    setEditError(null);
+    try {
+        // Fetch full details for the item to be edited
+        const fullMediaDetails = await mediaService.getMediaDetails(file._id);
+        setSelectedMediaForEdit(fullMediaDetails);
+        setIsEditModalOpen(true);
+    } catch (err) {
+        setEditError(err instanceof Error ? err.message : 'Failed to load media details for editing.');
+    } finally {
+        setDetailLoading(false);
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    if (!editLoading) {
+      setIsEditModalOpen(false);
+      setSelectedMediaForEdit(null);
+    }
+  };
+
+  const handleSaveMediaMetadata = async (mediaId: string, metadata: UpdateMediaMetadataPayload) => {
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const updatedMediaItem = await mediaService.updateMediaMetadata(mediaId, metadata);
+      // Update the specific item in the local state for immediate UI feedback
+      setMediaFiles(prevFiles =>
+        prevFiles.map(file => file._id === mediaId ? { ...file, ...updatedMediaItem } : file)
+      );
+      setIsEditModalOpen(false);
+      setSelectedMediaForEdit(null);
+      // Optionally show a success toast/notification
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update media metadata.');
+      // Error will be displayed in the modal by EditMediaModal component
+      throw err; // Re-throw to let EditMediaModal know saving failed
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+
   if (loading) {
-    return <div className="text-center p-4">Loading media...</div>;
+    return <div className="text-center p-4 flex justify-center items-center min-h-[200px]"><Loader2 className="h-8 w-8 animate-spin text-dzinza-500"/></div>;
   }
 
   if (error) {
-    return <div className="text-center p-4 text-red-500">Error: {error}</div>;
+    return <div className="text-center p-4 text-red-500 flex flex-col items-center justify-center min-h-[200px]">
+        <AlertTriangle className="h-10 w-10 mb-2"/> Error: {error}
+    </div>;
   }
 
   if (mediaFiles.length === 0) {
-    return <div className="text-center p-4">No media files found.</div>;
+    return <div className="text-center p-4">No media files found. Upload some!</div>;
   }
+
+  const getThumbnailUrl = (file: ApiFile): string => {
+    if (file.category === 'photo' && file.thumbnails && file.thumbnails.length > 0) {
+      const smallThumb = file.thumbnails.find(t => t.size === 'small' || t.size === 'medium');
+      if (smallThumb) return smallThumb.url;
+    }
+    // Fallback or placeholder for other types
+    // For actual documents/videos, you might have specific placeholder images based on mimeType
+    return file.url; // Or a generic icon URL
+  };
+
 
   return (
     <div className="p-4">
-      <h2 className="text-2xl font-semibold mb-4 text-gray-800">Media Gallery</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Media Gallery</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
         {mediaFiles.map((file) => (
           <div
-            key={file.id}
-            className="border rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer"
-            onClick={() => handleMediaItemClick(file)}
+            key={file._id}
+            className="border rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 group relative"
           >
-            <img
-              src={file.thumbnailUrl || file.url}
-              alt={file.originalName}
-              className="w-full h-48 object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                if (target.src !== file.url) {
-                    target.src = file.url;
-                }
-                target.alt = `${file.originalName} (fallback image)`;
-              }}
-            />
+            <div
+              className="w-full h-48 bg-gray-200 flex items-center justify-center cursor-pointer"
+              onClick={() => handleMediaItemClick(file)}
+            >
+              {file.category === 'photo' ? (
+                <img
+                  src={getThumbnailUrl(file)}
+                  alt={file.originalName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== file.url) target.src = file.url; // Try full URL if thumb fails
+                    target.alt = `${file.originalName} (fallback)`;
+                  }}
+                />
+              ) : (
+                <span className="text-gray-500 text-sm p-2 text-center">{file.category} - Click to view/download</span>
+                // TODO: Add icons for different file types
+              )}
+            </div>
             <div className="p-3">
               <h3 className="text-sm font-medium text-gray-900 truncate" title={file.originalName}>
                 {file.originalName}
               </h3>
               <p className="text-xs text-gray-500 capitalize">{file.category}</p>
+            </div>
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-1">
+              <Button
+                size="icon"
+                variant="outline"
+                className="bg-white bg-opacity-75 hover:bg-opacity-100 p-1.5"
+                onClick={(e) => handleEditClick(e, file)}
+                aria-label="Edit media"
+                disabled={detailLoading && selectedMediaForEdit?._id === file._id}
+              >
+                {detailLoading && selectedMediaForEdit?._id === file._id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Edit3 className="h-4 w-4" />}
+              </Button>
+              {/* Add download button or other actions if needed */}
             </div>
           </div>
         ))}
@@ -185,8 +195,18 @@ const MediaGallery: React.FC = () => {
           imageUrl={selectedImageUrl}
           onClose={() => {
             setLightboxOpen(false);
-            setSelectedImageUrl(null); // Clear selected image URL on close
+            setSelectedImageUrl(null);
           }}
+        />
+      )}
+      {isEditModalOpen && selectedMediaForEdit && (
+        <EditMediaModal
+          isOpen={isEditModalOpen}
+          onClose={handleCloseEditModal}
+          mediaItem={selectedMediaForEdit}
+          onSave={handleSaveMediaMetadata}
+          isLoading={editLoading}
+          error={editError}
         />
       )}
     </div>

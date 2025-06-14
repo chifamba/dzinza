@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
-import Placeholder from '@tiptap/extension-placeholder';
-import Underline from '@tiptap/extension-underline';
-import EditorToolbar from './EditorToolbar'; // Assuming EditorToolbar.tsx is in the same directory
+import React, { useEffect } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
+import Placeholder from "@tiptap/extension-placeholder";
+import Underline from "@tiptap/extension-underline";
+import EditorToolbar from "./EditorToolbar"; // Assuming EditorToolbar.tsx is in the same directory
 
 export interface RichTextEditorProps {
   value: string;
@@ -18,9 +18,9 @@ export interface RichTextEditorProps {
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
-  placeholder = 'Start typing...',
+  placeholder = "Start typing...",
   readOnly = false,
-  className = '',
+  className = "",
 }) => {
   const editor = useEditor({
     extensions: [
@@ -140,9 +140,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     <div className={`rich-text-editor ${className}`}>
       <style>{editorStyles}</style>
       {!readOnly && editor && <EditorToolbar editor={editor} />}
-      <EditorContent editor={editor} className={readOnly ? 'ProseMirror-readonly' : ''} />
+      <EditorContent
+        editor={editor}
+        className={readOnly ? "ProseMirror-readonly" : ""}
+      />
     </div>
   );
 };
 
 export default RichTextEditor;
+export { RichTextEditor };

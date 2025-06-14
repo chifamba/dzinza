@@ -1,6 +1,6 @@
 # Dzinza Genealogy Platform
 
-An open-source, interactive genealogy platform for building family trees, discovering relatives, and exploring ancestral history with advanced DNA analysis and AI-powered features.
+An open-source, interactive genealogy platform for building family trees, discovering relatives, and exploring ancestral history. This platform provides tools for media management, storytelling, collaboration, and robust search capabilities.
 
 **Current Project Focus: Backend Re-implementation with Python/FastAPI** Dzinza is undergoing a significant upgrade, migrating its backend services from Node.js to Python 3.11 and FastAPI. This strategic move aims to enhance performance, scalability, and maintainability. The existing React/Tailwind CSS frontend will be preserved and adapted. For details, please see our [Backend Migration Roadmap](ROADMAP.md).
 
@@ -93,8 +93,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - Genealogy research community for inspiration and requirements
-- Open source DNA analysis tools and libraries
-- Contributors and early adopters of the platform
+- Open source tools and libraries that made this project possible
+- All contributors and early adopters of the platform
 
 ---
 

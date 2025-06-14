@@ -106,6 +106,15 @@ class ApiClient {
             localStorage.removeItem(refreshTokenKey);
             
             // Dispatch custom event to trigger logout
+            // Recommendation: Add a global event listener for 'auth:logout' in your main App component
+            // or a top-level layout component. This listener should dispatch the Redux logout action
+            // to ensure application-wide state cleanup and UI redirect to login.
+            // Example:
+            // useEffect(() => {
+            //   const handleLogout = () => dispatch(logoutAction());
+            //   window.addEventListener('auth:logout', handleLogout);
+            //   return () => window.removeEventListener('auth:logout', handleLogout);
+            // }, [dispatch]);
             window.dispatchEvent(new CustomEvent('auth:logout'));
             
             return Promise.reject(refreshError);
