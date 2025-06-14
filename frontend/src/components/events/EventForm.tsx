@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Added useCallback
 import { RichTextEditor } from '../ui/RichTextEditor';
 import { Input } from '../ui/Input'; // Assuming Input component is structured like this
 import { Button } from '../ui/Button'; // Assuming Button component is structured like this
+import { genealogyService } from '../../services/api/genealogyService'; // Import genealogyService
+import { FamilyMember } from '../../types/genealogy'; // Import FamilyMember type
 
 // Matches editable fields of IEvent, with array fields as comma-separated strings for form input
 export interface EventFormData {
@@ -87,39 +89,40 @@ const EventForm: React.FC<EventFormProps> = ({
   }, [initialData]);
 
   // useCallback for fetchPersons to stabilize its identity for useEffect dependencies
-  const fetchPersons = React.useCallback(async (currentFamilyTreeId?: string, currentSearchTerm?: string) => {
+  const fetchPersons = useCallback(async (currentFamilyTreeId?: string, currentSearchTerm?: string) => {
+    if (!currentFamilyTreeId) { // Do not fetch if no familyTreeId is provided
+      setAllPersons([]);
+      setPersonsError("Family Tree ID is required to fetch persons."); // Optional: set an error or just clear
+      return;
+    }
     setPersonsLoading(true);
     setPersonsError(null);
-    const queryParams = new URLSearchParams();
-    if (currentFamilyTreeId) {
-      queryParams.append('familyTreeId', currentFamilyTreeId);
-    }
-    if (currentSearchTerm && currentSearchTerm.trim()) {
-      queryParams.append('search', currentSearchTerm.trim());
-    }
-    queryParams.append('limit', '30'); // Default limit for search results
-    queryParams.append('page', '1'); // Always fetch first page for new search/filter context
 
     try {
-      const response = await fetch(`/api/persons?${queryParams.toString()}`);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch persons' }));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      if (data && Array.isArray(data.data)) {
-        setAllPersons(data.data.map((p: any) => ({ id: p._id, name: `${p.firstName} ${p.lastName}`.trim() || 'Unnamed Person' })));
+      // Use genealogyService.getPersons
+      const response = await genealogyService.getPersons(
+        currentFamilyTreeId,
+        currentSearchTerm,
+        1, // page
+        30 // limit
+      );
+      if (response && Array.isArray(response.persons)) {
+        // Map FamilyMember to Person { id, name }
+        setAllPersons(response.persons.map((p: FamilyMember) => ({
+          id: p.id,
+          name: `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.id // Fallback to ID if no name
+        })));
       } else {
-        setAllPersons([]); // Ensure it's an array even if response is unexpected
-        console.warn("Fetched persons data is not in expected array format or empty:", data);
+        setAllPersons([]);
+        console.warn("Fetched persons data is not in expected format or empty:", response);
       }
     } catch (err) {
-      setPersonsError(err instanceof Error ? err.message : 'An unknown error occurred');
+      setPersonsError(err instanceof Error ? err.message : 'An unknown error occurred while fetching persons.');
       setAllPersons([]); // Clear persons on error
     } finally {
       setPersonsLoading(false);
     }
-  }, []); // No dependencies, relies on passed arguments
+  }, []); // No dependencies, relies on passed arguments (familyTreeId, searchTerm from effects)
 
   // Effect for initial fetch and when familyTreeId changes (maintaining current search)
   useEffect(() => {
