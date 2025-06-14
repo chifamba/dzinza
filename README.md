@@ -2,6 +2,8 @@
 
 An open-source, interactive genealogy platform for building family trees, discovering relatives, and exploring ancestral history with advanced DNA analysis and AI-powered features.
 
+**Current Project Focus: Backend Re-implementation with Python/FastAPI** Dzinza is undergoing a significant upgrade, migrating its backend services from Node.js to Python 3.11 and FastAPI. This strategic move aims to enhance performance, scalability, and maintainability. The existing React/Tailwind CSS frontend will be preserved and adapted. For details, please see our [Backend Migration Roadmap](ROADMAP.md).
+
 ## 🌟 Features
 
 - **Interactive Family Trees**: Build and visualize comprehensive family trees with advanced relationship mapping
@@ -11,67 +13,71 @@ An open-source, interactive genealogy platform for building family trees, discov
 - **Collaboration Tools**: Share trees and research with family members in real-time
 - **Historical Records**: Access to extensive historical databases and records
 - **Privacy Controls**: Granular privacy settings to protect living relatives
-- **Mobile Apps**: Full-featured iOS and Android applications
+- **Mobile Apps**: Full-featured iOS and Android applications (Planned)
 
 ## 🚀 Quick Start
 
-1. **Installation**: See [Installation Guide](docs/INSTALLATION.md) for detailed setup instructions
-2. **First Steps**: Follow the [Quick Start Guide](docs/QUICK_START.md) to get up and running
-3. **User Guide**: Read the [User Manual](docs/USER_MANUAL.md) for comprehensive usage instructions
+1.  **Prerequisites**: Ensure Docker and Docker Compose are installed.
+2.  **Clone the Repository**: `git clone https://github.com/dzinza/dzinza.git`
+3.  **Navigate to Project**: `cd dzinza`
+4.  **Environment Setup**: Copy `.env.example` to `.env` and fill in the necessary secrets.
+5.  **Start Services**: `docker-compose up -d`
+6.  **Access Frontend**: Open your browser and go to `http://localhost:8080` (or `http://dzinza.local` if you have set up local DNS).
+7.  **Explore the Documentation**: For comprehensive information, start with our main [Project Documentation (docs/docs.md)](docs/docs.md).
 
 ## 📚 Documentation
 
-### User Documentation
-- [📖 User Manual](docs/USER_MANUAL.md) - Comprehensive user guide
-- [🚀 Quick Start Guide](docs/QUICK_START.md) - Get started in minutes
-- [⚙️ Installation Guide](docs/INSTALLATION.md) - Setup and configuration
+All project documentation is centralized in [**docs/docs.md**](docs/docs.md). This comprehensive document includes:
 
-### Developer Documentation  
-- [🏗️ System Architecture](docs/SYSTEM_ARCHITECTURE.md) - Technical architecture overview
-- [📋 Implementation Plan](docs/IMPLEMENTATION_PLAN.md) - Detailed development roadmap
-- [🔧 Development Guidelines](docs/DEVELOPMENT_GUIDELINES.md) - Coding standards and practices
-- [🧪 Testing Strategy](docs/TESTING_STRATEGY.md) - Comprehensive testing approach
-- [🤝 Contributing Guide](docs/CONTRIBUTING.md) - How to contribute to the project
+- **User Guides**: User Manual, Quick Start, Installation.
+- **Developer Documentation**: System Architecture, Development Guidelines (Python-focused), Testing Strategy, Contributing Guide.
+- **Operational Guides**: Deployment (Python microservices), Infrastructure, Monitoring, Admin Guide.
+- **Project Information**: Project Overview, API Documentation (legacy and new Python APIs), Database Schema, Code of Conduct.
 
-### Operations Documentation
-- [🚀 Deployment Guide](docs/DEPLOYMENT.md) - Production deployment instructions
-- [☁️ Infrastructure Guide](docs/INFRASTRUCTURE.md) - Cloud infrastructure and DevOps
-- [📊 Monitoring Guide](docs/MONITORING.md) - Observability and debugging
-- [👥 Admin Guide](docs/ADMIN_GUIDE.md) - Administrative functions and procedures
+Key documents and sections to highlight:
 
-### Project Information
-- [📋 Project Overview](docs/PROJECT_OVERVIEW.md) - Vision, goals, and project scope
-- [🔌 API Documentation](docs/API_DOCUMENTATION.md) - REST API reference
-- [🗄️ Database Schema](docs/DATABASE_SCHEMA.md) - Database design and structure
-- [📜 Code of Conduct](docs/CODE_OF_CONDUCT.md) - Community guidelines
+- [**Backend Migration Roadmap (ROADMAP.md)**](ROADMAP.md) - **Essential reading for understanding the current development phase and future direction.**
+- [Project Documentation Hub (docs/docs.md)](docs/docs.md)
+  - [API Documentation (docs/docs.md#api-documentation)](docs/docs.md#api-documentation) - _Note: API is evolving with Python backend migration._
+  - [Development Guidelines (docs/docs.md#development-guidelines)](docs/docs.md#development-guidelines)
+  - [System Architecture (docs/docs.md#system-architecture-overview)](docs/docs.md#system-architecture-overview)
+  - [Contributing Guide (docs/docs.md#contributing-guide)](docs/docs.md#contributing-guide)
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: React 18, TypeScript, Tailwind CSS, Next.js
-- **Backend**: Node.js, Express, TypeScript
-- **Database**: PostgreSQL, Redis, Elasticsearch
-- **DNA Analysis**: Python, scikit-learn, Biopython
-- **Infrastructure**: Kubernetes, Docker, AWS
+- **Frontend**: React 18, TypeScript, Tailwind CSS, Vite
+- **Backend (New - Actively Developing)**: Python 3.11, FastAPI, Pydantic, SQLAlchemy (async with `asyncpg` for PostgreSQL), Motor (async for MongoDB), `redis-py` (async), Pytest, `httpx`, Poetry.
+- **Backend (Legacy - Being Phased Out)**: Node.js, Express, TypeScript
+- **Databases**: PostgreSQL, MongoDB, Redis, Elasticsearch
+- **DNA Analysis (Planned)**: Python, scikit-learn, Biopython
+- **Infrastructure**: Docker, Docker Compose, Kubernetes (Planned for production), AWS (Target cloud)
 - **CI/CD**: GitHub Actions, automated testing and deployment
 
 ## 🏗️ Project Status
 
-This project is currently in active development. See the [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) for detailed progress and roadmap.
+This project is **actively undergoing a significant backend migration from Node.js to Python (FastAPI)**. The frontend (React) will be preserved and adapted.
 
-### Current Phase
-- **Phase 1**: Frontend MVP Development (In Progress)
-- **Target**: Q2 2024 for MVP release
+### Current Focus
+
+- **Backend Migration**: Re-implementing backend services in Python 3.11 with FastAPI, as detailed in the [**Backend Migration Roadmap (ROADMAP.md)**](ROADMAP.md). This is the primary area for new development and contributions.
+- **Frontend Adaptation**: Ensuring the React frontend integrates seamlessly with the new Python backend APIs.
+- **Documentation Update**: Aligning all documentation (`docs/docs.md`, `README.md`) with the new Python-centric architecture and roadmap.
+
+Refer to the [**Backend Migration Roadmap (ROADMAP.md)**](ROADMAP.md) for detailed progress and the phased approach.
 
 ## 🤝 Contributing
 
-We welcome contributions from the community! Please read our [Contributing Guide](docs/CONTRIBUTING.md) and [Code of Conduct](docs/CODE_OF_CONDUCT.md) before getting started.
+We warmly welcome contributions from the community! Given the ongoing backend migration, contributions aligning with the [**Backend Migration Roadmap (ROADMAP.md)**](ROADMAP.md) and the new Python stack are particularly valuable.
+
+Please read our [Contributing Guide (within docs/docs.md#contributing-guide)](docs/docs.md#contributing-guide) and [Code of Conduct (within docs/docs.md#code-of-conduct)](docs/docs.md#code-of-conduct) before getting started.
 
 ### Ways to Contribute
-- 🐛 Report bugs and issues
-- 💡 Suggest new features
-- 📝 Improve documentation
-- 🔧 Submit code improvements
-- 🧪 Help with testing
+
+- 🐛 Report bugs and issues (especially related to the new Python services or frontend integration).
+- 💡 Suggest new features (aligning with the Python migration and overall project vision).
+- 📝 Improve documentation in [docs/docs.md](docs/docs.md) (updates related to the Python backend, new services, and architectural changes are highly encouraged).
+- 🔧 Submit code improvements (Python backend services, frontend adaptation to new APIs, shared libraries).
+- 🧪 Help with testing the new Python services and their integration with the frontend.
 
 ## 📄 License
 
@@ -79,10 +85,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **Documentation**: Check our comprehensive [documentation](docs/)
+- **Documentation**: Check our comprehensive [documentation](docs/) and the [Backend Migration Roadmap](ROADMAP.md).
 - **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/dzinza/dzinza/issues)
 - **Community**: Join our discussions in [GitHub Discussions](https://github.com/dzinza/dzinza/discussions)
-- **Email**: Contact us at support@dzinza.com
+- **Email**: Contact us at support@dzinza.com (Please note response times may vary)
 
 ## 🙏 Acknowledgments
 
