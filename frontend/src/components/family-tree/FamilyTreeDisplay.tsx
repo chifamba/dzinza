@@ -1,5 +1,5 @@
 // src/components/family-tree/FamilyTreeDisplay.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react'; // Added useRef, useCallback
 import { FamilyTree, FamilyMember, Relationship } from '../../types/genealogy';
 import { genealogyService } from '../../services/api/genealogyService';
 import PersonNode from './PersonNode';
@@ -51,6 +51,38 @@ const FamilyTreeDisplay: React.FC = () => {
   const [submitDeleteRelError, setSubmitDeleteRelError] = useState<string | null>(null);
 
   const [d3TreeData, setD3TreeData] = useState<RawNodeDatum | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null); // Ref for the tree container
+
+  // State for zoom and pan/translate
+  const [zoom, setZoom] = useState(1);
+  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const [initialTranslate, setInitialTranslate] = useState({ x: 0, y: 0 }); // To store calculated initial center
+
+  // Calculate initial center
+  useEffect(() => {
+    if (containerRef.current) {
+      const { width, height } = containerRef.current.getBoundingClientRect();
+      const initialX = width / 2;
+      const initialY = height * 0.1; // Start a bit from the top
+      setTranslate({ x: initialX, y: initialY });
+      setInitialTranslate({ x: initialX, y: initialY });
+    }
+  }, []); // Runs once on mount
+
+  // Zoom control functions
+  const handleZoomIn = useCallback(() => {
+    setZoom(prevZoom => prevZoom * 1.2);
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom(prevZoom => prevZoom / 1.2);
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    setZoom(1);
+    setTranslate(initialTranslate); // Reset to calculated initial center
+  }, [initialTranslate]);
+
 
   /**
    * Converts flat arrays of members and relationships into a hierarchical structure
@@ -449,7 +481,7 @@ const FamilyTreeDisplay: React.FC = () => {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 relative"> {/* Added relative positioning for controls */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold">{tree?.name || 'Family Tree'}</h2>
         <Button onClick={openAddPersonModal} variant="primary">
@@ -459,30 +491,42 @@ const FamilyTreeDisplay: React.FC = () => {
       {isLoading && tree && <p className="text-center text-sm text-gray-500 mb-4">Refreshing tree...</p>}
       {!isLoading && error && <p className="text-center text-sm text-red-500 mb-4">Error refreshing tree: {error}</p>}
 
-      {/* <div className="flex flex-wrap justify-center gap-4">
-        {currentMembers.map((person) => (
-          <PersonNode
-            key={person.id}
-            person={person}
-            onEdit={openEditPersonModal}
-            onConnectRelationship={openRelationshipModal}
-          />
-        ))}
-      </div> */}
+      {/* Zoom Controls */}
+      <div className="absolute top-16 right-4 z-10 flex flex-col space-y-2">
+        <Button onClick={handleZoomIn} variant="outline" size="sm" aria-label="Zoom In">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+        </Button>
+        <Button onClick={handleZoomOut} variant="outline" size="sm" aria-label="Zoom Out">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
+          </svg>
+        </Button>
+        <Button onClick={handleResetView} variant="outline" size="sm" aria-label="Reset View">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+        </Button>
+      </div>
 
-      <div className="w-full min-h-[400px] aspect-video border border-gray-300 rounded-md shadow-sm">
+      <div ref={containerRef} className="w-full min-h-[600px] md:min-h-[700px] aspect-video border border-gray-300 rounded-md shadow-sm overflow-hidden"> {/* Increased min-h and added overflow-hidden */}
         {d3TreeData ? (
           <Tree
             data={d3TreeData}
             orientation="vertical"
-            translate={{ x: 300, y: 100 }} // Adjust y for more space for larger nodes
+            translate={translate}
+            zoom={zoom}
             pathFunc="elbow"
-            separation={{ siblings: 1.2, nonSiblings: 1.5 }} // Increased separation for larger nodes
-            zoomable={true}
+            separation={{ siblings: 1.2, nonSiblings: 1.5 }}
+            zoomable={true} // Keep user-controlled zoom/pan enabled
             renderCustomNodeElement={renderNode}
+            dimensions={undefined} // Let it fill container
+            nodeSize={{ x: 250, y: 200 }} // Adjust nodeSize if needed
+            depthFactor={300} // Adjust depthFactor for vertical spacing
           />
         ) : (
-          <p className="text-center">Preparing tree data...</p>
+          <p className="text-center pt-10">Preparing tree data...</p>
         )}
       </div>
 

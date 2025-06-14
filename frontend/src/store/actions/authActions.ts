@@ -18,9 +18,13 @@ import {
   fetchProfileStart,
   fetchProfileSuccess,
   fetchProfileFailure,
+  updateProfileStart, // Ensure these are exported from authSlice
+  updateProfileSuccess,
+  updateProfileFailure,
   refreshTokenSuccess,
   logout as logoutAction,
 } from '../slices/authSlice';
+import { UpdateProfileData, User } from '../../services/api/auth'; // Import UpdateProfileData and User type
 
 // Login action
 export const login = (email: string, password: string, mfaCode?: string) => { // Changed identifier to email, added mfaCode
@@ -53,6 +57,49 @@ export const login = (email: string, password: string, mfaCode?: string) => { //
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed';
       dispatch(loginFailure(message));
+      throw error;
+    }
+  };
+};
+
+// Upload user avatar action
+export const uploadUserAvatar = (file: File) => {
+  return async (dispatch: Dispatch) => {
+    try {
+      dispatch(updateProfileStart()); // Use existing start action for profile updates
+
+      const updatedUser = await authApi.uploadAvatar(file); // Call the new API method
+
+      dispatch(updateProfileSuccess(updatedUser)); // Update user state with new profile (including avatar URL)
+
+      return updatedUser; // Return updated user data
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Avatar upload failed';
+      dispatch(updateProfileFailure(message)); // Use existing failure action
+      throw error;
+    }
+  };
+};
+
+// Update user profile action
+export const updateUserProfile = (profileData: UpdateProfileData) => {
+  return async (dispatch: Dispatch) => {
+    try {
+      dispatch(updateProfileStart());
+      // authService.updateUserProfile was a placeholder, directly use authApi or ensure authService calls it.
+      // authService was refactored to use authApi, so this should be fine if authService has updateProfile.
+      // Let's assume authService.updateUserProfile is correctly implemented to call authApi.updateProfile
+      // For clarity and directness, can use authApi here too if authService doesn't add value.
+      // The authService.updateUserProfile in the refactored version was a placeholder.
+      // So, we should call authApi.updateProfile directly.
+      const updatedUser: User = await authApi.updateProfile(profileData);
+
+      dispatch(updateProfileSuccess(updatedUser)); // Pass the updated user to the reducer
+
+      return updatedUser;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update profile';
+      dispatch(updateProfileFailure(message));
       throw error;
     }
   };
@@ -132,15 +179,24 @@ export const fetchCurrentUser = () => {
     try {
       dispatch(fetchProfileStart());
       
-      const user = await authService.getCurrentUser();
+      const user = await authService.getCurrentUser(); // authService.getCurrentUser now calls authApi.getCurrentUser
       
-      dispatch(fetchProfileSuccess(user));
+      if (user) { // getCurrentUser might return null if error occurs
+        dispatch(fetchProfileSuccess(user));
+      } else {
+        // This case might happen if token is invalid and refresh also fails, leading to logout by interceptor.
+        // Or if authService.getCurrentUser returns null explicitly on error instead of throwing.
+        // The previous catch block would handle errors thrown by authService.
+        dispatch(fetchProfileFailure('User data not available.'));
+      }
       
       return user;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch user profile';
       dispatch(fetchProfileFailure(message));
-      throw error;
+      // Do not rethrow here if checkAuthStatus handles it, to avoid unhandled promise rejection
+      // throw error;
+      return null; // Indicate failure
     }
   };
 };

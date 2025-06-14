@@ -258,6 +258,28 @@ class AuthAPI {
     );
     return response.data;
   }
+
+  async uploadAvatar(file: File): Promise<User> {
+    // The `apiClient.uploadFile` method expects the URL, the file, and optional additional data.
+    // The URL should be the specific avatar upload endpoint, e.g., `/api/auth/profile/avatar`.
+    // The third argument to uploadFile is 'additionalData', not directly for a field name like 'avatar'.
+    // apiClient.uploadFile internally appends the file with a key 'file'.
+    // If backend expects a different field name, apiClient.post with FormData might be more direct.
+    // Assuming backend consuming /api/auth/profile/avatar expects the file under field name 'avatar':
+    const formData = new FormData();
+    formData.append('avatar', file); // Ensure backend expects 'avatar'
+
+    const response: AxiosResponse<{ user: User }> = await apiClient.post( // Using .post for explicit field name
+      `${this.baseURL}/profile/avatar`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data.user; // Assuming backend returns { user: User }
+  }
 }
 
 export const authApi = new AuthAPI();

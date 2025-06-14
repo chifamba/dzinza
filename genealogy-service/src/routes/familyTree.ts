@@ -8,6 +8,7 @@ import { Relationship } from '../models/Relationship.js';
 import { logger } from '../../../../src/shared/utils/logger.js';
 import multer from 'multer';
 import { recordActivity } from '../services/activityLogService.js'; // Import recordActivity
+import { parse as parseGedcom, Node as GedcomNode } from 'parse-gedcom'; // Added parse-gedcom
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() }); // Configure multer for in-memory storage
@@ -1156,169 +1157,169 @@ router.post('/:treeId/import/gedcom',
       }
 
       const gedcomText = req.file.buffer.toString('utf-8');
-
-      // --- Placeholder for Simplified GEDCOM Parser and Data Creation Logic ---
-      // This section will be complex and involve multiple steps as outlined in the subtask.
-      // For now, just a conceptual placeholder.
+      const gedcomTree = parseGedcom(gedcomText);
 
       let individualsImported = 0;
       let familiesProcessed = 0;
       let relationshipsCreated = 0;
+      const gedcomIndiIdToMongoPersonIdMap = new Map<string, string>();
 
-      try {
-        // TODO: Implement simplified GEDCOM parsing
-        // 1. Parse lines: level, tag, value/pointer
-        // 2. Identify INDI and FAM records
-        // 3. Pass 1: Create Person documents (map GEDCOM INDI ID to MongoDB Person._id)
-        // 4. Pass 2: Create Relationship documents using FAM records and the ID map
+      // Helper to find a specific node within a list of nodes by tag
+      const findNodeByTag = (nodes: GedcomNode[] | undefined, tag: string): GedcomNode | undefined => {
+        return nodes?.find(node => node.tag === tag);
+      };
 
-        // --- Simplified Parser Snippet (Conceptual - to be expanded) ---
-        const lines = gedcomText.split(/\r?\n/);
-        const parsedIndis = new Map(); // GEDCOM ID -> { data: {}, famc: [], fams: [] }
-        const parsedFams = new Map();  // GEDCOM ID -> { HUSB: [], WIFE: [], CHIL: [], MARR: null }
-
-        let currentRecordId: string | null = null;
-        let currentRecordType: 'INDI' | 'FAM' | null = null;
-        let currentTagContext: string | null = null; // For handling nested tags like DATE under BIRT
-
-        for (const line of lines) {
-            const trimmedLine = line.trim();
-            const parts = trimmedLine.match(/^(\d+)\s+(@\S+@|\S+)(?:\s+(.*))?$/);
-            if (!parts) continue;
-
-            const level = parseInt(parts[1]);
-            const tagOrId = parts[2];
-            const value = parts[3]?.trim();
-
-            if (level === 0) {
-                currentTagContext = null; // Reset context
-                if (value === 'INDI') {
-                    currentRecordId = tagOrId;
-                    currentRecordType = 'INDI';
-                    parsedIndis.set(currentRecordId, { id: currentRecordId, data: {}, famc: [], fams: [] });
-                } else if (value === 'FAM') {
-                    currentRecordId = tagOrId;
-                    currentRecordType = 'FAM';
-                    parsedFams.set(currentRecordId, { id: currentRecordId, data: { HUSB: [], WIFE: [], CHIL: [] }, MARR: null });
-                } else {
-                    currentRecordId = null;
-                    currentRecordType = null;
-                }
-            } else if (currentRecordId && currentRecordType) {
-                const tag = tagOrId;
-                const record = currentRecordType === 'INDI' ? parsedIndis.get(currentRecordId) : parsedFams.get(currentRecordId);
-
-                if (!record) continue;
-
-                if (level === 1) currentTagContext = tag; // Set context for level 2 tags
-
-                switch (tag) {
-                    case 'NAME':
-                        if (currentRecordType === 'INDI') record.data.name = value;
-                        break;
-                    case 'SEX':
-                        if (currentRecordType === 'INDI') record.data.sex = value;
-                        break;
-                    case 'BIRT':
-                    case 'DEAT':
-                    case 'MARR': // MARR can be under FAM directly
-                        if (currentRecordType === 'INDI' || (currentRecordType === 'FAM' && tag === 'MARR')) {
-                            currentTagContext = tag; // Event context for DATE/PLAC
-                            if (currentRecordType === 'INDI') record.data[tag] = {};
-                            else if (currentRecordType === 'FAM' && tag === 'MARR') record.MARR = {};
-                        }
-                        break;
-                    case 'DATE':
-                        if (currentTagContext && record.data[currentTagContext]) record.data[currentTagContext].date = value;
-                        else if (currentTagContext && currentRecordType === 'FAM' && record.MARR && currentTagContext === 'MARR') record.MARR.date = value;
-                        break;
-                    case 'PLAC':
-                         if (currentTagContext && record.data[currentTagContext]) record.data[currentTagContext].place = value;
-                         else if (currentTagContext && currentRecordType === 'FAM' && record.MARR && currentTagContext === 'MARR') record.MARR.place = value;
-                        break;
-                    case 'FAMC': // Family child in (INDI)
-                        if (currentRecordType === 'INDI' && value) record.famc.push(value);
-                        break;
-                    case 'FAMS': // Family spouse in (INDI)
-                        if (currentRecordType === 'INDI' && value) record.fams.push(value);
-                        break;
-                    case 'HUSB': // Husband (FAM)
-                        if (currentRecordType === 'FAM' && value) record.data.HUSB.push(value);
-                        break;
-                    case 'WIFE': // Wife (FAM)
-                        if (currentRecordType === 'FAM' && value) record.data.WIFE.push(value);
-                        break;
-                    case 'CHIL': // Child (FAM)
-                        if (currentRecordType === 'FAM' && value) record.data.CHIL.push(value);
-                        break;
-                }
-            }
+      // Helper to get data from a node, potentially nested
+      const getNodeData = (node: GedcomNode | undefined, subTag?: string): string | undefined => {
+        if (!node) return undefined;
+        if (subTag) {
+          const subNode = findNodeByTag(node.tree, subTag);
+          return subNode?.data;
         }
+        return node.data;
+      };
 
-        // --- End of Conceptual Parser Snippet ---
+      // Simplified Date Parser (expand as needed)
+      const parseGedcomDate = (dateNode: GedcomNode | undefined): Date | undefined => {
+        const dateStr = getNodeData(dateNode);
+        if (!dateStr) return undefined;
+        // This is very basic, GEDCOM dates can be complex (e.g., "ABT 1900", "BET 1900 AND 1910", "1 JAN 1900")
+        // `parse-gedcom` library might offer more structured date parsing on `dateNode.data` or `dateNode.tree`
+        // For now, try direct Date parsing, which will work for YYYY-MM-DD or simple year.
+        try {
+          const parsed = new Date(dateStr);
+          if (!isNaN(parsed.getTime())) return parsed;
+        } catch (e) { /* ignore */ }
+        // Attempt to parse "DD MMM YYYY"
+        const parts = dateStr.match(/(\d{1,2})\s+([A-Z]{3})\s+(\d{4})/i);
+        if (parts) {
+            try {
+                const parsed = new Date(`${parts[1]} ${parts[2]} ${parts[3]}`);
+                if (!isNaN(parsed.getTime())) return parsed;
+            } catch (e) { /* ignore */ }
+        }
+        return undefined; // Or store dateStr as is if parsing fails
+      };
 
-        // --- Pass 1: Create Individuals ---
-        const gedcomToMongoIdMap = new Map<string, string>();
-        for (const [gedcomId, indi] of parsedIndis.entries()) {
-            const personData: any = {
+      const extractName = (nameNode: GedcomNode | undefined): { firstName?: string, lastName?: string } => {
+        const nameStr = getNodeData(nameNode);
+        if (!nameStr) return {};
+        const parts = nameStr.split('/');
+        const firstName = parts[0]?.trim();
+        const lastName = parts.length > 1 ? parts[1].trim() : undefined;
+        return { firstName, lastName };
+      };
+
+      // --- Pass 1: Create Individuals (INDI records) ---
+      const indiNodes = gedcomTree.filter(node => node.tag === 'INDI');
+      for (const indiNode of indiNodes) {
+        if (!indiNode.pointer) continue; // Should have a pointer like @I1@
+
+        const nameNode = findNodeByTag(indiNode.tree, 'NAME');
+        const { firstName, lastName } = extractName(nameNode);
+
+        const sexNode = findNodeByTag(indiNode.tree, 'SEX');
+        let gender = 'unknown';
+        if (sexNode?.data === 'M') gender = 'male';
+        if (sexNode?.data === 'F') gender = 'female';
+
+        const birtNode = findNodeByTag(indiNode.tree, 'BIRT');
+        const birthDate = parseGedcomDate(findNodeByTag(birtNode?.tree, 'DATE'));
+        const birthPlace = getNodeData(findNodeByTag(birtNode?.tree, 'PLAC'));
+
+        const deatNode = findNodeByTag(indiNode.tree, 'DEAT');
+        const deathDate = parseGedcomDate(findNodeByTag(deatNode?.tree, 'DATE'));
+        const deathPlace = getNodeData(findNodeByTag(deatNode?.tree, 'PLAC'));
+
+        const notes: string[] = [];
+        indiNode.tree?.filter(n => n.tag === 'NOTE').forEach(n => { if(n.data) notes.push(n.data); });
+        // Basic source handling (concatenate into notes or a dedicated field if model supports)
+        indiNode.tree?.filter(n => n.tag === 'SOUR').forEach(n => { if(n.data) notes.push(`Source: ${n.data}`); });
+
+
+        const personData: any = {
+          familyTreeId: treeId,
+          userId: userId, // Uploader
+          firstName: firstName || 'Unknown',
+          lastName: lastName,
+          gender: gender,
+          birthDate: birthDate ? { date: birthDate, place: birthPlace } : (birthPlace ? { place: birthPlace } : undefined),
+          deathDate: deathDate ? { date: deathDate, place: deathPlace } : (deathPlace ? { place: deathPlace } : undefined),
+          isLiving: !deatNode, // Simple assumption: if no DEAT tag, person is living
+          notes: notes.length > 0 ? notes.join('\n') : undefined, // Join notes or store as array if model supports
+          gedcomId: indiNode.pointer, // Store original GEDCOM ID for reference
+        };
+
+        try {
+          const newPerson = new Person(personData);
+          await newPerson.save();
+          gedcomIndiIdToMongoPersonIdMap.set(indiNode.pointer, newPerson._id.toString());
+          individualsImported++;
+        } catch(personSaveError) {
+            logger.error('Failed to save person from GEDCOM:', { gedcomId: indiNode.pointer, error: personSaveError, correlationId: req.correlationId });
+        }
+      }
+
+      // --- Pass 2: Create Families (FAM records) and Relationships ---
+      const famNodes = gedcomTree.filter(node => node.tag === 'FAM');
+      for (const famNode of famNodes) {
+        familiesProcessed++;
+
+        const husbNodes = famNode.tree?.filter(n => n.tag === 'HUSB') || [];
+        const wifeNodes = famNode.tree?.filter(n => n.tag === 'WIFE') || [];
+        const chilNodes = famNode.tree?.filter(n => n.tag === 'CHIL') || [];
+        const marrNode = findNodeByTag(famNode.tree, 'MARR');
+
+        const husbandMongoIds = husbNodes.map(h => gedcomIndiIdToMongoPersonIdMap.get(h.data)).filter(Boolean) as string[];
+        const wifeMongoIds = wifeNodes.map(w => gedcomIndiIdToMongoPersonIdMap.get(w.data)).filter(Boolean) as string[];
+        const childMongoIds = chilNodes.map(c => gedcomIndiIdToMongoPersonIdMap.get(c.data)).filter(Boolean) as string[];
+
+        // Marriage Event details
+        const marriageDate = parseGedcomDate(findNodeByTag(marrNode?.tree, 'DATE'));
+        const marriagePlace = getNodeData(findNodeByTag(marrNode?.tree, 'PLAC'));
+        const marriageEvent = marriageDate || marriagePlace ? {
+            date: marriageDate,
+            place: marriagePlace,
+            // type: 'marriage' // if Relationship model supports event type
+        } : undefined;
+
+        // Create spouse relationships
+        for (const husbandId of husbandMongoIds) {
+          for (const wifeId of wifeMongoIds) {
+            try {
+              const spouseRel = new Relationship({
+                person1Id: husbandId,
+                person2Id: wifeId,
+                type: 'spouse',
                 familyTreeId: treeId,
-                userId, // Assuming the uploader is the initial creator of these records
-                firstName: indi.data.name?.split('/')[0]?.trim() || 'Unknown', // Simple name parsing
-                lastName: indi.data.name?.split('/')[1]?.trim(),
-                gender: indi.data.sex === 'M' ? 'male' : indi.data.sex === 'F' ? 'female' : 'unknown',
-                isLiving: !indi.data.DEAT, // Assume living if no death event
-                // TODO: Map birthDate, deathDate, birthPlace, deathPlace from indi.data.BIRT, indi.data.DEAT
-            };
-            if (indi.data.BIRT?.date) personData.birthDate = { date: new Date(indi.data.BIRT.date) }; // Needs robust date parsing
-            if (indi.data.DEAT?.date) personData.deathDate = { date: new Date(indi.data.DEAT.date) }; // Needs robust date parsing
-
-            const newPerson = new Person(personData);
-            await newPerson.save();
-            gedcomToMongoIdMap.set(gedcomId, newPerson._id.toString());
-            individualsImported++;
+                events: marriageEvent ? [marriageEvent] : [], // Assuming 'events' array on Relationship model
+              });
+              await spouseRel.save();
+              relationshipsCreated++;
+            } catch(relSaveError) {
+                logger.error('Failed to save spouse relationship from GEDCOM:', { husbandId, wifeId, error: relSaveError, correlationId: req.correlationId });
+            }
+          }
         }
 
-        // --- Pass 2: Create Relationships ---
-        for (const [gedcomFamId, fam] of parsedFams.entries()) {
-            familiesProcessed++;
-            const husbandIds = fam.data.HUSB.map((id: string) => gedcomToMongoIdMap.get(id)).filter(Boolean);
-            const wifeIds = fam.data.WIFE.map((id: string) => gedcomToMongoIdMap.get(id)).filter(Boolean);
-            const childIds = fam.data.CHIL.map((id: string) => gedcomToMongoIdMap.get(id)).filter(Boolean);
-
-            // Create spouse relationships
-            for (const husbandId of husbandIds) {
-                for (const wifeId of wifeIds) {
-                    const spouseRel = new Relationship({
-                        person1Id: husbandId,
-                        person2Id: wifeId,
-                        type: 'spouse',
-                        familyTreeId: treeId,
-                        // TODO: Add marriage date from fam.MARR if available
-                    });
-                    await spouseRel.save();
-                    relationshipsCreated++;
-                }
+        // Create parent-child relationships
+        const parentMongoIds = [...husbandMongoIds, ...wifeMongoIds];
+        for (const parentId of parentMongoIds) {
+          for (const childId of childMongoIds) {
+            try {
+              const parentChildRel = new Relationship({
+                person1Id: parentId, // Parent
+                person2Id: childId,  // Child
+                type: 'parent-child',
+                familyTreeId: treeId,
+              });
+              await parentChildRel.save();
+              relationshipsCreated++;
+            } catch(relSaveError) {
+                logger.error('Failed to save parent-child relationship from GEDCOM:', { parentId, childId, error: relSaveError, correlationId: req.correlationId });
             }
-
-            // Create parent-child relationships
-            const parentIds = [...husbandIds, ...wifeIds];
-            for (const parentId of parentIds) {
-                for (const childId of childIds) {
-                    const parentChildRel = new Relationship({
-                        person1Id: parentId, // Parent
-                        person2Id: childId,  // Child
-                        type: 'parent-child',
-                        familyTreeId: treeId,
-                    });
-                    await parentChildRel.save();
-                    relationshipsCreated++;
-                }
-            }
+          }
         }
-        // --- End of Data Creation Logic ---
-      } catch (parseError: any) {
-        logger.error('Error processing GEDCOM file content:', parseError, { userId, treeId, correlationId: req.correlationId });
-        return res.status(400).json({ error: 'Failed to parse or process GEDCOM file: ' + parseError.message });
       }
 
 
@@ -1336,6 +1337,296 @@ router.post('/:treeId/import/gedcom',
     }
   }
 );
+
+// Helper function to format Date object to "DD MMM YYYY"
+const formatGedcomDate = (date: Date | undefined | null): string | undefined => {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return undefined;
+  }
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = date.toLocaleString('default', { month: 'short' }).toUpperCase();
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
+};
+
+
+/**
+ * @swagger
+ * /api/family-trees/{treeId}/export/gedcom:
+ *   get:
+ *     summary: Export a family tree in GEDCOM format
+ *     tags: [Family Trees, GEDCOM]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: treeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: mongoId
+ *         description: The ID of the family tree to export.
+ *     responses:
+ *       200:
+ *         description: GEDCOM file content.
+ *         content:
+ *           application/x-gedcom: # Or text/plain
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Invalid treeId.
+ *       403:
+ *         description: Access denied.
+ *       404:
+ *         description: Family tree not found.
+ *       500:
+ *         description: Internal server error during export.
+ */
+router.get('/:treeId/export/gedcom', [
+  param('treeId').isMongoId().withMessage('Invalid family tree ID'),
+], async (req: Request, res: Response) => {
+  const tracer = trace.getTracer('genealogy-service-familytree-routes');
+  await tracer.startActiveSpan('familyTree.exportGedcom.handler', async (span: Span) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Validation failed for export' });
+        span.end();
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const userId = req.user?.id;
+      const { treeId } = req.params;
+      span.setAttributes({ 'familytree.id': treeId, 'user.id': userId });
+
+      const familyTree = await FamilyTree.findById(treeId);
+      if (!familyTree) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Family tree not found for export' });
+        span.end();
+        return res.status(404).json({ error: 'Family tree not found' });
+      }
+
+      if (!familyTree.canUserView(userId)) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Access denied for export' });
+        span.end();
+        return res.status(403).json({ error: 'Access denied to this family tree' });
+      }
+
+      const persons = await Person.find({ familyTreeId: treeId }).lean();
+      const relationships = await Relationship.find({ familyTreeId: treeId }).lean();
+
+      const gedcomLines: string[] = [];
+      const mongoPersonIdToGedcomIdMap = new Map<string, string>();
+      let indiCounter = 1;
+      let famCounter = 1;
+
+      // Header
+      gedcomLines.push('0 HEAD');
+      gedcomLines.push('1 SOUR DzinzaGenealogyPlatform');
+      gedcomLines.push('1 GEDC');
+      gedcomLines.push('2 VERS 5.5.1');
+      gedcomLines.push('2 FORM LINEAGE-LINKED');
+      gedcomLines.push('1 CHAR UTF-8');
+      gedcomLines.push('1 SUBM @SUBM1@');
+
+      // Submitter Record
+      gedcomLines.push('0 @SUBM1@ SUBM');
+      gedcomLines.push('1 NAME Dzinza User');
+
+      // Individual (INDI) Records
+      for (const person of persons) {
+        const gedcomIndiId = `@I${indiCounter++}@`;
+        mongoPersonIdToGedcomIdMap.set(person._id.toString(), gedcomIndiId);
+
+        gedcomLines.push(`${gedcomIndiId} INDI`); // Level 0 tag moved to start of line
+        let nameLine = '1 NAME';
+        if (person.firstName) nameLine += ` ${person.firstName}`;
+        if (person.lastName) nameLine += ` /${person.lastName}/`;
+        else if (!person.firstName) nameLine += ' Unknown /Name/'; // Handle no name
+        gedcomLines.push(nameLine);
+
+        if (person.gender) {
+          const sex = person.gender.toUpperCase().startsWith('M') ? 'M' : person.gender.toUpperCase().startsWith('F') ? 'F' : 'U';
+          gedcomLines.push(`1 SEX ${sex}`);
+        }
+
+        if (person.birthDate?.date || person.birthDate?.place) {
+          gedcomLines.push('1 BIRT');
+          if (person.birthDate.date) gedcomLines.push(`2 DATE ${formatGedcomDate(new Date(person.birthDate.date))}`);
+          if (person.birthDate.place) gedcomLines.push(`2 PLAC ${person.birthDate.place}`);
+        }
+        if (person.deathDate?.date || person.deathDate?.place) {
+          gedcomLines.push('1 DEAT');
+          if (person.deathDate.date) gedcomLines.push(`2 DATE ${formatGedcomDate(new Date(person.deathDate.date))}`);
+          if (person.deathDate.place) gedcomLines.push(`2 PLAC ${person.deathDate.place}`);
+        }
+        if (person.notes) {
+          person.notes.split('\n').forEach(noteLine => gedcomLines.push(`1 NOTE ${noteLine}`));
+        }
+        // Add FAMS/FAMC links later after FAM records are processed
+      }
+
+      // Family (FAM) Records
+      // This requires identifying unique families. A common way is to group children by parents.
+      // Or iterate relationships: find spouse relationships to define a family, then attach children.
+      const families = new Map<string, { husb?: string, wife?: string, chil: string[], marr?: any }>();
+
+      for (const rel of relationships) {
+        if (rel.type === 'spouse') {
+          const p1GedId = mongoPersonIdToGedcomIdMap.get(rel.person1Id.toString());
+          const p2GedId = mongoPersonIdToGedcomIdMap.get(rel.person2Id.toString());
+          if (!p1GedId || !p2GedId) continue;
+
+          // Create a unique key for the family (e.g., sorted couple IDs)
+          const familyKey = [p1GedId, p2GedId].sort().join('-');
+          if (!families.has(familyKey)) {
+            families.set(familyKey, { chil: [] });
+          }
+          const family = families.get(familyKey)!;
+
+          // Determine HUSB/WIFE based on Person.gender if available, otherwise assign arbitrarily for now
+          const person1Doc = persons.find(p => p._id.toString() === rel.person1Id.toString());
+          const person2Doc = persons.find(p => p._id.toString() === rel.person2Id.toString());
+
+          if (person1Doc?.gender === 'male' || (person1Doc?.gender !== 'female' && person2Doc?.gender === 'female')) {
+            family.husb = p1GedId;
+            family.wife = p2GedId;
+          } else {
+            family.husb = p2GedId;
+            family.wife = p1GedId;
+          }
+
+          if (rel.events && rel.events.length > 0) {
+            // Assuming first event is marriage for simplicity
+            const marrEvent = rel.events[0];
+            family.marr = {};
+            if (marrEvent.date) family.marr.date = formatGedcomDate(new Date(marrEvent.date));
+            if (marrEvent.place) family.marr.place = marrEvent.place;
+          }
+        }
+      }
+
+      // Attach children to families
+      for (const rel of relationships) {
+          if (rel.type === 'parent-child') {
+              const parentMongoId = rel.person1Id.toString();
+              const childMongoId = rel.person2Id.toString();
+              const parentGedId = mongoPersonIdToGedcomIdMap.get(parentMongoId);
+              const childGedId = mongoPersonIdToGedcomIdMap.get(childMongoId);
+
+              if (!parentGedId || !childGedId) continue;
+
+              // Find the family where this parent is a spouse
+              for (const [key, family] of families.entries()) {
+                  if (family.husb === parentGedId || family.wife === parentGedId) {
+                      if (!family.chil.includes(childGedId)) {
+                          family.chil.push(childGedId);
+                      }
+                      break; // Assume child belongs to one family unit for simplicity in export
+                  }
+              }
+          }
+      }
+
+      const mongoFamilyKeyToGedcomFamIdMap = new Map<string, string>();
+      for (const [familyKey, familyData] of families.entries()) {
+        const gedcomFamId = `@F${famCounter++}@`;
+        mongoFamilyKeyToGedcomFamIdMap.set(familyKey, gedcomFamId);
+
+        gedcomLines.push(`${gedcomFamId} FAM`); // Level 0 tag
+        if (familyData.husb) gedcomLines.push(`1 HUSB ${familyData.husb}`);
+        if (familyData.wife) gedcomLines.push(`1 WIFE ${familyData.wife}`);
+        familyData.chil.forEach(childGedId => gedcomLines.push(`1 CHIL ${childGedId}`));
+        if (familyData.marr) {
+          gedcomLines.push('1 MARR');
+          if (familyData.marr.date) gedcomLines.push(`2 DATE ${familyData.marr.date}`);
+          if (familyData.marr.place) gedcomLines.push(`2 PLAC ${familyData.marr.place}`);
+        }
+      }
+
+      // Link Individuals to Families (FAMS/FAMC) - This is complex and requires re-iterating persons or relationships
+      // For FAMS: Iterate through families, for HUSB and WIFE, find their INDI record and add FAMS tag.
+      // For FAMC: Iterate through families, for CHIL, find their INDI record and add FAMC tag.
+      // This part is tricky to interleave with the above INDI generation efficiently without multiple passes or complex data structures.
+      // For now, creating a new set of lines to append/insert for FAMS/FAMC.
+      const linkLines: string[] = [];
+      for (const person of persons) {
+        const personGedId = mongoPersonIdToGedcomIdMap.get(person._id.toString());
+        if (!personGedId) continue;
+
+        // FAMS (Spouse in Family)
+        relationships.filter(r => r.type === 'spouse' && (r.person1Id.toString() === person._id.toString() || r.person2Id.toString() === person._id.toString()))
+          .forEach(rel => {
+            const p1GedId = mongoPersonIdToGedcomIdMap.get(rel.person1Id.toString());
+            const p2GedId = mongoPersonIdToGedcomIdMap.get(rel.person2Id.toString());
+            if(p1GedId && p2GedId) {
+                const familyKey = [p1GedId, p2GedId].sort().join('-');
+                const famGedId = mongoFamilyKeyToGedcomFamIdMap.get(familyKey);
+                if (famGedId) {
+                    // Find where to insert this FAMS line for personGedId
+                    const indiIndex = gedcomLines.findIndex(line => line.startsWith(`${personGedId} INDI`));
+                    if (indiIndex !== -1) {
+                        let insertAt = indiIndex + 1;
+                        while(insertAt < gedcomLines.length && gedcomLines[insertAt].startsWith('1 ')) insertAt++;
+                        gedcomLines.splice(insertAt, 0, `1 FAMS ${famGedId}`);
+                    }
+                }
+            }
+          });
+
+        // FAMC (Child in Family)
+        relationships.filter(r => r.type === 'parent-child' && r.person2Id.toString() === person._id.toString())
+          .forEach(rel => { // This person is a child
+            const parent1MongoId = rel.person1Id.toString(); // This is one parent
+            // Find the other parent through spouse relationship
+            const spouseRel = relationships.find(r_spouse =>
+                r_spouse.type === 'spouse' &&
+                (r_spouse.person1Id.toString() === parent1MongoId || r_spouse.person2Id.toString() === parent1MongoId)
+            );
+            if (spouseRel) {
+                const p1GedId = mongoPersonIdToGedcomIdMap.get(spouseRel.person1Id.toString());
+                const p2GedId = mongoPersonIdToGedcomIdMap.get(spouseRel.person2Id.toString());
+                if(p1GedId && p2GedId) {
+                    const familyKey = [p1GedId, p2GedId].sort().join('-');
+                    const famGedId = mongoFamilyKeyToGedcomFamIdMap.get(familyKey);
+                    if (famGedId) {
+                        const indiIndex = gedcomLines.findIndex(line => line.startsWith(`${personGedId} INDI`));
+                        if (indiIndex !== -1) {
+                            let insertAt = indiIndex + 1;
+                            while(insertAt < gedcomLines.length && gedcomLines[insertAt].startsWith('1 ')) insertAt++;
+                            gedcomLines.splice(insertAt, 0, `1 FAMC ${famGedId}`);
+                        }
+                    }
+                }
+            }
+          });
+      }
+
+
+      // Trailer
+      gedcomLines.push('0 TRLR');
+
+      const gedcomContent = gedcomLines.join('\n');
+
+      span.setStatus({ code: SpanStatusCode.OK });
+      span.end();
+
+      res.setHeader('Content-Type', 'application/x-gedcom'); // Standard GEDCOM MIME type
+      // res.setHeader('Content-Type', 'text/plain; charset=utf-8'); // Alternative if issues with x-gedcom
+      res.setHeader('Content-Disposition', `attachment; filename="${familyTree.name || 'export'}_${treeId}.ged"`);
+      res.send(gedcomContent);
+
+    } catch (error) {
+      const err = error as Error;
+      span.recordException(err);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+      span.end();
+      logger.error('Error exporting GEDCOM:', { error: err.message, stack: err.stack, userId: req.user?.id, treeId: req.params.treeId });
+      res.status(500).json({ error: 'Failed to export GEDCOM file' });
+    }
+  });
+});
 
 
 export default router;
