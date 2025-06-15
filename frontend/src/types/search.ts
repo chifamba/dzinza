@@ -39,16 +39,15 @@ export interface CommentData {
   userId?: string;
   userName?: string; // Denormalized author name
   resourceId?: string; // ID of the Event/Story it belongs to
-  resourceType?: 'Event' | 'Story' | string;
+  resourceType?: "Event" | "Story" | string;
   createdAt?: string; // ISO string
   // other comment fields
 }
 
-
 export interface SearchResultItem {
   _id: string; // Elasticsearch document ID
   _score: number | null;
-  _index: 'persons' | 'events' | 'comments' | string; // Index name, indicates type
+  _index: "persons" | "events" | "comments" | string; // Index name, indicates type
   _source: PersonData | EventData | CommentData | Record<string, unknown>; // Actual document
   // Highlighting from Elasticsearch query
   highlight?: { [key: string]: string[] };
@@ -67,15 +66,15 @@ export interface SearchResultsApiResponse {
 }
 
 // For the useSearchResults hook parameters
-export type SearchableTypeParam = 'person' | 'event' | 'comment';
+export type SearchableTypeParam = "person" | "event" | "comment";
 
 export interface SearchParams {
   query: string;
   types?: SearchableTypeParam[];
   page?: number;
   limit?: number;
-  sortBy?: 'relevance' | 'date' | 'name' | string;
-  sortOrder?: 'asc' | 'desc' | string;
+  sortBy?: "relevance" | "date" | "name" | string;
+  sortOrder?: "asc" | "desc" | string;
   eventDateFrom?: string;
   eventDateTo?: string;
   birthDateFrom?: string;

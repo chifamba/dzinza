@@ -63,41 +63,13 @@ jobs:
 
       - name: Install Dependencies (Robust)
         run: |
-          # Check for root package.json and install monorepo dependencies
-          if [ -f "package.json" ]; then
-            echo "Installing root dependencies..."
-            if [ -f "package-lock.json" ]; then
-              npm ci
-            else
-              echo "Warning: Root package-lock.json not found, falling back to npm install"
-              npm install
-            fi
-          fi
-
-          # Install frontend dependencies
-          if [ -f "frontend/package.json" ]; then
-            echo "Installing frontend dependencies..."
-            cd frontend
-            if [ -f "package-lock.json" ]; then
-              npm ci
-            else
-              echo "Warning: Frontend package-lock.json not found, falling back to npm install"
-              npm install
-            fi
-            cd ..
-          fi
-
-          # Install backend dependencies
-          if [ -f "backend-service/package.json" ]; then
-            echo "Installing backend-service dependencies..."
-            cd backend-service
-            if [ -f "package-lock.json" ]; then
-              npm ci
-            else
-              echo "Warning: Backend package-lock.json not found, falling back to npm install"
-              npm install
-            fi
-            cd ..
+          # Install all workspace dependencies from root
+          echo "Installing all workspace dependencies..."
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          else
+            echo "Warning: Root package-lock.json not found, falling back to npm install"
+            npm install
           fi
 
       - name: Run Linting
@@ -194,41 +166,13 @@ jobs:
 
       - name: Install Dependencies (Robust)
         run: |
-          # Check for root package.json and install monorepo dependencies
-          if [ -f "package.json" ]; then
-            echo "Installing root dependencies..."
-            if [ -f "package-lock.json" ]; then
-              npm ci
-            else
-              echo "Warning: Root package-lock.json not found, falling back to npm install"
-              npm install
-            fi
-          fi
-
-          # Install frontend dependencies if not already installed via workspace
-          if [ -f "frontend/package.json" ] && [ ! -d "frontend/node_modules" ]; then
-            echo "Installing frontend dependencies..."
-            cd frontend
-            if [ -f "package-lock.json" ]; then
-              npm ci
-            else
-              echo "Warning: Frontend package-lock.json not found, falling back to npm install"
-              npm install
-            fi
-            cd ..
-          fi
-
-          # Install backend dependencies if not already installed via workspace
-          if [ -f "backend-service/package.json" ] && [ ! -d "backend-service/node_modules" ]; then
-            echo "Installing backend-service dependencies..."
-            cd backend-service
-            if [ -f "package-lock.json" ]; then
-              npm ci
-            else
-              echo "Warning: Backend package-lock.json not found, falling back to npm install"
-              npm install
-            fi
-            cd ..
+          # Install all workspace dependencies from root
+          echo "Installing all workspace dependencies..."
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          else
+            echo "Warning: Root package-lock.json not found, falling back to npm install"
+            npm install
           fi
 
       - name: Run Security Audit

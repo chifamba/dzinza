@@ -1,8 +1,8 @@
-import React from 'react';
-import { Link } from 'react-router-dom'; // Or Next.js Link
-import { SearchResultItem, PersonData } from '../../types/search'; // Adjust path
-import { UserCircle, MapPin, CalendarDays, TextQuote } from 'lucide-react'; // Example icons
-import { createSanitizedHTML } from '../../utils/sanitize';
+import React from "react";
+import { Link } from "react-router-dom"; // Or Next.js Link
+import { SearchResultItem, PersonData } from "../../types/search"; // Adjust path
+import { UserCircle, MapPin, CalendarDays, TextQuote } from "lucide-react"; // Example icons
+import { createSanitizedHTML } from "../../utils/sanitize";
 
 interface PersonSearchResultItemProps {
   item: SearchResultItem;
@@ -18,22 +18,38 @@ const getYear = (dateString?: string): string | null => {
   }
 };
 
-const PersonSearchResultItem: React.FC<PersonSearchResultItemProps> = ({ item }) => {
+const PersonSearchResultItem: React.FC<PersonSearchResultItemProps> = ({
+  item,
+}) => {
   const person = item._source as PersonData; // Cast _source to PersonData
 
   const birthYear = getYear(person.birthDate);
   const deathYear = getYear(person.deathDate);
-  const lifeSpan = birthYear && deathYear ? `${birthYear}–${deathYear}` : birthYear || deathYear || '';
+  const lifeSpan =
+    birthYear && deathYear
+      ? `${birthYear}–${deathYear}`
+      : birthYear || deathYear || "";
 
-  const biographyContent = item.highlight?.biography?.[0]
-    ? <span dangerouslySetInnerHTML={createSanitizedHTML(item.highlight.biography[0])} />
-    : (person.biography
-        ? person.biography.substring(0, 150) + (person.biography.length > 150 ? '...' : '')
-        : 'No biography available.');
+  const biographyContent = item.highlight?.biography?.[0] ? (
+    <span
+      dangerouslySetInnerHTML={createSanitizedHTML(item.highlight.biography[0])}
+    />
+  ) : person.biography ? (
+    person.biography.substring(0, 150) +
+    (person.biography.length > 150 ? "..." : "")
+  ) : (
+    "No biography available."
+  );
 
-  const displayName = item.highlight?.fullName?.[0]
-    ? <span dangerouslySetInnerHTML={createSanitizedHTML(item.highlight.fullName[0])} />
-    : (person.fullName || `${person.firstName || ''} ${person.lastName || ''}`.trim() || 'Unknown Person');
+  const displayName = item.highlight?.fullName?.[0] ? (
+    <span
+      dangerouslySetInnerHTML={createSanitizedHTML(item.highlight.fullName[0])}
+    />
+  ) : (
+    person.fullName ||
+    `${person.firstName || ""} ${person.lastName || ""}`.trim() ||
+    "Unknown Person"
+  );
 
   // Construct name, preferring highlighted parts if fullName isn't highlighted directly or not preferred.
   // This example prioritizes highlighted fullName if available, otherwise constructs from parts.
@@ -53,27 +69,47 @@ const PersonSearchResultItem: React.FC<PersonSearchResultItemProps> = ({ item })
       <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-2">
         {lifeSpan && (
           <p className="flex items-center">
-            <CalendarDays size={14} className="inline mr-1.5 opacity-70" /> Lifespan: {lifeSpan}
+            <CalendarDays size={14} className="inline mr-1.5 opacity-70" />{" "}
+            Lifespan: {lifeSpan}
           </p>
         )}
         {person.birthPlaceName && ( // Highlighting for place names can also be added if configured in ES
           <p className="flex items-center">
             <MapPin size={14} className="inline mr-1.5 opacity-70" /> Born:
-            {item.highlight?.birthPlaceName?.[0] ? <span dangerouslySetInnerHTML={createSanitizedHTML(item.highlight.birthPlaceName[0])} /> : person.birthPlaceName}
+            {item.highlight?.birthPlaceName?.[0] ? (
+              <span
+                dangerouslySetInnerHTML={createSanitizedHTML(
+                  item.highlight.birthPlaceName[0]
+                )}
+              />
+            ) : (
+              person.birthPlaceName
+            )}
           </p>
         )}
-         {person.deathPlaceName && (
+        {person.deathPlaceName && (
           <p className="flex items-center">
             <MapPin size={14} className="inline mr-1.5 opacity-70" /> Died:
-            {item.highlight?.deathPlaceName?.[0] ? <span dangerouslySetInnerHTML={createSanitizedHTML(item.highlight.deathPlaceName[0])} /> : person.deathPlaceName}
+            {item.highlight?.deathPlaceName?.[0] ? (
+              <span
+                dangerouslySetInnerHTML={createSanitizedHTML(
+                  item.highlight.deathPlaceName[0]
+                )}
+              />
+            ) : (
+              person.deathPlaceName
+            )}
           </p>
         )}
       </div>
 
       {(person.biography || item.highlight?.biography) && (
         <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-           <TextQuote size={14} className="inline mr-1 opacity-60 transform -scale-x-100" />
-           {biographyContent}
+          <TextQuote
+            size={14}
+            className="inline mr-1 opacity-60 transform -scale-x-100"
+          />
+          {biographyContent}
         </p>
       )}
     </div>
