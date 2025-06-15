@@ -1,6 +1,6 @@
 {
   "name": "dzinza-backend-gateway",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.1",
   "description": "Dzinza Genealogy Platform API Gateway",
   "main": "dist/src/server.js",
   "scripts": {
