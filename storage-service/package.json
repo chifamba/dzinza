@@ -1,6 +1,6 @@
 {
   "name": "dzinza-storage-service",
-  "version": "1.0.0", 
+  "version": "1.0.0",
   "description": "Dzinza Storage Service - File and Media Management",
   "main": "dist/server.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src/**/*.ts", 
+    "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "clean": "rm -rf dist"
   },

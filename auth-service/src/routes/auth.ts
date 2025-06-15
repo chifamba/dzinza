@@ -1,18 +1,22 @@
-import { Router, Request, Response, NextFunction } from 'express'; // Import Request, Response, NextFunction
-import { trace, SpanStatusCode, context, Span } from '@opentelemetry/api'; // Import OpenTelemetry API
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { v4 as uuidv4 } from 'uuid';
-import { body, validationResult } from 'express-validator';
-import { User } from '../models/User';
-import { RefreshToken } from '../models/RefreshToken';
-import { AuditLog } from '../models/AuditLog';
-import { rateLimitByEmail } from '../middleware/rateLimitByEmail';
-import { validateRequest } from '../middleware/validation';
-import { logger } from '../utils/logger';
-import { sendWelcomeEmail, sendPasswordResetEmail, sendEmailVerificationEmail } from '../utils/email';
-import { generateTokens, verifyRefreshToken } from '../utils/jwt';
-import { authenticateToken } from '../middleware/authMiddleware'; // Assuming this middleware exists
+import { Router, Request, Response, NextFunction } from "express"; // Import Request, Response, NextFunction
+import { trace, SpanStatusCode, context, Span } from "@opentelemetry/api"; // Import OpenTelemetry API
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { v4 as uuidv4 } from "uuid";
+import { body, validationResult } from "express-validator";
+import { User } from "../models/User";
+import { RefreshToken } from "../models/RefreshToken";
+import { AuditLog } from "../models/AuditLog";
+import { rateLimitByEmail } from "../middleware/rateLimitByEmail";
+import { validateRequest } from "../middleware/validation";
+import { logger } from "../utils/logger";
+import {
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+  sendEmailVerificationEmail,
+} from "../utils/email";
+import { generateTokens, verifyRefreshToken } from "../utils/jwt";
+import { authenticateToken } from "../middleware/authMiddleware"; // Assuming this middleware exists
 
 const router = Router();
 
@@ -56,116 +60,138 @@ const router = Router();
  *       409:
  *         description: Email already exists
  */
-router.post('/register', [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Valid email is required'),
-  body('password')
-    .isLength({ min: 8 })
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
-    .withMessage('Password must be at least 8 characters with uppercase, lowercase, number, and special character'),
-  body('firstName')
-    .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage('First name is required and must be less than 50 characters'),
-  body('lastName')
-    .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage('Last name is required and must be less than 50 characters'),
-  body('preferredLanguage')
-    .optional()
-    .isIn(['en', 'sn', 'nd'])
-    .withMessage('Preferred language must be en, sn, or nd'),
-  validateRequest,
-  rateLimitByEmail
-], async (req: Request, res: Response, next: NextFunction) => { // Typed req, res, next
-  const tracer = trace.getTracer('auth-service-routes');
-  await tracer.startActiveSpan('auth.register.handler', async (span: Span) => {
-    try {
-      const { email, password, firstName, lastName, preferredLanguage = 'en' } = req.body;
-      span.setAttributes({
-        'user.email': email,
-        'user.firstName': firstName,
-        'user.lastName': lastName,
-        'http.method': 'POST',
-        'http.route': '/auth/register'
-      });
+router.post(
+  "/register",
+  [
+    body("email")
+      .isEmail()
+      .normalizeEmail()
+      .withMessage("Valid email is required"),
+    body("password")
+      .isLength({ min: 8 })
+      .matches(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/
+      )
+      .withMessage(
+        "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
+      ),
+    body("firstName")
+      .trim()
+      .isLength({ min: 1, max: 50 })
+      .withMessage(
+        "First name is required and must be less than 50 characters"
+      ),
+    body("lastName")
+      .trim()
+      .isLength({ min: 1, max: 50 })
+      .withMessage("Last name is required and must be less than 50 characters"),
+    body("preferredLanguage")
+      .optional()
+      .isIn(["en", "sn", "nd"])
+      .withMessage("Preferred language must be en, sn, or nd"),
+    validateRequest,
+    rateLimitByEmail,
+  ],
+  async (req: Request, res: Response, next: NextFunction) => {
+    // Typed req, res, next
+    const tracer = trace.getTracer("auth-service-routes");
+    await tracer.startActiveSpan(
+      "auth.register.handler",
+      async (span: Span) => {
+        try {
+          const {
+            email,
+            password,
+            firstName,
+            lastName,
+            preferredLanguage = "en",
+          } = req.body;
+          span.setAttributes({
+            "user.email": email,
+            "user.firstName": firstName,
+            "user.lastName": lastName,
+            "http.method": "POST",
+            "http.route": "/auth/register",
+          });
 
-      // Check if user already exists
-      const existingUser = await User.findByEmail(email);
-    if (existingUser) {
-      return res.status(409).json({
-        error: 'Conflict',
-        message: 'Email already registered'
-      });
-    }
+          // Check if user already exists
+          const existingUser = await User.findByEmail(email);
+          if (existingUser) {
+            return res.status(409).json({
+              error: "Conflict",
+              message: "Email already registered",
+            });
+          }
 
-    // Hash password
-    const saltRounds = parseInt(process.env.BCRYPT_ROUNDS || '12');
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+          // Hash password
+          const saltRounds = parseInt(process.env.BCRYPT_ROUNDS || "12");
+          const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create user
-    const userId = uuidv4();
-    const user = await User.create({
-      id: userId,
-      email,
-      password: hashedPassword,
-      firstName,
-      lastName,
-      preferredLanguage,
-      emailVerified: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
+          // Create user
+          const userId = uuidv4();
+          const user = await User.create({
+            id: userId,
+            email,
+            password: hashedPassword,
+            firstName,
+            lastName,
+            preferredLanguage,
+            emailVerified: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
 
-    // Generate tokens
-    const { accessToken, refreshToken } = await generateTokens(user);
+          // Generate tokens
+          const { accessToken, refreshToken } = await generateTokens(user);
 
-    // Log registration
-    await AuditLog.create({
-      userId,
-      action: 'USER_REGISTERED',
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-      timestamp: new Date()
-    });
+          // Log registration
+          await AuditLog.create({
+            userId,
+            action: "USER_REGISTERED",
+            ipAddress: req.ip,
+            userAgent: req.get("User-Agent"),
+            timestamp: new Date(),
+          });
 
-    logger.info('User registered successfully', {
-      userId,
-      email: user.email,
-      ip: req.ip
-    });
+          logger.info("User registered successfully", {
+            userId,
+            email: user.email,
+            ip: req.ip,
+          });
 
-    // Send welcome email (async)
-    sendWelcomeEmail(user.email, user.firstName, preferredLanguage)
-      .catch(err => logger.error('Failed to send welcome email:', err));
+          // Send welcome email (async)
+          sendWelcomeEmail(user.email, user.firstName, preferredLanguage).catch(
+            (err) => logger.error("Failed to send welcome email:", err)
+          );
 
-    res.status(201).json({
-      message: 'Registration successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        preferredLanguage: user.preferredLanguage,
-        emailVerified: user.emailVerified
-      },
-      tokens: {
-        accessToken,
-        refreshToken,
-        expiresIn: 3600 // 1 hour
+          res.status(201).json({
+            message: "Registration successful",
+            user: {
+              id: user.id,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              preferredLanguage: user.preferredLanguage,
+              emailVerified: user.emailVerified,
+            },
+            tokens: {
+              accessToken,
+              refreshToken,
+              expiresIn: 3600, // 1 hour
+            },
+          });
+          span.end();
+        } catch (error) {
+          const err = error as Error;
+          span.recordException(err);
+          span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+          span.end();
+          next(err); // Call next to pass control to the error handler
+        }
       }
-      span.end();
-    } catch (error) {
-      const err = error as Error;
-      span.recordException(err);
-      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
-      span.end();
-      next(err); // Call next to pass control to the error handler
-    }
-  });
-});
+    );
+  }
+);
 
 /**
  * @swagger
@@ -183,36 +209,53 @@ router.post('/register', [
  *       401:
  *         description: Unauthorized
  */
-router.post('/request-verification', authenticateToken, async (req: any, res, next) => {
-  try {
-    const userId = req.user.id;
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    if (user.isEmailVerified) {
-      return res.status(400).json({ message: 'Email is already verified' });
-    }
-
-    const token = user.generateEmailVerificationToken();
-    await user.save();
-
+router.post(
+  "/request-verification",
+  authenticateToken,
+  async (req: any, res, next) => {
     try {
-      await sendEmailVerificationEmail(user.email, user.firstName, token);
-      logger.info(`Verification email requested for user ${user.email}`, { userId: user._id });
-      res.status(200).json({ message: 'Verification email sent. Please check your inbox.' });
-    } catch (emailError) {
-      logger.error('Failed to send verification email', { userId: user._id, error: emailError });
-      return res.status(500).json({ message: 'Error sending verification email. Please try again later.' });
-    }
+      const userId = req.user.id;
+      const user = await User.findById(userId);
 
-  } catch (error) {
-    logger.error('Error in /request-verification route', { error });
-    next(error);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.isEmailVerified) {
+        return res.status(400).json({ message: "Email is already verified" });
+      }
+
+      const token = user.generateEmailVerificationToken();
+      await user.save();
+
+      try {
+        await sendEmailVerificationEmail(user.email, user.firstName, token);
+        logger.info(`Verification email requested for user ${user.email}`, {
+          userId: user._id,
+        });
+        res
+          .status(200)
+          .json({
+            message: "Verification email sent. Please check your inbox.",
+          });
+      } catch (emailError) {
+        logger.error("Failed to send verification email", {
+          userId: user._id,
+          error: emailError,
+        });
+        return res
+          .status(500)
+          .json({
+            message:
+              "Error sending verification email. Please try again later.",
+          });
+      }
+    } catch (error) {
+      logger.error("Error in /request-verification route", { error });
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -233,7 +276,7 @@ router.post('/request-verification', authenticateToken, async (req: any, res, ne
  *       400:
  *         description: Invalid or expired token
  */
-router.get('/verify-email/:token', async (req, res, next) => {
+router.get("/verify-email/:token", async (req, res, next) => {
   try {
     const { token } = req.params;
 
@@ -243,8 +286,15 @@ router.get('/verify-email/:token', async (req, res, next) => {
     });
 
     if (!user) {
-      logger.warn('Invalid or expired email verification token received', { token });
-      return res.status(400).json({ message: 'Invalid or expired verification token. Please request a new one.' });
+      logger.warn("Invalid or expired email verification token received", {
+        token,
+      });
+      return res
+        .status(400)
+        .json({
+          message:
+            "Invalid or expired verification token. Please request a new one.",
+        });
     }
 
     user.isEmailVerified = true;
@@ -254,19 +304,22 @@ router.get('/verify-email/:token', async (req, res, next) => {
 
     await AuditLog.create({
       userId: user._id,
-      action: 'EMAIL_VERIFIED',
+      action: "EMAIL_VERIFIED",
       ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
+      userAgent: req.get("User-Agent"),
       timestamp: new Date(),
     });
-    logger.info(`Email verified successfully for user ${user.email}`, { userId: user._id });
+    logger.info(`Email verified successfully for user ${user.email}`, {
+      userId: user._id,
+    });
 
     // Optionally, redirect to a frontend page:
     // return res.redirect(`${process.env.FRONTEND_URL}/email-verified-success`);
-    res.status(200).json({ message: 'Email verified successfully. You can now login.' });
-
+    res
+      .status(200)
+      .json({ message: "Email verified successfully. You can now login." });
   } catch (error) {
-    logger.error('Error in /verify-email/:token route', { error });
+    logger.error("Error in /verify-email/:token route", { error });
     next(error);
   }
 });
@@ -303,157 +356,162 @@ router.get('/verify-email/:token', async (req, res, next) => {
  *       423:
  *         description: Account locked
  */
-router.post('/login', [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Valid email is required'),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required'),
-  validateRequest,
-  rateLimitByEmail
-], async (req: Request, res: Response, next: NextFunction) => { // Typed req, res, next
-  const tracer = trace.getTracer('auth-service-routes');
-  await tracer.startActiveSpan('auth.login.handler', async (span: Span) => {
-    try {
-      const { email, password, mfaCode } = req.body;
-      span.setAttributes({
-        'user.email': email,
-        'http.method': 'POST',
-        'http.route': '/auth/login'
-      });
-
-      // Find user
-      const user = await User.findByEmail(email);
-    if (!user) {
-      await AuditLog.create({
-        userId: null,
-        action: 'LOGIN_FAILED_USER_NOT_FOUND',
-        details: { email },
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent'),
-        timestamp: new Date()
-      });
-
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Check if account is locked
-    if (user.lockedUntil && user.lockedUntil > new Date()) {
-      await AuditLog.create({
-        userId: user.id,
-        action: 'LOGIN_FAILED_ACCOUNT_LOCKED',
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent'),
-        timestamp: new Date()
-      });
-
-      return res.status(423).json({
-        error: 'Locked',
-        message: 'Account is temporarily locked due to multiple failed login attempts'
-      });
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      // Increment failed login attempts
-      await User.incrementFailedLogins(user.id);
-
-      await AuditLog.create({
-        userId: user.id,
-        action: 'LOGIN_FAILED_INVALID_PASSWORD',
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent'),
-        timestamp: new Date()
-      });
-
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Check MFA if enabled
-    if (user.mfaEnabled) {
-      if (!mfaCode) {
-        return res.status(200).json({
-          requireMfa: true,
-          message: 'MFA code required'
+router.post(
+  "/login",
+  [
+    body("email")
+      .isEmail()
+      .normalizeEmail()
+      .withMessage("Valid email is required"),
+    body("password").notEmpty().withMessage("Password is required"),
+    validateRequest,
+    rateLimitByEmail,
+  ],
+  async (req: Request, res: Response, next: NextFunction) => {
+    // Typed req, res, next
+    const tracer = trace.getTracer("auth-service-routes");
+    await tracer.startActiveSpan("auth.login.handler", async (span: Span) => {
+      try {
+        const { email, password, mfaCode } = req.body;
+        span.setAttributes({
+          "user.email": email,
+          "http.method": "POST",
+          "http.route": "/auth/login",
         });
-      }
 
-      const isMfaValid = await User.verifyMfaCode(user.id, mfaCode);
-      if (!isMfaValid) {
+        // Find user
+        const user = await User.findByEmail(email);
+        if (!user) {
+          await AuditLog.create({
+            userId: null,
+            action: "LOGIN_FAILED_USER_NOT_FOUND",
+            details: { email },
+            ipAddress: req.ip,
+            userAgent: req.get("User-Agent"),
+            timestamp: new Date(),
+          });
+
+          return res.status(401).json({
+            error: "Unauthorized",
+            message: "Invalid credentials",
+          });
+        }
+
+        // Check if account is locked
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+          await AuditLog.create({
+            userId: user.id,
+            action: "LOGIN_FAILED_ACCOUNT_LOCKED",
+            ipAddress: req.ip,
+            userAgent: req.get("User-Agent"),
+            timestamp: new Date(),
+          });
+
+          return res.status(423).json({
+            error: "Locked",
+            message:
+              "Account is temporarily locked due to multiple failed login attempts",
+          });
+        }
+
+        // Verify password
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+          // Increment failed login attempts
+          await User.incrementFailedLogins(user.id);
+
+          await AuditLog.create({
+            userId: user.id,
+            action: "LOGIN_FAILED_INVALID_PASSWORD",
+            ipAddress: req.ip,
+            userAgent: req.get("User-Agent"),
+            timestamp: new Date(),
+          });
+
+          return res.status(401).json({
+            error: "Unauthorized",
+            message: "Invalid credentials",
+          });
+        }
+
+        // Check MFA if enabled
+        if (user.mfaEnabled) {
+          if (!mfaCode) {
+            return res.status(200).json({
+              requireMfa: true,
+              message: "MFA code required",
+            });
+          }
+
+          const isMfaValid = await User.verifyMfaCode(user.id, mfaCode);
+          if (!isMfaValid) {
+            await AuditLog.create({
+              userId: user.id,
+              action: "LOGIN_FAILED_INVALID_MFA",
+              ipAddress: req.ip,
+              userAgent: req.get("User-Agent"),
+              timestamp: new Date(),
+            });
+
+            return res.status(401).json({
+              error: "Unauthorized",
+              message: "Invalid MFA code",
+            });
+          }
+        }
+
+        // Reset failed login attempts on successful login
+        await User.resetFailedLogins(user.id);
+
+        // Generate tokens
+        const { accessToken, refreshToken } = await generateTokens(user);
+
+        // Update last login
+        await User.updateLastLogin(user.id, req.ip);
+
+        // Log successful login
         await AuditLog.create({
           userId: user.id,
-          action: 'LOGIN_FAILED_INVALID_MFA',
+          action: "LOGIN_SUCCESS",
           ipAddress: req.ip,
-          userAgent: req.get('User-Agent'),
-          timestamp: new Date()
+          userAgent: req.get("User-Agent"),
+          timestamp: new Date(),
         });
 
-        return res.status(401).json({
-          error: 'Unauthorized',
-          message: 'Invalid MFA code'
+        logger.info("User logged in successfully", {
+          userId: user.id,
+          email: user.email,
+          ip: req.ip,
         });
+
+        res.json({
+          message: "Login successful",
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            preferredLanguage: user.preferredLanguage,
+            emailVerified: user.emailVerified,
+            mfaEnabled: user.mfaEnabled,
+          },
+          tokens: {
+            accessToken,
+            refreshToken,
+            expiresIn: 3600, // 1 hour
+          },
+        });
+        span.end();
+      } catch (error) {
+        const err = error as Error;
+        span.recordException(err);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+        span.end();
+        next(err); // Call next to pass control to the error handler
       }
-    }
-
-    // Reset failed login attempts on successful login
-    await User.resetFailedLogins(user.id);
-
-    // Generate tokens
-    const { accessToken, refreshToken } = await generateTokens(user);
-
-    // Update last login
-    await User.updateLastLogin(user.id, req.ip);
-
-    // Log successful login
-    await AuditLog.create({
-      userId: user.id,
-      action: 'LOGIN_SUCCESS',
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-      timestamp: new Date()
     });
-
-    logger.info('User logged in successfully', {
-      userId: user.id,
-      email: user.email,
-      ip: req.ip
-    });
-
-    res.json({
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        preferredLanguage: user.preferredLanguage,
-        emailVerified: user.emailVerified,
-        mfaEnabled: user.mfaEnabled
-      },
-      tokens: {
-        accessToken,
-        refreshToken,
-        expiresIn: 3600 // 1 hour
-      }
-      span.end();
-    } catch (error) {
-      const err = error as Error;
-      span.recordException(err);
-      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
-      span.end();
-      next(err); // Call next to pass control to the error handler
-    }
-  });
-});
+  }
+);
 
 /**
  * @swagger
@@ -478,36 +536,38 @@ router.post('/login', [
  *       401:
  *         description: Invalid refresh token
  */
-router.post('/refresh', [
-  body('refreshToken')
-    .notEmpty()
-    .withMessage('Refresh token is required'),
-  validateRequest
-], async (req, res, next) => {
-  try {
-    const { refreshToken } = req.body;
+router.post(
+  "/refresh",
+  [
+    body("refreshToken").notEmpty().withMessage("Refresh token is required"),
+    validateRequest,
+  ],
+  async (req, res, next) => {
+    try {
+      const { refreshToken } = req.body;
 
-    const result = await verifyRefreshToken(refreshToken);
-    if (!result) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Invalid or expired refresh token'
-      });
-    }
-
-    const { user, newAccessToken, newRefreshToken } = result;
-
-    res.json({
-      tokens: {
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-        expiresIn: 3600
+      const result = await verifyRefreshToken(refreshToken);
+      if (!result) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or expired refresh token",
+        });
       }
-    });
-  } catch (error) {
-    next(error);
+
+      const { user, newAccessToken, newRefreshToken } = result;
+
+      res.json({
+        tokens: {
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+          expiresIn: 3600,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -530,7 +590,7 @@ router.post('/refresh', [
  *       200:
  *         description: Logout successful
  */
-router.post('/logout', authenticateToken, async (req: any, res, next) => {
+router.post("/logout", authenticateToken, async (req: any, res, next) => {
   try {
     const { refreshToken: bodyRefreshToken } = req.body; // Renamed to avoid conflict with 'refreshToken' from generateTokens if that was in scope
     const userId = req.user.id; // User must be authenticated
@@ -552,8 +612,8 @@ router.post('/logout', authenticateToken, async (req: any, res, next) => {
       // This part might need further refinement based on how RefreshToken.revoke is actually implemented.
       // For now, let's assume it can find and revoke the token by its string value.
       const rt = await RefreshToken.findOne({ token: bodyRefreshToken }); // This is not how RefreshToken.token is stored.
-                                                                     // RefreshToken.token is the UUID, not the JWT itself.
-                                                                     // This logic needs refinement.
+      // RefreshToken.token is the UUID, not the JWT itself.
+      // This logic needs refinement.
       // For a robust logout, we should ideally revoke the specific refresh token associated with the session if provided.
       // And also ensure the current access token cannot be used for further calls (though it will expire).
       // The most straightforward for now is to log the user out.
@@ -582,15 +642,15 @@ router.post('/logout', authenticateToken, async (req: any, res, next) => {
     // User ID is now reliably from authenticateToken
     await AuditLog.create({
       userId: userId, // userId from req.user
-      action: 'LOGOUT',
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent'),
-        timestamp: new Date()
-      });
+      action: "LOGOUT",
+      ipAddress: req.ip,
+      userAgent: req.get("User-Agent"),
+      timestamp: new Date(),
+    });
     // Removed extra closing brace here
 
     res.json({
-      message: 'Logout successful'
+      message: "Logout successful",
     });
   } catch (error) {
     next(error);

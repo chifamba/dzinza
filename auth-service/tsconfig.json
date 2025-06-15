@@ -2,14 +2,16 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../backend-service/src/shared/*"],
+      "../middleware/*": ["../backend-service/src/shared/middleware/*"],
+      "../utils/*": ["../backend-service/src/shared/utils/*"],
+      "../models/*": ["../backend-service/src/models/*"],
+      "../config/*": ["../backend-service/src/config/*"]
+    }
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "tests"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "tests"]
 }

@@ -1,7 +1,7 @@
-import jwt, { JwtPayload } from 'jsonwebtoken'; // Import JwtPayload
-import { v4 as uuidv4 } from 'uuid';
-import { RefreshToken } from '../models/RefreshToken';
-import { logger } from './logger';
+import jwt, { JwtPayload } from "jsonwebtoken"; // Import JwtPayload
+import { v4 as uuidv4 } from "uuid";
+import { RefreshToken } from "../models/RefreshToken";
+import { logger } from "./logger";
 
 export interface TokenPayload {
   userId: string;
@@ -16,24 +16,27 @@ export interface TokenPair {
   expiresIn: number;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret-change-in-production';
-const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY || '15m';
-const REFRESH_TOKEN_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || '7d';
+const JWT_SECRET =
+  process.env.JWT_SECRET || "fallback-secret-change-in-production";
+const JWT_REFRESH_SECRET =
+  process.env.JWT_REFRESH_SECRET ||
+  "fallback-refresh-secret-change-in-production";
+const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY || "15m";
+const REFRESH_TOKEN_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || "7d";
 
 /**
  * Generate access and refresh token pair
  */
 export const generateTokens = async (
-  userId: string, 
-  email: string, 
-  roles: string[] = ['user'],
+  userId: string,
+  email: string,
+  roles: string[] = ["user"],
   ipAddress?: string,
   userAgent?: string
 ): Promise<TokenPair> => {
   try {
     const sessionId = uuidv4();
-    
+
     // Create access token payload
     const accessPayload: TokenPayload = {
       userId,
@@ -45,9 +48,9 @@ export const generateTokens = async (
     // Generate access token
     const accessToken = jwt.sign(accessPayload, JWT_SECRET, {
       expiresIn: ACCESS_TOKEN_EXPIRY,
-      issuer: 'dzinza-auth',
-      audience: 'dzinza-app',
-    });
+      issuer: "dzinza-auth",
+      audience: "dzinza-app",
+    } as jwt.SignOptions);
 
     // Generate refresh token
     const refreshTokenId = uuidv4();
@@ -56,14 +59,16 @@ export const generateTokens = async (
       JWT_REFRESH_SECRET,
       {
         expiresIn: REFRESH_TOKEN_EXPIRY,
-        issuer: 'dzinza-auth',
-        audience: 'dzinza-app',
-      }
+        issuer: "dzinza-auth",
+        audience: "dzinza-app",
+      } as jwt.SignOptions
     );
 
     // Calculate expiry time
     const expiresIn = getTokenExpiryTime(ACCESS_TOKEN_EXPIRY);
-    const refreshExpiresAt = new Date(Date.now() + getTokenExpiryTime(REFRESH_TOKEN_EXPIRY) * 1000);
+    const refreshExpiresAt = new Date(
+      Date.now() + getTokenExpiryTime(REFRESH_TOKEN_EXPIRY) * 1000
+    );
 
     // Store refresh token in database
     await RefreshToken.create({
@@ -79,11 +84,13 @@ export const generateTokens = async (
       refreshToken,
       expiresIn,
     };
-
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error during token generation';
-    logger.error('Error generating tokens:', { error: message, userId });
-    throw new Error('Failed to generate tokens');
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown error during token generation";
+    logger.error("Error generating tokens:", { error: message, userId });
+    throw new Error("Failed to generate tokens");
   }
 };
 
@@ -94,7 +101,7 @@ export const generateTokens = async (
 export const rotateRefreshToken = async (
   oldRefreshToken: string,
   email: string, // Needed for new access token
-  roles: string[] = ['user'], // Needed for new access token
+  roles: string[] = ["user"], // Needed for new access token
   ipAddress?: string,
   userAgent?: string
 ): Promise<TokenPair> => {
@@ -106,7 +113,7 @@ export const rotateRefreshToken = async (
     // It's generally safer to revoke the old token *after* successfully generating new ones,
     // or handle potential failures in new token generation carefully.
     // However, the prompt asks to revoke first. If new token generation fails, the user has to log in again.
-    await revokeRefreshToken(verifiedOldToken.tokenId, 'rotated');
+    await revokeRefreshToken(verifiedOldToken.tokenId, "rotated");
 
     // 3. Generate new access and refresh tokens
     // We need to use the userId from the verified old token.
@@ -123,25 +130,31 @@ export const rotateRefreshToken = async (
 
     const accessToken = jwt.sign(accessPayload, JWT_SECRET, {
       expiresIn: ACCESS_TOKEN_EXPIRY,
-      issuer: 'dzinza-auth',
-      audience: 'dzinza-app',
-    });
+      issuer: "dzinza-auth",
+      audience: "dzinza-app",
+    } as jwt.SignOptions);
 
     // Generate new refresh token
     const newRefreshTokenId = uuidv4();
     const newRefreshTokenValue = jwt.sign(
-      { userId: verifiedOldToken.userId, sessionId, tokenId: newRefreshTokenId },
+      {
+        userId: verifiedOldToken.userId,
+        sessionId,
+        tokenId: newRefreshTokenId,
+      },
       JWT_REFRESH_SECRET,
       {
         expiresIn: REFRESH_TOKEN_EXPIRY,
-        issuer: 'dzinza-auth',
-        audience: 'dzinza-app',
-      }
+        issuer: "dzinza-auth",
+        audience: "dzinza-app",
+      } as jwt.SignOptions
     );
 
     // Calculate expiry times
     const expiresIn = getTokenExpiryTime(ACCESS_TOKEN_EXPIRY);
-    const newRefreshExpiresAt = new Date(Date.now() + getTokenExpiryTime(REFRESH_TOKEN_EXPIRY) * 1000);
+    const newRefreshExpiresAt = new Date(
+      Date.now() + getTokenExpiryTime(REFRESH_TOKEN_EXPIRY) * 1000
+    );
 
     // 4. Store the new refresh token in the database
     await RefreshToken.create({
@@ -160,20 +173,29 @@ export const rotateRefreshToken = async (
       refreshToken: newRefreshTokenValue,
       expiresIn,
     };
-
   } catch (error: unknown) {
     // Log the error appropriately
-    const message = error instanceof Error ? error.message : 'Unknown error during token rotation';
-    logger.error('Error rotating refresh token:', { error: message, oldTokenPreview: oldRefreshToken.substring(0, 10) }); // Avoid logging full token
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown error during token rotation";
+    logger.error("Error rotating refresh token:", {
+      error: message,
+      oldTokenPreview: oldRefreshToken.substring(0, 10),
+    }); // Avoid logging full token
 
     // Rethrow a more specific error or the original one
-    if (error instanceof Error && (error.message === 'Refresh token not found or revoked' || error.message === 'Refresh token expired' || error.message === 'Invalid refresh token')) {
+    if (
+      error instanceof Error &&
+      (error.message === "Refresh token not found or revoked" ||
+        error.message === "Refresh token expired" ||
+        error.message === "Invalid refresh token")
+    ) {
       throw new Error(`Failed to rotate refresh token: ${error.message}`);
     }
-    throw new Error('Failed to rotate refresh token');
+    throw new Error("Failed to rotate refresh token");
   }
 };
-
 
 /**
  * Verify access token
@@ -181,21 +203,28 @@ export const rotateRefreshToken = async (
 export const verifyAccessToken = (token: string): TokenPayload => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, {
-      issuer: 'dzinza-auth',
-      audience: 'dzinza-app',
+      issuer: "dzinza-auth",
+      audience: "dzinza-app",
     }) as TokenPayload;
 
     return decoded;
   } catch (error: unknown) {
-    if (error instanceof jwt.TokenExpiredError) { // Specific check first
-      throw new Error('Token expired');
+    if (error instanceof jwt.TokenExpiredError) {
+      // Specific check first
+      throw new Error("Token expired");
     }
-    if (error instanceof jwt.JsonWebTokenError) { // More general JWT error
-      throw new Error('Invalid token');
+    if (error instanceof jwt.JsonWebTokenError) {
+      // More general JWT error
+      throw new Error("Invalid token");
     }
     // For other types of errors or if not an Error instance
-    const message = error instanceof Error ? error.message : 'Unknown error during access token verification';
-    logger.error('Access token verification failed unexpectedly:', { error: message });
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown error during access token verification";
+    logger.error("Access token verification failed unexpectedly:", {
+      error: message,
+    });
     throw new Error(message); // Rethrow a generic or the original error if it was an Error instance
   }
 };
@@ -203,7 +232,9 @@ export const verifyAccessToken = (token: string): TokenPayload => {
 /**
  * Verify refresh token
  */
-export const verifyRefreshToken = async (token: string): Promise<{
+export const verifyRefreshToken = async (
+  token: string
+): Promise<{
   userId: string;
   sessionId: string;
   tokenId: string;
@@ -218,8 +249,8 @@ export const verifyRefreshToken = async (token: string): Promise<{
     }
 
     const decoded = jwt.verify(token, JWT_REFRESH_SECRET, {
-      issuer: 'dzinza-auth',
-      audience: 'dzinza-app',
+      issuer: "dzinza-auth",
+      audience: "dzinza-app",
     }) as DecodedRefreshToken;
 
     // Check if refresh token exists in database and is not revoked
@@ -231,7 +262,7 @@ export const verifyRefreshToken = async (token: string): Promise<{
     });
 
     if (!refreshToken) {
-      throw new Error('Refresh token not found or revoked');
+      throw new Error("Refresh token not found or revoked");
     }
 
     return {
@@ -239,16 +270,22 @@ export const verifyRefreshToken = async (token: string): Promise<{
       sessionId: decoded.sessionId,
       tokenId: decoded.tokenId,
     };
-
   } catch (error: unknown) {
-    if (error instanceof jwt.TokenExpiredError) { // Specific check first
-      throw new Error('Refresh token expired');
+    if (error instanceof jwt.TokenExpiredError) {
+      // Specific check first
+      throw new Error("Refresh token expired");
     }
-    if (error instanceof jwt.JsonWebTokenError) { // More general JWT error
-      throw new Error('Invalid refresh token');
+    if (error instanceof jwt.JsonWebTokenError) {
+      // More general JWT error
+      throw new Error("Invalid refresh token");
     }
-    const message = error instanceof Error ? error.message : 'Unknown error during refresh token verification';
-    logger.error('Refresh token verification failed unexpectedly:', { error: message });
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown error during refresh token verification";
+    logger.error("Refresh token verification failed unexpectedly:", {
+      error: message,
+    });
     throw new Error(message);
   }
 };
@@ -256,40 +293,52 @@ export const verifyRefreshToken = async (token: string): Promise<{
 /**
  * Revoke refresh token
  */
-export const revokeRefreshToken = async (tokenId: string, reason: string = 'logout'): Promise<void> => {
+export const revokeRefreshToken = async (
+  tokenId: string,
+  reason: string = "logout"
+): Promise<void> => {
   try {
     await RefreshToken.updateOne(
       { token: tokenId },
-      { 
-        isRevoked: true, 
+      {
+        isRevoked: true,
         revokedAt: new Date(),
         revokedReason: reason,
       }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error during refresh token revocation';
-    logger.error('Error revoking refresh token:', { error: message, tokenId });
-    throw new Error('Failed to revoke token');
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown error during refresh token revocation";
+    logger.error("Error revoking refresh token:", { error: message, tokenId });
+    throw new Error("Failed to revoke token");
   }
 };
 
 /**
  * Revoke all refresh tokens for a user
  */
-export const revokeAllUserTokens = async (userId: string, reason: string = 'security'): Promise<void> => {
+export const revokeAllUserTokens = async (
+  userId: string,
+  reason: string = "security"
+): Promise<void> => {
   try {
     await RefreshToken.updateMany(
       { userId, isRevoked: false },
-      { 
-        isRevoked: true, 
+      {
+        isRevoked: true,
         revokedAt: new Date(),
         revokedReason: reason,
       }
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error during mass token revocation';
-    logger.error('Error revoking all user tokens:', { error: message, userId });
-    throw new Error('Failed to revoke tokens');
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown error during mass token revocation";
+    logger.error("Error revoking all user tokens:", { error: message, userId });
+    throw new Error("Failed to revoke tokens");
   }
 };
 
@@ -306,7 +355,7 @@ function getTokenExpiryTime(expiry: string): number {
 
   const match = expiry.match(/^(\d+)([smhd])$/);
   if (!match) {
-    throw new Error('Invalid expiry format');
+    throw new Error("Invalid expiry format");
   }
 
   const [, value, unit] = match;
