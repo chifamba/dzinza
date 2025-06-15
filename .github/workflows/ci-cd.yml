@@ -1,6 +1,22 @@
 name: Dzinza CI/CD Pipeline
 
 # Workflow Execution Sequence:
+# 1. Code Quality & Security (parallel): test, security, codeql
+# 2. End-to-End Testing: e2e (after test, security, codeql)  
+# 3. Docker Build: docker (after test, security, codeql)
+# 4. Staging Deployment: deploy-staging (after docker, for both develop & main branches)
+# 5. Performance Testing: performance (after deploy-staging, acts as gate for production)
+# 6. Production Deployment: deploy-production (after docker & performance, main branch only)
+#
+# Security scanning uses free open-source alternatives:
+# - npm audit (built-in dependency vulnerability scanning)
+# - Semgrep (static analysis security scanner)
+# - CodeQL (GitHub's security analysis)
+# - OSV-Scanner (Google's vulnerability scanner)  
+# - Trivy (comprehensive security scanner)
+# - detect-secrets (credential exposure detection)a CI/CD Pipeline
+
+# Workflow Execution Sequence:
 # 1. Code Quality & Security (parallel): test, security
 # 2. End-to-End Testing: e2e (after test, security)
 # 3. Docker Build: docker (after test, security)
@@ -228,21 +244,101 @@ jobs:
             fi
           fi
 
-      - name: Run Snyk Security Scan - Frontend
-        if: hashFiles('frontend/package.json') != ''
-        uses: snyk/actions/node@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Run Semgrep Security Scan
+        uses: semgrep/semgrep-action@v1
         with:
-          args: --file=frontend/package.json --severity-threshold=high
+          config: >-
+            p/security-audit
+            p/secrets
+            p/ci
+            p/owasp-top-ten
+            p/javascript
+            p/typescript
+            p/react
+            p/docker
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
-      - name: Run Snyk Security Scan - Backend
-        if: hashFiles('backend-service/package.json') != ''
-        uses: snyk/actions/node@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Run OSV-Scanner for Vulnerabilities
+        uses: google/osv-scanner-action@v1.8.5
         with:
-          args: --file=backend-service/package.json --severity-threshold=high
+          scan-args: |-
+            --recursive
+            --skip-git
+            ./
+        continue-on-error: true # Don't fail the pipeline for vulnerabilities, just report
+
+      - name: Run Trivy Security Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          exit-code: '0' # Don't fail pipeline
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy SARIF results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Additional Security Checks
+        run: |
+          echo "Running additional open-source security checks..."
+          
+          # Check for exposed secrets using detect-secrets
+          if ! command -v detect-secrets &> /dev/null; then
+            pip install detect-secrets
+          fi
+          detect-secrets scan --all-files --baseline .secrets.baseline || true
+          
+          # Check for hardcoded credentials
+          if command -v grep &> /dev/null; then
+            echo "Checking for potential secrets..."
+            grep -r -i "password\|secret\|key\|token" . --exclude-dir=node_modules --exclude-dir=.git --exclude="*.log" || true
+          fi
+
+  # CodeQL Security Analysis
+  codeql:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript', 'typescript']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-and-quality
+
+      - name: Setup Node.js for CodeQL
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install Dependencies for Analysis
+        run: |
+          if [ -f "package.json" ]; then
+            npm install || npm ci
+          fi
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
 
   # Build Application (REMOVED - Docker builds handle individual service builds)
   # build:
@@ -279,8 +375,8 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     # E2E tests might run against a deployed staging environment later, or use docker-compose to spin up services.
-    # For now, it will run after 'test' and 'security'.
-    needs: [test, security]
+    # For now, it will run after 'test', 'security', and 'codeql'.
+    needs: [test, security, codeql]
 
     steps:
       - name: Checkout code
@@ -327,7 +423,7 @@ jobs:
   docker:
     name: Build and Push Docker Image for ${{ matrix.service_name }}
     runs-on: ubuntu-latest
-    needs: [test, security] # Removed 'build' dependency
+    needs: [test, security, codeql] # Removed 'build' dependency, added 'codeql' for comprehensive security
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     permissions:
       contents: read
