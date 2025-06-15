@@ -6,7 +6,7 @@ import { CommentData, CommentsApiResponse, CommentResourceType } from '../../typ
 import { UserProfile } from '../../types/collaborators'; // For current user
 
 // Mock useAuth hook
-let mockCurrentUser: UserProfile | null = { id: 'user-123', name: 'Test User', email: 'test@example.com' };
+const mockCurrentUser: UserProfile | null = { id: 'user-123', name: 'Test User', email: 'test@example.com' };
 jest.mock('../../hooks/useAuth', () => ({ // Adjust path to your useAuth hook
   useAuth: () => ({ currentUser: mockCurrentUser }),
 }));

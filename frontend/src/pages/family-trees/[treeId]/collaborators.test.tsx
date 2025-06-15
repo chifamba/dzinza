@@ -11,7 +11,7 @@ jest.mock('next/router', () => ({
 }));
 
 // Mock useAuth hook
-let mockCurrentUser: UserProfile | null = { id: 'current-user-123', name: 'Current Test User', email: 'current@example.com' };
+const mockCurrentUser: UserProfile | null = { id: 'current-user-123', name: 'Current Test User', email: 'current@example.com' };
 jest.mock('../../../hooks/useAuth', () => ({ // Adjust path to your useAuth hook
   useAuth: () => ({ currentUser: mockCurrentUser, isLoading: false }),
 }));

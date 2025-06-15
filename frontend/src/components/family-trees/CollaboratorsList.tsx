@@ -180,7 +180,7 @@ const CollaboratorsList: React.FC<CollaboratorsListProps> = ({
 
             // Determine if role select should be shown and what options it should have
             let canEditRole = false;
-            let roleOptions: { value: Collaborator['role']; label: string }[] = [
+            const roleOptions: { value: Collaborator['role']; label: string }[] = [
               { value: 'viewer', label: 'Viewer' },
               { value: 'editor', label: 'Editor' },
             ];
