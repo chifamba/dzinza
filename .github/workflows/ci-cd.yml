@@ -323,7 +323,7 @@ jobs:
   #     # If specific builds are needed for E2E outside Docker, E2E job should handle it.
 
   #   - name: Upload build artifacts
-  #     uses: actions/upload-artifact@v3
+  #     uses: actions/upload-artifact@v4
   #     with:
   #       name: build-files # This artifact is no longer used by deploy jobs
   #       path: dist/ # Or specific service dist: e.g., packages/frontend/dist
@@ -371,7 +371,7 @@ jobs:
         run: npm run test:e2e
 
       - name: Upload E2E test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-results
@@ -410,6 +410,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -431,7 +434,7 @@ jobs:
 
       - name: Build and push Docker image for ${{ matrix.service_name }}
         id: build-and-push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: . # Monorepo root context
           file: ${{ matrix.dockerfile_path }}
@@ -688,7 +691,7 @@ jobs:
         continue-on-error: true # Allow pipeline to continue for reporting
 
       - name: Upload k6 Test Results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always() # Upload results even if previous steps failed (e.g., k6 checks failed)
         with:
           name: k6-load-test-results
