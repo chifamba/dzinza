@@ -173,6 +173,10 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout code
@@ -278,11 +282,22 @@ jobs:
           exit-code: "0" # Don't fail pipeline
           severity: "CRITICAL,HIGH"
 
+      - name: Check if SARIF file exists
+        run: |
+          if [ -f "trivy-results.sarif" ]; then
+            echo "✅ SARIF file created successfully"
+            ls -la trivy-results.sarif
+          else
+            echo "❌ SARIF file not found"
+            ls -la
+          fi
+
       - name: Upload Trivy SARIF results
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-results.sarif') != ''
         with:
           sarif_file: "trivy-results.sarif"
+        continue-on-error: true # Don't fail if SARIF upload fails
 
       - name: Run Additional Security Checks
         run: |
