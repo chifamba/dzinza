@@ -1,0 +1,50 @@
+{
+  "name": "dzinza-genealogy-platform",
+  "version": "1.0.0",
+  "description": "Dzinza - African Genealogy and Family History Platform",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend-service"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:unit": "npm run test --workspaces",
+    "test:integration": "npm run test:integration --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace=frontend",
+    "security:audit": "npm audit --workspaces",
+    "clean": "npm run clean --workspaces --if-present",
+    "dev": "npm run dev --workspaces --if-present",
+    "start": "npm run start --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chifamba/dzinza.git"
+  },
+  "keywords": [
+    "genealogy",
+    "family-history",
+    "african-heritage",
+    "microservices",
+    "typescript",
+    "react"
+  ],
+  "author": "Dzinza Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/chifamba/dzinza/issues"
+  },
+  "homepage": "https://github.com/chifamba/dzinza#readme",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3"
+  }
+}
