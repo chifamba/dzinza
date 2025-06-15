@@ -1,6 +1,7 @@
 {
   "name": "dzinza-backend-gateway",
   "version": "1.0.0",
+  "type": "module",
   "description": "Dzinza Genealogy Platform API Gateway",
   "main": "dist/src/server.js",
   "scripts": {
@@ -10,8 +11,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
     "docker:build": "docker build -t dzinza/backend .",
     "docker:run": "docker run -p 3001:3001 dzinza/backend"
   },

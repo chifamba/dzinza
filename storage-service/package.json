@@ -10,8 +10,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "test:ci": "jest --ci --coverage --watchAll=false", 
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
     "clean": "rm -rf dist"
   },
   "dependencies": {},

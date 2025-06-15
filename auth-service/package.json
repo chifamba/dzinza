@@ -1,6 +1,7 @@
 {
   "name": "dzinza-auth-service",
   "version": "1.0.0",
+  "type": "module",
   "description": "Dzinza Authentication Service",
   "main": "dist/server.js",
   "scripts": {
@@ -10,8 +11,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
     "clean": "rm -rf dist"
   },
   "dependencies": {

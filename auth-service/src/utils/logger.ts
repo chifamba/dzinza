@@ -1,4 +1,4 @@
-const winston = require("winston");
+import winston from "winston";
 
 // Configure Winston logger for auth service
 const logger = winston.createLogger({
