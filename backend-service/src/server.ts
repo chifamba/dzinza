@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import path from "path";
 
 // Load root .env file first (shared configuration)
-dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 // Then load service-specific .env file (overrides)
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
