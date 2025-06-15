@@ -71,6 +71,31 @@ jobs:
             echo "Warning: Root package-lock.json not found, falling back to npm install"
             npm install
           fi
+          
+          # Install dependencies for individual services
+          echo "Installing backend-service dependencies..."
+          if [ -f "backend-service/package.json" ]; then
+            cd backend-service
+            if [ -f "package-lock.json" ]; then
+              npm ci
+            else
+              echo "Installing backend-service dependencies with npm install"
+              npm install
+            fi
+            cd ..
+          fi
+          
+          echo "Installing frontend dependencies..."
+          if [ -f "frontend/package.json" ]; then
+            cd frontend
+            if [ -f "package-lock.json" ]; then
+              npm ci
+            else
+              echo "Installing frontend dependencies with npm install"
+              npm install
+            fi
+            cd ..
+          fi
 
       - name: Run Linting
         run: |
@@ -173,6 +198,31 @@ jobs:
           else
             echo "Warning: Root package-lock.json not found, falling back to npm install"
             npm install
+          fi
+          
+          # Install dependencies for individual services
+          echo "Installing backend-service dependencies..."
+          if [ -f "backend-service/package.json" ]; then
+            cd backend-service
+            if [ -f "package-lock.json" ]; then
+              npm ci
+            else
+              echo "Installing backend-service dependencies with npm install"
+              npm install
+            fi
+            cd ..
+          fi
+          
+          echo "Installing frontend dependencies..."
+          if [ -f "frontend/package.json" ]; then
+            cd frontend
+            if [ -f "package-lock.json" ]; then
+              npm ci
+            else
+              echo "Installing frontend dependencies with npm install"
+              npm install
+            fi
+            cd ..
           fi
 
       - name: Run Security Audit
