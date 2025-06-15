@@ -49,9 +49,9 @@ export interface SearchResultItem {
   _id: string; // Elasticsearch document ID
   _score: number | null;
   _index: 'persons' | 'events' | 'comments' | string; // Index name, indicates type
-  _source: PersonData | EventData | CommentData | Record<string, any>; // Actual document
-  // Highlighting can be added here if implemented in ES query
-  // highlight?: { [key: string]: string[] };
+  _source: PersonData | EventData | CommentData | Record<string, unknown>; // Actual document
+  // Highlighting from Elasticsearch query
+  highlight?: { [key: string]: string[] };
 }
 
 export interface PaginationData {

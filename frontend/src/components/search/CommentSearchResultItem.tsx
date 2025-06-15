@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'; // Or Next.js Link
 import { SearchResultItem, CommentData } from '../../types/search'; // Adjust path
 import { MessageSquare, User, CalendarClock } from 'lucide-react'; // Example icons
 import { formatDistanceToNowStrict } from 'date-fns';
+import { createSanitizedHTML } from '../../utils/sanitize';
 
 interface CommentSearchResultItemProps {
   item: SearchResultItem;
@@ -12,13 +13,13 @@ const CommentSearchResultItem: React.FC<CommentSearchResultItemProps> = ({ item 
   const comment = item._source as CommentData;
 
   const contentDisplay = item.highlight?.content?.[0]
-    ? <span dangerouslySetInnerHTML={{ __html: item.highlight.content[0] }} />
+    ? <span dangerouslySetInnerHTML={createSanitizedHTML(item.highlight.content[0])} />
     : (comment.content
         ? comment.content.substring(0, 180) + (comment.content.length > 180 ? '...' : '')
         : 'No content.');
 
   const userNameDisplay = item.highlight?.userName?.[0]
-    ? <span dangerouslySetInnerHTML={{ __html: item.highlight.userName[0] }} />
+    ? <span dangerouslySetInnerHTML={createSanitizedHTML(item.highlight.userName[0])} />
     : (comment.userName || 'Anonymous');
 
   const timeAgo = comment.createdAt
