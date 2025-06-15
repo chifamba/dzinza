@@ -4,9 +4,9 @@ module.exports = {
     // Replace import.meta.* with mock values for Jest
     const transformedCode = src
       .replace(/import\.meta\.url/g, '"file://test"')
-      .replace(/import\.meta\.env/g, 'process.env')
-      .replace(/import\.meta\./g, '{hot: false, }.');
-    
+      .replace(/import\.meta\.env/g, "process.env")
+      .replace(/import\.meta\./g, "{hot: false, }.");
+
     // Return object with code property for Jest 28+
     return {
       code: transformedCode,

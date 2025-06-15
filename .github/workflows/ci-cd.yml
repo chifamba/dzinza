@@ -56,46 +56,15 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-          cache-dependency-path: |
-            package-lock.json
-            frontend/package-lock.json
-            backend-service/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Install Dependencies (Robust)
+      - name: Install Dependencies (Workspace)
         run: |
-          # Install all workspace dependencies from root
           echo "Installing all workspace dependencies..."
-          if [ -f "package-lock.json" ]; then
-            npm ci
-          else
-            echo "Warning: Root package-lock.json not found, falling back to npm install"
-            npm install
-          fi
+          npm ci
           
-          # Install dependencies for individual services
-          echo "Installing backend-service dependencies..."
-          if [ -f "backend-service/package.json" ]; then
-            cd backend-service
-            if [ -f "package-lock.json" ]; then
-              npm ci
-            else
-              echo "Installing backend-service dependencies with npm install"
-              npm install
-            fi
-            cd ..
-          fi
-          
-          echo "Installing frontend dependencies..."
-          if [ -f "frontend/package.json" ]; then
-            cd frontend
-            if [ -f "package-lock.json" ]; then
-              npm ci
-            else
-              echo "Installing frontend dependencies with npm install"
-              npm install
-            fi
-            cd ..
-          fi
+          # Verify all workspaces are properly installed
+          npm ls --workspaces --depth=0
 
       - name: Run Linting
         run: |
@@ -184,46 +153,15 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-          cache-dependency-path: |
-            package-lock.json
-            frontend/package-lock.json
-            backend-service/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Install Dependencies (Robust)
+      - name: Install Dependencies (Workspace)
         run: |
-          # Install all workspace dependencies from root
           echo "Installing all workspace dependencies..."
-          if [ -f "package-lock.json" ]; then
-            npm ci
-          else
-            echo "Warning: Root package-lock.json not found, falling back to npm install"
-            npm install
-          fi
+          npm ci
           
-          # Install dependencies for individual services
-          echo "Installing backend-service dependencies..."
-          if [ -f "backend-service/package.json" ]; then
-            cd backend-service
-            if [ -f "package-lock.json" ]; then
-              npm ci
-            else
-              echo "Installing backend-service dependencies with npm install"
-              npm install
-            fi
-            cd ..
-          fi
-          
-          echo "Installing frontend dependencies..."
-          if [ -f "frontend/package.json" ]; then
-            cd frontend
-            if [ -f "package-lock.json" ]; then
-              npm ci
-            else
-              echo "Installing frontend dependencies with npm install"
-              npm install
-            fi
-            cd ..
-          fi
+          # Verify all workspaces are properly installed
+          npm ls --workspaces --depth=0
 
       - name: Run Security Audit
         run: |

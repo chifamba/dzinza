@@ -1,10 +1,10 @@
 {
-  "name": "dzinza-backend-gateway",
+  "name": "dzinza-auth-service",
   "version": "1.0.0",
-  "description": "Dzinza Genealogy Platform API Gateway",
-  "main": "dist/src/server.js",
+  "description": "Dzinza Authentication Service",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node dist/src/server.js",
+    "start": "node dist/server.js",
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "tsc",
     "test": "jest",
@@ -12,14 +12,16 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "docker:build": "docker build -t dzinza/backend .",
-    "docker:run": "docker run -p 3001:3001 dzinza/backend"
+    "clean": "rm -rf dist"
   },
   "dependencies": {
-    "http-proxy-middleware": "^3.0.5"
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-facebook": "^3.0.0",
+    "passport-jwt": "^4.0.1"
   },
   "devDependencies": {},
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }
