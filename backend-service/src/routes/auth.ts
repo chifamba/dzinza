@@ -51,9 +51,6 @@ if (!JWT_SECRET || typeof JWT_SECRET !== "string") {
  *                 type: string
  *               lastName:
  *                 type: string
- *               username:
- *                 type: string
- *                 minLength: 3
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -87,13 +84,6 @@ router.post(
       .trim()
       .isLength({ min: 1, max: 50 })
       .withMessage("Last name is required and must be less than 50 characters"),
-    body("username")
-      .trim()
-      .isLength({ min: 3, max: 50 })
-      .matches(/^[a-zA-Z0-9_]+$/)
-      .withMessage(
-        "Username must be 3-50 characters and contain only letters, numbers, and underscores"
-      ),
   ],
   async (req: Request, res: Response, next: NextFunction) => {
     // Typed req, res, next
@@ -111,18 +101,18 @@ router.post(
             });
           }
 
-          const { email, password, firstName, lastName, username } = req.body;
+          const { email, password, firstName, lastName } = req.body;
 
           // Check if user already exists
           const existingUserCheck = await database.query(
-            "SELECT id FROM users WHERE email = $1 OR username = $2",
-            [email, username]
+            "SELECT id FROM users WHERE email = $1",
+            [email]
           );
 
           if (existingUserCheck.rows.length > 0) {
             return res.status(409).json({
               error: "Conflict",
-              message: "Email or username already exists",
+              message: "Email already exists",
             });
           }
 
@@ -137,15 +127,14 @@ router.post(
           const result = await database.query(
             `
       INSERT INTO users (
-        id, email, username, password_hash, first_name, last_name, 
+        id, email, password_hash, first_name, last_name, 
         email_verification_token, email_verification_expires
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, email, username, first_name, last_name, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id, email, first_name, last_name, created_at
     `,
             [
               userId,
               email,
-              username,
               hashedPassword,
               firstName,
               lastName,
@@ -185,7 +174,6 @@ router.post(
             user: {
               id: user.id,
               email: user.email,
-              username: user.username,
               firstName: user.first_name,
               lastName: user.last_name,
               createdAt: user.created_at,
@@ -221,12 +209,12 @@ router.post(
  *           schema:
  *             type: object
  *             required:
- *               - identifier
+ *               - email
  *               - password
  *             properties:
- *               identifier:
+ *               email:
  *                 type: string
- *                 description: Email or username
+ *                 format: email
  *               password:
  *                 type: string
  *     responses:
@@ -240,10 +228,10 @@ router.post(
 router.post(
   "/login",
   [
-    body("identifier")
-      .trim()
-      .isLength({ min: 1 })
-      .withMessage("Email or username is required"),
+    body("email")
+      .isEmail()
+      .normalizeEmail()
+      .withMessage("Valid email is required"),
     body("password").isLength({ min: 1 }).withMessage("Password is required"),
   ],
   async (req: Request, res: Response, next: NextFunction) => {
@@ -262,18 +250,18 @@ router.post(
             });
           }
 
-          const { identifier, password } = req.body;
+          const { email, password } = req.body;
 
-          // Find user by email or username
+          // Find user by email only (not identifier)
           const userResult = await database.query(
             `
       SELECT 
-        id, email, username, password_hash, first_name, last_name,
+        id, email, password_hash, first_name, last_name,
         failed_login_attempts, locked_until, is_active, last_login
       FROM users 
-      WHERE (email = $1 OR username = $1) AND is_active = true
-    `,
-            [identifier]
+      WHERE email = $1 AND is_active = true
+      `,
+            [email]
           );
 
           if (userResult.rows.length === 0) {
@@ -363,7 +351,6 @@ router.post(
             user: {
               id: user.id,
               email: user.email,
-              username: user.username,
               firstName: user.first_name,
               lastName: user.last_name,
               lastLogin: user.last_login,
@@ -557,6 +544,19 @@ router.get("/me", async (req, res, next): Promise<any> => {
       },
     });
   } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      return res.status(401).json({
+        error: "Authentication Failed",
+        message: "Invalid access token",
+      });
+    }
+
+    logger.error("Get user profile failed:", error, { service: "auth" });
+    next(error);
+  }
+});
+
+export { router as authRoutes };
     if (error instanceof jwt.JsonWebTokenError) {
       return res.status(401).json({
         error: "Authentication Failed",
