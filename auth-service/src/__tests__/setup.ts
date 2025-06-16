@@ -1,5 +1,5 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import mongoose from 'mongoose';
+import { MongoMemoryServer } from "mongodb-memory-server";
+import mongoose from "mongoose";
 
 let mongoServer: MongoMemoryServer;
 
@@ -7,7 +7,7 @@ beforeAll(async () => {
   // Start in-memory MongoDB instance
   mongoServer = await MongoMemoryServer.create();
   const mongoUri = mongoServer.getUri();
-  
+
   // Connect to the in-memory database
   await mongoose.connect(mongoUri);
 }, 60000);
@@ -37,27 +37,27 @@ beforeEach(async () => {
 jest.setTimeout(30000);
 
 // Mock environment variables
-process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = 'test-secret-key';
-process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-key';
-process.env.BCRYPT_ROUNDS = '10';
+process.env.NODE_ENV = "test";
+process.env.JWT_SECRET = "test-secret-key";
+process.env.JWT_REFRESH_SECRET = "test-refresh-secret-key";
+process.env.BCRYPT_ROUNDS = "10";
 
 // Mock external services
-jest.mock('nodemailer', () => ({
+jest.mock("nodemailer", () => ({
   createTransport: jest.fn(() => ({
-    sendMail: jest.fn().mockResolvedValue({ messageId: 'test-message-id' })
-  }))
+    sendMail: jest.fn().mockResolvedValue({ messageId: "test-message-id" }),
+  })),
 }));
 
-jest.mock('redis', () => ({
+jest.mock("redis", () => ({
   createClient: jest.fn(() => ({
     connect: jest.fn().mockResolvedValue(undefined),
     disconnect: jest.fn().mockResolvedValue(undefined),
     get: jest.fn().mockResolvedValue(null),
-    set: jest.fn().mockResolvedValue('OK'),
+    set: jest.fn().mockResolvedValue("OK"),
     del: jest.fn().mockResolvedValue(1),
-    on: jest.fn()
-  }))
+    on: jest.fn(),
+  })),
 }));
 
 // Suppress console.log during tests unless there's an error

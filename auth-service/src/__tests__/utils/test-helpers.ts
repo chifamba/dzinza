@@ -1,7 +1,7 @@
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
-import mongoose from 'mongoose';
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import { v4 as uuidv4 } from "uuid";
+import mongoose from "mongoose";
 
 export interface TestUser {
   id: string;
@@ -16,20 +16,26 @@ export interface TestUser {
 }
 
 export class TestHelper {
-  static async createTestUser(userData: Partial<TestUser> = {}): Promise<TestUser> {
-    const hashedPassword = await bcrypt.hash(userData.password || 'password123', 10);
-    
+  static async createTestUser(
+    userData: Partial<TestUser> = {}
+  ): Promise<TestUser> {
+    const hashedPassword = await bcrypt.hash(
+      userData.password || "password123",
+      10
+    );
+
     const defaultUser: TestUser = {
       id: uuidv4(),
       email: userData.email || `test${Date.now()}@example.com`,
       password: hashedPassword,
-      firstName: userData.firstName || 'Test',
-      lastName: userData.lastName || 'User',
-      preferredLanguage: userData.preferredLanguage || 'en',
-      emailVerified: userData.emailVerified !== undefined ? userData.emailVerified : true,
+      firstName: userData.firstName || "Test",
+      lastName: userData.lastName || "User",
+      preferredLanguage: userData.preferredLanguage || "en",
+      emailVerified:
+        userData.emailVerified !== undefined ? userData.emailVerified : true,
       createdAt: new Date(),
       updatedAt: new Date(),
-      ...userData
+      ...userData,
     };
 
     return defaultUser;
@@ -37,29 +43,32 @@ export class TestHelper {
 
   static generateAuthToken(userId: string): string {
     return jwt.sign(
-      { 
-        userId, 
-        type: 'access',
-        sessionId: uuidv4()
+      {
+        userId,
+        type: "access",
+        sessionId: uuidv4(),
       },
-      process.env.JWT_SECRET || 'test-secret',
-      { expiresIn: '1h' }
+      process.env.JWT_SECRET || "test-secret",
+      { expiresIn: "1h" }
     );
   }
 
   static generateRefreshToken(userId: string): string {
     return jwt.sign(
-      { 
-        userId, 
-        type: 'refresh',
-        tokenId: uuidv4()
+      {
+        userId,
+        type: "refresh",
+        tokenId: uuidv4(),
       },
-      process.env.JWT_REFRESH_SECRET || 'test-refresh-secret',
-      { expiresIn: '7d' }
+      process.env.JWT_REFRESH_SECRET || "test-refresh-secret",
+      { expiresIn: "7d" }
     );
   }
 
-  static async waitFor(condition: () => boolean | Promise<boolean>, timeout = 5000): Promise<boolean> {
+  static async waitFor(
+    condition: () => boolean | Promise<boolean>,
+    timeout = 5000
+  ): Promise<boolean> {
     const start = Date.now();
     while (Date.now() - start < timeout) {
       if (await condition()) {
@@ -71,7 +80,7 @@ export class TestHelper {
   }
 
   static delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   static async cleanDatabase(): Promise<void> {
@@ -84,7 +93,7 @@ export class TestHelper {
   }
 
   static generateValidPassword(): string {
-    return 'TestPassword123!';
+    return "TestPassword123!";
   }
 
   static generateValidEmail(): string {

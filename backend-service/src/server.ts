@@ -15,7 +15,7 @@ import compression from "compression";
 import rateLimit from "express-rate-limit";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
-import { logger } from "./shared/utils/logger";
+import { logger } from "./shared/utils/logger.js";
 import { errorHandler } from "./shared/middleware/errorHandler";
 import { authMiddleware } from "./shared/middleware/auth";
 import { validateRequest } from "./shared/middleware/validation";
