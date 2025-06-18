@@ -1,12 +1,12 @@
 ---
-name: Dzinza CI/CD Pipeline
+name: Dzinza CI/CD Workflow
 
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
-  workflow_dispatch: # Allow manual triggering
+  workflow_dispatch:
 
 env:
   NODE_VERSION: "20"
@@ -14,10 +14,73 @@ env:
   IMAGE_OWNER: ${{ github.repository_owner }}
 
 jobs:
-  # Build and test in a single job to save minutes
-  build-and-test:
-    name: Build, Test & Quality Checks
+  # Validate project structure and requirements
+  validate:
+    name: Validate Project Structure
     runs-on: ubuntu-latest
+    outputs:
+      has-frontend: ${{ steps.check.outputs.has-frontend }}
+      has-backend: ${{ steps.check.outputs.has-backend }}
+      has-tests: ${{ steps.check.outputs.has-tests }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check project structure
+        id: check
+        run: |
+          # Check for required files and fail if missing critical components
+          MISSING_CRITICAL=()
+
+          # Frontend checks
+          if [ -f "frontend/package.json" ]; then
+            echo "has-frontend=true" >> $GITHUB_OUTPUT
+            if ! grep -q '"build"' frontend/package.json; then
+              MISSING_CRITICAL+=("frontend/package.json missing 'build' script")
+            fi
+          else
+            echo "has-frontend=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Backend checks  
+          if [ -f "backend-service/package.json" ]; then
+            echo "has-backend=true" >> $GITHUB_OUTPUT
+            if ! grep -q '"build"\|"start"' backend-service/package.json; then
+              MISSING_CRITICAL+=("backend-service/package.json missing 'build' or 'start' script")
+            fi
+          else
+            echo "has-backend=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Test checks
+          HAS_TESTS=false
+          if [ -f "frontend/package.json" ] && grep -q '"test"' frontend/package.json; then
+            HAS_TESTS=true
+          fi
+          if [ -f "backend-service/package.json" ] && grep -q '"test"' backend-service/package.json; then
+            HAS_TESTS=true
+          fi
+          echo "has-tests=$HAS_TESTS" >> $GITHUB_OUTPUT
+
+          # Root package.json validation
+          if [ ! -f "package.json" ]; then
+            MISSING_CRITICAL+=("Root package.json is missing")
+          fi
+
+          # Report findings
+          if [ ${#MISSING_CRITICAL[@]} -gt 0 ]; then
+            echo "❌ Critical validation failures:"
+            printf '%s\n' "${MISSING_CRITICAL[@]}"
+            echo "::error::Project validation failed. Fix the above issues."
+            exit 1
+          fi
+
+          echo "✅ Project structure validation passed"
+
+  # Build and basic quality checks
+  build:
+    name: Build Applications
+    runs-on: ubuntu-latest
+    needs: validate
     steps:
       - uses: actions/checkout@v4
 
@@ -25,108 +88,36 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            frontend/package-lock.json
-            backend-service/package-lock.json
 
-      - name: Install dependencies
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install frontend dependencies
+        if: needs.validate.outputs.has-frontend == 'true'
         run: |
-          npm ci --prefer-offline --no-audit || npm install
-          # Install frontend dependencies if exists
-          if [ -f "frontend/package.json" ]; then
-            cd frontend 
-            npm ci --prefer-offline --no-audit || npm install
-            cd ..
-          fi
-          # Install backend dependencies if exists
-          if [ -f "backend-service/package.json" ]; then
-            cd backend-service
-            npm ci --prefer-offline --no-audit || npm install
-            cd ..
-          fi
+          cd frontend
+          npm ci
 
-      - name: Build applications
+      - name: Install backend dependencies
+        if: needs.validate.outputs.has-backend == 'true'
         run: |
-          # Try workspace build first, fallback to individual builds
-          if npm run build 2>/dev/null; then
-            echo "✅ Built via workspace command"
-          else
-            echo "Building individual services..."
-            if [ -f "frontend/package.json" ] && cd frontend && npm run build --if-present; then
-              echo "✅ Frontend built"
-              cd ..
-            fi
-            if [ -f "backend-service/package.json" ] && cd backend-service && npm run build --if-present; then
-              echo "✅ Backend built"
-              cd ..
-            fi
-          fi
+          cd backend-service
+          npm ci
 
-      - name: Run linting (if available)
-        continue-on-error: true
+      - name: Build frontend
+        if: needs.validate.outputs.has-frontend == 'true'
         run: |
-          if npm run lint 2>/dev/null; then
-            echo "✅ Linting via workspace"
-          else
-            echo "Running individual linting..."
-            if [ -f "frontend/package.json" ]; then
-              cd frontend && (npm run lint --if-present || echo "No lint script") && cd ..
-            fi
-            if [ -f "backend-service/package.json" ]; then
-              cd backend-service && (npm run lint --if-present || echo "No lint script") && cd ..
-            fi
-          fi
+          cd frontend
+          npm run build
 
-      - name: Run type checking (if available)
-        continue-on-error: true
+      - name: Build backend
+        if: needs.validate.outputs.has-backend == 'true'
         run: |
-          if npm run typecheck 2>/dev/null; then
-            echo "✅ Type checking via workspace"
-          else
-            echo "Running individual type checking..."
-            if [ -f "frontend/package.json" ]; then
-              cd frontend && (npm run typecheck --if-present || echo "No typecheck script") && cd ..
-            fi
-            if [ -f "backend-service/package.json" ]; then
-              cd backend-service && (npm run typecheck --if-present || echo "No typecheck script") && cd ..
-            fi
-          fi
+          cd backend-service
+          npm run build
 
-      - name: Run tests
-        run: |
-          if npm run test 2>/dev/null; then
-            echo "✅ Tests via workspace"
-          else
-            echo "Running individual tests..."
-            if [ -f "frontend/package.json" ]; then
-              cd frontend 
-              # Try different test script names
-              npm run test --if-present || npm run test:unit --if-present || npm run test:ci --if-present || echo "No test script found"
-              cd ..
-            fi
-            if [ -f "backend-service/package.json" ]; then
-              cd backend-service
-              npm run test --if-present || echo "No test script found"
-              cd ..
-            fi
-          fi
-
-      - name: Basic security audit
-        continue-on-error: true
-        run: |
-          echo "Running npm audit..."
-          npm audit --audit-level=high || echo "Audit completed with findings"
-          if [ -f "frontend/package.json" ]; then
-            cd frontend && (npm audit --audit-level=high || echo "Frontend audit completed") && cd ..
-          fi
-          if [ -f "backend-service/package.json" ]; then
-            cd backend-service && (npm audit --audit-level=high || echo "Backend audit completed") && cd ..
-          fi
-
-      - name: Upload build artifacts (if they exist)
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: build-artifacts
           path: |
@@ -135,74 +126,12 @@ jobs:
             backend-service/dist/
             backend-service/build/
           retention-days: 1
-          if-no-files-found: ignore
 
-  # Only build Docker images for main branch to save minutes
-  docker-build:
-    name: Build Docker Images
+  # Mandatory code quality checks
+  quality:
+    name: Code Quality & Security
     runs-on: ubuntu-latest
-    needs: [build-and-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    strategy:
-      fail-fast: false
-      matrix:
-        service: [frontend, backend-service, auth-service]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check if Dockerfile exists
-        id: dockerfile-check
-        run: |
-          if [ -f "./${{ matrix.service }}/Dockerfile" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Dockerfile found for ${{ matrix.service }}"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT  
-            echo "⚠️ No Dockerfile found for ${{ matrix.service }}"
-          fi
-
-      - name: Set up Docker Buildx
-        if: steps.dockerfile-check.outputs.exists == 'true'
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        if: steps.dockerfile-check.outputs.exists == 'true'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        if: steps.dockerfile-check.outputs.exists == 'true'
-        uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.service }}
-          tags: |
-            type=sha,prefix=sha-,format=short
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-
-      - name: Build and push Docker image
-        if: steps.dockerfile-check.outputs.exists == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          context: ./${{ matrix.service }}
-          file: ./${{ matrix.service }}/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64 # Single platform for free tier
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
-
-  # Simple E2E tests (only on main branch)
-  e2e-tests:
-    name: End-to-End Tests
-    runs-on: ubuntu-latest
-    needs: [build-and-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    timeout-minutes: 10
+    needs: [validate, build]
     steps:
       - uses: actions/checkout@v4
 
@@ -210,89 +139,219 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
 
-      - name: Check if E2E tests exist
-        id: e2e-check
+      - name: Restore dependencies
         run: |
-          if [ -f "frontend/package.json" ] && grep -q "test:e2e\|playwright" frontend/package.json; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "✅ E2E tests found"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ No E2E tests found"
+          npm ci
+          if [ "${{ needs.validate.outputs.has-frontend }}" == "true" ]; then
+            cd frontend && npm ci && cd ..
+          fi
+          if [ "${{ needs.validate.outputs.has-backend }}" == "true" ]; then
+            cd backend-service && npm ci && cd ..
           fi
 
-      - name: Install dependencies
-        if: steps.e2e-check.outputs.exists == 'true'
+      - name: Run linting (frontend)
+        if: needs.validate.outputs.has-frontend == 'true'
         run: |
           cd frontend
-          npm ci --prefer-offline --no-audit || npm install
+          if grep -q '"lint"' package.json; then
+            npm run lint
+          else
+            echo "::error::Frontend package.json must include a 'lint' script"
+            exit 1
+          fi
 
-      - name: Install Playwright browsers
-        if: steps.e2e-check.outputs.exists == 'true'
+      - name: Run linting (backend)
+        if: needs.validate.outputs.has-backend == 'true'
+        run: |
+          cd backend-service
+          if grep -q '"lint"' package.json; then
+            npm run lint
+          else
+            echo "::error::Backend package.json must include a 'lint' script"
+            exit 1
+          fi
+
+      - name: Run type checking (frontend)
+        if: needs.validate.outputs.has-frontend == 'true'
         run: |
           cd frontend
-          npx playwright install --with-deps chromium
+          if grep -q '"typecheck"\|"type-check"' package.json; then
+            npm run typecheck || npm run type-check
+          elif [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          fi
+
+      - name: Run type checking (backend)
+        if: needs.validate.outputs.has-backend == 'true'
+        run: |
+          cd backend-service
+          if grep -q '"typecheck"\|"type-check"' package.json; then
+            npm run typecheck || npm run type-check
+          elif [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          fi
+
+      - name: Security audit
+        run: |
+          # Fail on high/critical vulnerabilities
+          AUDIT_FAILED=false
+
+          echo "Running root security audit..."
+          npm audit --audit-level=high || AUDIT_FAILED=true
+
+          if [ "${{ needs.validate.outputs.has-frontend }}" == "true" ]; then
+            echo "Running frontend security audit..."
+            cd frontend && (npm audit --audit-level=high || AUDIT_FAILED=true) && cd ..
+          fi
+
+          if [ "${{ needs.validate.outputs.has-backend }}" == "true" ]; then
+            echo "Running backend security audit..."
+            cd backend-service && (npm audit --audit-level=high || AUDIT_FAILED=true) && cd ..
+          fi
+
+          if [ "$AUDIT_FAILED" == "true" ]; then
+            echo "::error::Security audit failed with high/critical vulnerabilities"
+            exit 1
+          fi
+
+  # Mandatory tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: [validate, build]
+    if: needs.validate.outputs.has-tests == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Restore dependencies
+        run: |
+          npm ci
+          if [ "${{ needs.validate.outputs.has-frontend }}" == "true" ]; then
+            cd frontend && npm ci && cd ..
+          fi
+          if [ "${{ needs.validate.outputs.has-backend }}" == "true" ]; then
+            cd backend-service && npm ci && cd ..
+          fi
 
       - name: Download build artifacts
-        if: steps.e2e-check.outputs.exists == 'true'
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
           path: .
 
-      - name: Run E2E tests
-        if: steps.e2e-check.outputs.exists == 'true'
+      - name: Run frontend tests
+        if: needs.validate.outputs.has-frontend == 'true'
         run: |
           cd frontend
-          npm run test:e2e || npm run e2e || echo "E2E tests completed"
-        env:
-          CI: true
+          if grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "::warning::No test script found in frontend package.json"
+          fi
 
-      - name: Upload E2E results on failure
-        if: failure() && steps.e2e-check.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-results
-          path: |
-            frontend/test-results/
-            frontend/playwright-report/
-          retention-days: 3
-          if-no-files-found: ignore
+      - name: Run backend tests
+        if: needs.validate.outputs.has-backend == 'true'
+        run: |
+          cd backend-service
+          if grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "::warning::No test script found in backend package.json"
+          fi
 
-  # Conditional deployment job
-  deploy:
-    name: Deploy
+  # Docker builds (only for main branch to save minutes)
+  docker:
+    name: Build Docker Images
     runs-on: ubuntu-latest
-    needs: [build-and-test, docker-build]
+    needs: [validate, build, quality, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - service: frontend
+            condition: ${{ needs.validate.outputs.has-frontend == 'true' }}
+          - service: backend-service
+            condition: ${{ needs.validate.outputs.has-backend == 'true' }}
     steps:
       - uses: actions/checkout@v4
+        if: matrix.condition
 
-      - name: Deploy notification
+      - name: Validate Dockerfile
+        if: matrix.condition
         run: |
-          echo "🚀 Ready for deployment!"
-          echo "Docker images built and tests passed."
-          echo "Add your deployment commands here when ready."
+          if [ ! -f "${{ matrix.service }}/Dockerfile" ]; then
+            echo "::error::Missing Dockerfile for ${{ matrix.service }}"
+            exit 1
+          fi
 
-      # Uncomment and customize when ready to deploy
-      # - name: Deploy to production
-      #   run: |
-      #     echo "Deploying to production..."
-      #     # Add your deployment commands here
-      #     # kubectl apply -f k8s/
-      #     # helm upgrade --install myapp ./chart
+      - name: Set up Docker Buildx
+        if: matrix.condition
+        uses: docker/setup-buildx-action@v3
 
-  # Cleanup old artifacts
-  cleanup:
-    name: Cleanup
-    runs-on: ubuntu-latest
-    needs: [build-and-test, docker-build, e2e-tests]
-    if: always()
-    steps:
-      - name: Delete old artifacts
-        uses: geekyeggo/delete-artifact@v5
+      - name: Log in to Container Registry
+        if: matrix.condition
+        uses: docker/login-action@v3
         with:
-          name: build-artifacts
-          failOnError: false
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        if: matrix.condition
+        uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.service }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        if: matrix.condition
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/amd64
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  # Simple deployment notification
+  deploy-ready:
+    name: Deployment Ready
+    runs-on: ubuntu-latest
+    needs: [validate, build, quality, test, docker]
+    if: always() && github.ref == 'refs/heads/main'
+    steps:
+      - name: Check deployment readiness
+        run: |
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "::error::Build failed - deployment blocked"
+            exit 1
+          fi
+          if [ "${{ needs.quality.result }}" != "success" ]; then
+            echo "::error::Quality checks failed - deployment blocked"  
+            exit 1
+          fi
+          if [ "${{ needs.test.result }}" == "failure" ]; then
+            echo "::error::Tests failed - deployment blocked"
+            exit 1
+          fi
+          if [ "${{ needs.docker.result }}" == "failure" ]; then
+            echo "::error::Docker build failed - deployment blocked"
+            exit 1
+          fi
+
+          echo "✅ All checks passed - ready for deployment!"
+          echo "🐳 Docker images available at:"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/frontend:latest"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/backend-service:latest"
