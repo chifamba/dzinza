@@ -7,8 +7,8 @@ import { S3Service, UploadOptions } from "../services/s3";
 import { ImageProcessor } from "../services/imageProcessor";
 import { File, IFile } from "../models/File"; // Assuming IFile is exported
 import { logger } from "@shared/utils/logger";
-import { trace } from '@opentelemetry/api';
-import type { Span, SpanStatusCode } from '@opentelemetry/api';
+import { trace } from "@opentelemetry/api";
+import type { Span, SpanStatusCode } from "@opentelemetry/api";
 
 const router = express.Router();
 
@@ -185,7 +185,8 @@ router.post(
     body("description").optional().isString().trim().isLength({ max: 1000 }),
     body("generateThumbnails").optional().isBoolean(),
   ],
-  async (req: Request, res: Response, _next: NextFunction) => { // Renamed next to _next
+  async (req: Request, res: Response, _next: NextFunction) => {
+    // Renamed next to _next
     // Added next
     const tracer = trace.getTracer("storage-service-file-routes");
     const parentSpan = tracer.startSpan("files.upload.handler");
