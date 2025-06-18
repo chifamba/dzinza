@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express'; // Added Response
+import express, { Request, Response, NextFunction } from 'express'; // Added Response, NextFunction
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -108,7 +108,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(passport.initialize());
 
 // HTTP Metrics Collection Middleware
-app.use((req: Request, res: Response, next: Function) => {
+app.use((req: Request, res: Response, next: NextFunction) => { // Changed Function to NextFunction
   const start = Date.now();
   res.on('finish', () => {
     const durationSeconds = (Date.now() - start) / 1000;

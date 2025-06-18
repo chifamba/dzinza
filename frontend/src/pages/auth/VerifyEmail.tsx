@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Mail, CheckCircle, AlertCircle, TreePine, RefreshCw } from 'lucide-react';
+import { Mail, CheckCircle, TreePine, RefreshCw } from 'lucide-react'; // Removed AlertCircle
 import { authApi } from '../../services/api/auth';
 import { useAuth } from '../../hooks/useAuth';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
@@ -24,14 +24,42 @@ const VerifyEmail = () => {
   const email = location.state?.email || user?.email;
 
   // Auto-verify if token is in URL
+  const verifyEmail = useCallback(async (token: string) => {
+    try {
+      setIsVerifying(true);
+      setError(null);
+
+      await authApi.verifyEmail({ token });
+      setIsVerified(true);
+
+      // Redirect to dashboard after successful verification
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 3000);
+    } catch (err: unknown) {
+      let message = 'Email verification failed'; // Default
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        if (axiosError.response?.data?.message) {
+          message = axiosError.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      setError(message);
+    } finally {
+      setIsVerifying(false);
+    }
+  }, [navigate]); // Added navigate as a dependency
+
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const token = urlParams.get('token');
-    
+
     if (token) {
       verifyEmail(token);
     }
-  }, [location.search]);
+  }, [location.search, verifyEmail]); // Added verifyEmail to dependency array
 
   // Countdown for resend button
   useEffect(() => {
@@ -40,26 +68,6 @@ const VerifyEmail = () => {
       return () => clearTimeout(timer);
     }
   }, [countdown]);
-
-  const verifyEmail = async (token: string) => {
-    try {
-      setIsVerifying(true);
-      setError(null);
-      
-      await authApi.verifyEmail({ token });
-      setIsVerified(true);
-      
-      // Redirect to dashboard after successful verification
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 3000);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Email verification failed';
-      setError(errorMessage);
-    } finally {
-      setIsVerifying(false);
-    }
-  };
 
   const resendVerificationEmail = async () => {
     try {
@@ -70,9 +78,17 @@ const VerifyEmail = () => {
       await authApi.resendVerificationEmail();
       setResendSuccess(true);
       setCountdown(60); // 60 second cooldown
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Failed to resend verification email';
-      setError(errorMessage);
+    } catch (err: unknown) {
+      let message = 'Failed to resend verification email'; // Default
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        if (axiosError.response?.data?.message) {
+          message = axiosError.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      setError(message);
     } finally {
       setIsResending(false);
     }

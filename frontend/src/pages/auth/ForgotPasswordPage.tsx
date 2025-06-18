@@ -21,8 +21,17 @@ const ForgotPasswordPage: React.FC = () => {
     try {
       const response = await authService.forgotPassword(email);
       dispatch(forgotPasswordSuccess(response.message));
-    } catch (err: any) {
-      dispatch(forgotPasswordFailure(err.message || 'Failed to send reset link. Please try again.'));
+    } catch (err: unknown) {
+      let message = 'Failed to send reset link. Please try again.'; // Default
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        if (axiosError.response?.data?.message) {
+          message = axiosError.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      dispatch(forgotPasswordFailure(message));
     }
   };
 

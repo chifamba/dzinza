@@ -1,7 +1,7 @@
 // src/components/family-tree/AddRelationshipForm.tsx
 import React, { useState } from 'react';
 import { FamilyMember, Relationship } from '../../types/genealogy'; // Adjust path
-import { Button, Select // Assuming a Select component exists or using native select
+import { Button
 } from '../ui'; // Adjust path
 
 interface AddRelationshipFormProps {

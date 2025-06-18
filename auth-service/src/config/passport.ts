@@ -1,6 +1,7 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as FacebookStrategy } from "passport-facebook";
+import { v4 as uuidv4 } from "uuid"; // Import uuid v4
 import { User } from "../models/User";
 
 // Google OAuth Strategy
@@ -20,7 +21,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           if (!user) {
             // Create new user
             user = await User.create({
-              id: require("uuid").v4(),
+              id: uuidv4(), // Use uuidv4
               email: profile.emails?.[0]?.value || "",
               password: "", // No password for OAuth users
               firstName: profile.name?.givenName || "",
@@ -58,7 +59,7 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
 
           if (!user) {
             user = await User.create({
-              id: require("uuid").v4(),
+              id: uuidv4(), // Use uuidv4
               email: profile.emails?.[0]?.value || "",
               password: "",
               firstName: profile.name?.givenName || "",

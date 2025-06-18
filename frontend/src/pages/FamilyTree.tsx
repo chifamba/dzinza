@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { useTranslation } from 'react-i18next';
 import { 
   Plus, 
@@ -11,8 +11,6 @@ import {
   Filter,
   Share,
   Download,
-  Maximize,
-  Users,
   Calendar,
   MapPin
 } from 'lucide-react';
@@ -33,7 +31,7 @@ const FamilyTree = () => {
   const { t } = useTranslation('familyTree');
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([
+  const [familyMembers, _setFamilyMembers] = useState<FamilyMember[]>([ // Renamed setFamilyMembers
     {
       id: '1',
       name: 'John Smith',
@@ -98,7 +96,7 @@ const FamilyTree = () => {
     return familyMembers.filter(member => member.generation === generation);
   };
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: DropResult) => {
     // Handle drag and drop logic here
     console.log('Drag ended:', result);
   };

@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import { AxiosResponse } from 'axios'; // Removed unused axios default import
 import { apiClient } from './client';
 
 export interface RegisterData {

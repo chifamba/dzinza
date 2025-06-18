@@ -53,8 +53,8 @@ const Profile: React.FC = () => {
       await dispatch(updateUserProfile(data)).unwrap();
       setIsEditModalOpen(false);
       // toast.success(t('profileUpdateSuccess', 'Profile updated successfully!'));
-    } catch (err: any) {
-      setUpdateError(err.message || t('errors.genericUpdateFailed', 'Failed to update profile.'));
+    } catch (err: unknown) {
+      setUpdateError((err as Error).message || t('errors.genericUpdateFailed', 'Failed to update profile.'));
     } finally {
       setUpdateLoading(false);
     }
@@ -82,8 +82,8 @@ const Profile: React.FC = () => {
     try {
       await dispatch(uploadUserAvatar(file)).unwrap();
       // toast.success(t('avatarUpload.success', 'Avatar uploaded successfully!'));
-    } catch (err: any) {
-      setAvatarUploadError(err.message || t('avatarUpload.errorGeneric', 'Failed to upload avatar.'));
+    } catch (err: unknown) {
+      setAvatarUploadError((err as Error).message || t('avatarUpload.errorGeneric', 'Failed to upload avatar.'));
     } finally {
       setAvatarUploadLoading(false);
       if (fileInputRef.current) {
@@ -92,7 +92,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handlePreferenceChange = (category: keyof UserType['preferences'], key: string, value: any) => {
+  const handlePreferenceChange = (category: keyof UserType['preferences'], key: string, value: string | boolean) => {
     setPrefs(prev => {
       if (!prev) return null;
       const categoryCopy = { ...prev[category] };
@@ -112,8 +112,8 @@ const Profile: React.FC = () => {
       const updateData: UpdateProfileData = { preferences: prefs };
       await dispatch(updateUserProfile(updateData)).unwrap();
       // toast.success(t('preferences.saveSuccess', 'Preferences saved successfully!'));
-    } catch (err: any) {
-      setPrefsError(err.message || t('preferences.saveError', 'Failed to save preferences.'));
+    } catch (err: unknown) {
+      setPrefsError((err as Error).message || t('preferences.saveError', 'Failed to save preferences.'));
     } finally {
       setPrefsLoading(false);
     }

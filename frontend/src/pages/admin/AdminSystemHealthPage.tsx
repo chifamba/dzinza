@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { SystemHealthData, ServiceHealth } from '../../types/admin'; // Adjust path as necessary
+import { SystemHealthData, DependencyHealth } from '../../types/admin'; // Adjust path as necessary
 import { logger } from '@shared/utils/logger';
 import { RefreshCw } from 'lucide-react'; // Icon for refresh button
 
@@ -124,9 +124,9 @@ const AdminSystemHealthPage: React.FC = () => {
                           {depName}: {}
                           {typeof depValue === 'string' ?
                             <span className={`ml-1 font-medium ${depValue.toUpperCase() === 'UP' ? 'text-green-600 dark:text-green-300' : 'text-red-600 dark:text-red-300'}`}>{depValue.toUpperCase()}</span> :
-                            <span className={`ml-1 font-medium ${ (depValue as any)?.status?.toUpperCase() === 'UP' ? 'text-green-600 dark:text-green-300' : 'text-red-600 dark:text-red-300'}`}>
-                                {(depValue as any)?.status?.toUpperCase()}
-                                {(depValue as any)?.reason && <span className="text-gray-500 dark:text-gray-400 text-xs italic"> ({ (depValue as any)?.reason })</span>}
+                            <span className={`ml-1 font-medium ${ (depValue as DependencyHealth)?.status?.toUpperCase() === 'UP' ? 'text-green-600 dark:text-green-300' : 'text-red-600 dark:text-red-300'}`}>
+                                {(depValue as DependencyHealth)?.status?.toUpperCase()}
+                                {(depValue as DependencyHealth)?.reason && <span className="text-gray-500 dark:text-gray-400 text-xs italic"> ({ (depValue as DependencyHealth)?.reason })</span>}
                             </span>
                           }
                         </p>

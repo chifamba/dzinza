@@ -3,7 +3,7 @@ import { mediaService, ApiFile, UpdateMediaMetadataPayload } from '../../service
 import { Lightbox } from '../ui';
 import { Button } from '../ui/Button'; // Assuming Button component
 import EditMediaModal from './EditMediaModal'; // Import the new modal
-import { Edit3, Download, Loader2, AlertTriangle } from 'lucide-react'; // Icons
+import { Edit3, Loader2, AlertTriangle } from 'lucide-react'; // Icons
 
 // Using ApiFile directly as the primary type for media items
 // interface MediaFile { // This can be removed if ApiFile is used directly

@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useMemo } from 'react'; // Removed useCallback
+import { useSearchParams, Link } from 'react-router-dom'; // Removed useNavigate
 import { useAdminUsers, AdminUserListParams } from '../../hooks/useAdminUsers'; // Adjust path
 import { AdminUserData } from '../../types/admin'; // Adjust path
 // import { useAuth } from '../../hooks/useAuth'; // Assuming real hook
@@ -92,7 +92,8 @@ const AdminUserListPage: React.FC = () => {
 
     const endpoint = `/api/admin/users/${user._id}`;
     let method = 'PUT';
-    let body: any = { isActive: !user.isActive };
+    interface UpdateUserPayload { isActive: boolean; }
+    let body: UpdateUserPayload | undefined = { isActive: !user.isActive };
 
     if (!user.isActive) { // Activating
         // No specific body change needed beyond isActive: true

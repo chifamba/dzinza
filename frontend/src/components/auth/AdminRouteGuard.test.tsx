@@ -87,13 +87,6 @@ describe('AdminRouteGuard Component', () => {
     expect(screen.queryByTestId('protected-content')).toBeNull();
     expect(mockRouter.push).not.toHaveBeenCalled();
   });
-});
-    // The Navigate component will cause a re-render. We wait for the login page content.
-    await waitFor(() => {
-      expect(screen.getByTestId('login-page')).toBeInTheDocument();
-    });
-    expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
-  });
 
   it('redirects to /dashboard if user is authenticated but not an admin', async () => {
     mockUseAuth.mockReturnValue({

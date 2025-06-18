@@ -72,8 +72,9 @@ export const useAdminUsers = (initialParams?: AdminUserListParams): UseAdminUser
   useEffect(() => {
     // Initial fetch when component mounts with initialParams or default params
     internalFetchUsers(currentParams);
-  }, [internalFetchUsers]); // Only depends on internalFetchUsers (which is memoized)
-                           // currentParams changes will trigger fetch via fetchUsers() call
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [internalFetchUsers]); // currentParams is managed by internalFetchUsers and fetchUsers calls
+                           // Adding it here might cause loops if not handled carefully. The comment indicates intentional omission.
 
   const fetchUsers = (params?: AdminUserListParams) => {
     const newParams = { ...(initialParams || { page: 1, limit: 20 }), ...currentParams, ...(params || {}) };

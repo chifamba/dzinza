@@ -5,14 +5,15 @@ import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions'
 import { SimpleSpanProcessor, ConsoleSpanExporter, BatchSpanProcessor } from '@opentelemetry/sdk-trace-node';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
+import { logger } from '../../../shared/utils/logger'; // Import shared logger
 // Pino for gateway logger seems to be from shared '../../../shared/utils/logger'
 // If that shared logger is already instrumented or if gateway uses a different logger, adjust accordingly.
 
 // Fallback logger if the main one isn't easily importable here or if it's not Pino
-const consoleLogger = {
-  info: (message: string, ...args: any[]) => console.log(`[Gateway Tracing INFO] ${message}`, ...args),
-  error: (message: string, ...args: any[]) => console.error(`[Gateway Tracing ERROR] ${message}`, ...args),
-};
+// const consoleLogger = { // Removed consoleLogger
+//  info: (message: string, ...args: any[]) => console.log(`[Gateway Tracing INFO] ${message}`, ...args),
+//  error: (message: string, ...args: any[]) => console.error(`[Gateway Tracing ERROR] ${message}`, ...args),
+// };
 
 export const initTracer = (serviceName: string, jaegerEndpoint: string, nodeEnv: string) => {
   const traceExporter = new OTLPTraceExporter({
@@ -39,19 +40,19 @@ export const initTracer = (serviceName: string, jaegerEndpoint: string, nodeEnv:
 
   try {
     sdk.start();
-    consoleLogger.info(`OpenTelemetry Tracing initialized for service: ${serviceName}, environment: ${nodeEnv}`);
-    consoleLogger.info(`Jaeger exporter configured with endpoint: ${jaegerEndpoint}`);
+    logger.info(`OpenTelemetry Tracing initialized for service: ${serviceName}, environment: ${nodeEnv}`);
+    logger.info(`Jaeger exporter configured with endpoint: ${jaegerEndpoint}`);
     if (nodeEnv !== 'production') {
-      consoleLogger.info('ConsoleSpanExporter is active for development/debugging.');
+      logger.info('ConsoleSpanExporter is active for development/debugging.');
     }
   } catch (error) {
-    consoleLogger.error('Error initializing OpenTelemetry Tracing for Gateway:', error);
+    logger.error({ err: error }, 'Error initializing OpenTelemetry Tracing for Gateway:');
   }
 
   const shutdown = () => {
     sdk.shutdown()
-      .then(() => consoleLogger.info(`OpenTelemetry Tracing terminated for ${serviceName}`))
-      .catch((error) => consoleLogger.error(`Error terminating OpenTelemetry Tracing for ${serviceName}`, error))
+      .then(() => logger.info(`OpenTelemetry Tracing terminated for ${serviceName}`))
+      .catch((error) => logger.error({ err: error }, `Error terminating OpenTelemetry Tracing for ${serviceName}`))
       .finally(() => process.exit(0));
   };
 

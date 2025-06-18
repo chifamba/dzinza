@@ -51,7 +51,7 @@ global.ResizeObserver = class ResizeObserver {
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {
-    ...(actual as any),
+    ...(actual as typeof import('react-router-dom')),
     useNavigate: () => vi.fn(),
     useParams: () => ({}),
     useLocation: () => ({

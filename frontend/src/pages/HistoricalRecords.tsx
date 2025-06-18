@@ -14,8 +14,7 @@ import {
   Eye,
   BookOpen,
   Archive,
-  Globe,
-  Clock
+  Globe
 } from 'lucide-react';
 
 interface HistoricalRecord {
@@ -31,11 +30,13 @@ interface HistoricalRecord {
   isStarred?: boolean;
 }
 
+type RecordFilterType = 'all' | 'birth' | 'marriage' | 'death' | 'immigration' | 'census';
+
 const HistoricalRecords = () => {
   const { t } = useTranslation(['historicalRecords', 'common']);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRecord, setSelectedRecord] = useState<HistoricalRecord | null>(null);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'birth' | 'marriage' | 'death' | 'immigration' | 'census'>('all');
+  const [activeFilter, setActiveFilter] = useState<RecordFilterType>('all');
 
   const records: HistoricalRecord[] = [
     {
@@ -293,7 +294,7 @@ const HistoricalRecords = () => {
                   return (
                     <button
                       key={type.id}
-                      onClick={() => setActiveFilter(type.id as any)}
+                      onClick={() => setActiveFilter(type.id as RecordFilterType)}
                       className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${
                         activeFilter === type.id
                           ? 'bg-dzinza-50 text-dzinza-700 border border-dzinza-200'

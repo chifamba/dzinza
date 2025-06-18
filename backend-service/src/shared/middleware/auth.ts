@@ -11,11 +11,18 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
+interface JwtDecodedPayload extends jwt.JwtPayload {
+  id: string;
+  email: string;
+  role?: string;
+  permissions?: string[];
+}
+
 export const authMiddleware = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-): Promise<any> => {
+): Promise<void | Response> => { // Changed Promise<any>
   try {
     const authHeader = req.headers.authorization;
 
@@ -37,7 +44,7 @@ export const authMiddleware = async (
       });
     }
 
-    const decoded = jwt.verify(token, jwtSecret) as any;
+    const decoded = jwt.verify(token, jwtSecret) as JwtDecodedPayload;
 
     // Validate token structure
     if (!decoded.id || !decoded.email) {
@@ -91,7 +98,7 @@ export const optionalAuthMiddleware = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-): Promise<any> => {
+): Promise<void | Response> => { // Changed Promise<any>
   const authHeader = req.headers.authorization;
 
   if (authHeader && authHeader.startsWith("Bearer ")) {

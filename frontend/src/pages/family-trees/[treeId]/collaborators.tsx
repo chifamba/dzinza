@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { FamilyTreeDetails, Invitation, Collaborator, UserProfile } from '../../../types/collaborators'; // Adjust path if types are elsewhere
+import { FamilyTreeDetails, Invitation } from '../../../types/collaborators'; // Adjust path if types are elsewhere, removed Collaborator, UserProfile
 
 import InviteCollaboratorForm from '../../../components/family-trees/InviteCollaboratorForm';
 import PendingInvitationsList from '../../../components/family-trees/PendingInvitationsList';

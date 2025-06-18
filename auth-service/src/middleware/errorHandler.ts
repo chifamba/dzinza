@@ -5,7 +5,7 @@ export const errorHandler = (
   error: Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction // Renamed next to _next
 ): void => {
   logger.error("Error occurred:", {
     error: error.message,

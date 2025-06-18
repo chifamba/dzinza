@@ -44,7 +44,7 @@ export class MigrationRunner {
       const result = await database.query(
         "SELECT id FROM migrations ORDER BY executed_at ASC"
       );
-      return result.rows.map((row: any) => row.id);
+      return result.rows.map((row: { id: string }) => row.id); // Typed row
     } catch (error) {
       logger.error("Failed to get executed migrations:", error, {
         service: "migrations",

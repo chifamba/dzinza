@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { 
-  Dna, 
   Users, 
   MapPin, 
   Calendar,
@@ -36,10 +35,12 @@ interface EthnicityData {
   color: string;
 }
 
+type DnaMatchingTab = 'matches' | 'ethnicity' | 'migration';
+
 const DNAMatching = () => {
   const { t } = useTranslation(['dnaMatching', 'common']);
   const [selectedMatch, setSelectedMatch] = useState<DNAMatch | null>(null);
-  const [activeTab, setActiveTab] = useState<'matches' | 'ethnicity' | 'migration'>('matches');
+  const [activeTab, setActiveTab] = useState<DnaMatchingTab>('matches');
 
   const dnaMatches: DNAMatch[] = [
     {
@@ -236,7 +237,7 @@ const DNAMatching = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id as DnaMatchingTab)}
                   className={`flex items-center space-x-2 py-2 px-4 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
                       ? 'border-dzinza-500 text-dzinza-600'

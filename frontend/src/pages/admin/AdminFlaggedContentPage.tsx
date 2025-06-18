@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react'; // Removed useState
 import { useSearchParams } from 'react-router-dom';
 import { useFlaggedContent, FlaggedContentListParams } from '../../hooks/useFlaggedContent'; // Adjust path
 import { FlaggedContentData, FlagStatus } from '../../types/moderation'; // Adjust path

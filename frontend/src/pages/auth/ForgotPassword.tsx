@@ -42,8 +42,17 @@ const ForgotPassword: React.FC = () => {
     try {
       await authApi.requestPasswordReset({ email });
       setIsSubmitted(true);
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('errors.serverError'));
+    } catch (err: unknown) {
+      let message = t('errors.serverError'); // Default error message
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        if (axiosError.response?.data?.message) {
+          message = axiosError.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }

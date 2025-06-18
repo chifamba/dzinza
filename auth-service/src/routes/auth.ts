@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import { body } from "express-validator";
 import { User } from "../models/User";
-import { RefreshToken } from "../models/RefreshToken";
+// import { RefreshToken } from "../models/RefreshToken"; // Commented out as unused for now
 import { AuditLog } from "../models/AuditLog";
 import { rateLimitByEmail } from "../middleware/rateLimitByEmail";
 import { validateRequest } from "../middleware/validation";
@@ -271,19 +271,14 @@ router.post(
  *       400:
  *         description: Invalid or expired token
  */
-router.get("/verify-email/:token", async (req, res, next) => {
+router.get("/verify-email/:token", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { token } = req.params;
 
-    const user = await User.findOne({
-      emailVerificationToken: token,
-      emailVerificationExpires: { $gt: new Date() },
-    });
+    const user = await User.findByVerificationToken(token);
 
     if (!user) {
-      logger.warn("Invalid or expired email verification token received", {
-        token,
-      });
+      logger.warn("Invalid or expired email verification token received", { token });
       return res
         .status(400)
         .json({
@@ -292,20 +287,17 @@ router.get("/verify-email/:token", async (req, res, next) => {
         });
     }
 
-    user.isEmailVerified = true;
-    user.emailVerificationToken = undefined;
-    user.emailVerificationExpires = undefined;
-    await user.save();
+    await User.verifyUserEmail(user.id); // Use the new static method
 
     await AuditLog.create({
-      userId: user._id,
+      userId: user.id, // Use user.id (from User interface)
       action: "EMAIL_VERIFIED",
       ipAddress: req.ip,
       userAgent: req.get("User-Agent"),
       timestamp: new Date(),
     });
     logger.info(`Email verified successfully for user ${user.email}`, {
-      userId: user._id,
+      userId: user.id,
     });
 
     // Optionally, redirect to a frontend page:
@@ -314,10 +306,10 @@ router.get("/verify-email/:token", async (req, res, next) => {
       .status(200)
       .json({ message: "Email verified successfully. You can now login." });
   } catch (error) {
-    logger.error("Error in /verify-email/:token route", { error });
+    logger.error({ err: error }, "Error in /verify-email/:token route"); // Pass error object to logger
     next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -549,7 +541,7 @@ router.post(
         });
       }
 
-      const { user, newAccessToken, newRefreshToken } = result;
+      const { newAccessToken, newRefreshToken } = result; // Removed unused _user from destructuring
 
       res.json({
         tokens: {

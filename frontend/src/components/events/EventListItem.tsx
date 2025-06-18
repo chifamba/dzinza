@@ -14,7 +14,7 @@ const formatDate = (dateString?: string): string => {
       month: 'long',
       day: 'numeric',
     });
-  } catch (e) {
+  } catch (_e) { // Renamed e to _e
     return dateString; // Return original if formatting fails
   }
 };

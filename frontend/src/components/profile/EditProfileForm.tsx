@@ -34,7 +34,7 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
       // Check if date is valid
       if (isNaN(date.getTime())) return '';
       return date.toISOString().split('T')[0];
-    } catch (e) {
+    } catch (_e) { // Renamed e to _e
       return '';
     }
   };

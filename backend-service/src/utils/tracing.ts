@@ -14,17 +14,18 @@ import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
 import { PgInstrumentation } from "@opentelemetry/instrumentation-pg"; // For PostgreSQL
 import { MongoDBInstrumentation } from "@opentelemetry/instrumentation-mongodb"; // If using MongoDB
+import { logger } from '../shared/utils/logger'; // Adjust path as needed
 
 // Assuming logger is available, e.g., from shared utilities
 // import { logger } from '../shared/utils/logger'; // Adjust path as needed
 
 // Fallback logger if the main one isn't easily importable here
-const consoleLogger = {
-  info: (message: string, ...args: any[]) =>
-    console.log(`[Tracing INFO] ${message}`, ...args),
-  error: (message: string, ...args: any[]) =>
-    console.error(`[Tracing ERROR] ${message}`, ...args),
-};
+// const consoleLogger = { // Removed consoleLogger
+//   info: (message: string, ...args: any[]) =>
+//     console.log(`[Tracing INFO] ${message}`, ...args),
+//   error: (message: string, ...args: any[]) =>
+//     console.error(`[Tracing ERROR] ${message}`, ...args),
+// };
 
 export const initTracer = (
   serviceName: string,
@@ -60,20 +61,20 @@ export const initTracer = (
 
   try {
     sdk.start();
-    // Use consoleLogger if main logger import is problematic
-    consoleLogger.info(
+    // Use logger if main logger import is problematic
+    logger.info(
       `OpenTelemetry Tracing initialized for service: ${serviceName}, environment: ${nodeEnv}`
     );
-    consoleLogger.info(
+    logger.info(
       `Jaeger exporter configured with endpoint: ${jaegerEndpoint}`
     );
     if (nodeEnv !== "production") {
-      consoleLogger.info(
+      logger.info(
         "ConsoleSpanExporter is active for development/debugging."
       );
     }
   } catch (error) {
-    consoleLogger.error("Error initializing OpenTelemetry Tracing:", error);
+    logger.error({ err: error }, "Error initializing OpenTelemetry Tracing:");
   }
 
   // Graceful shutdown
@@ -81,14 +82,14 @@ export const initTracer = (
     sdk
       .shutdown()
       .then(() =>
-        consoleLogger.info(
+        logger.info(
           `OpenTelemetry Tracing terminated for ${serviceName}`
         )
       )
       .catch((error) =>
-        consoleLogger.error(
-          `Error terminating OpenTelemetry Tracing for ${serviceName}`,
-          error
+        logger.error(
+          { err: error },
+          `Error terminating OpenTelemetry Tracing for ${serviceName}`
         )
       )
       .finally(() => process.exit(0));

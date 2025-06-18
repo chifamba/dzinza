@@ -38,7 +38,7 @@ interface NotificationCenterPanelProps {
 const NotificationCenterPanel: React.FC<NotificationCenterPanelProps> = ({
     isOpen,
     onClose,
-    anchorEl,
+    anchorEl: _anchorEl, // Renamed anchorEl to _anchorEl
     onNotificationsUpdated
 }) => {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);

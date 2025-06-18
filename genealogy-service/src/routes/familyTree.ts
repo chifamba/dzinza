@@ -2,9 +2,10 @@ import express, { Request, Response, NextFunction } from 'express'; // Added Nex
 import { body, param, query, validationResult } from 'express-validator';
 // Removed duplicate express and express-validator imports
 import { trace, SpanStatusCode, Span } from '@opentelemetry/api'; // Import OpenTelemetry API
-import { FamilyTree } from '../models/FamilyTree.js';
-import { Person } from '../models/Person.js';
+import { FamilyTree, FamilyTreeDocument } from '../models/FamilyTree.js'; // Assuming FamilyTreeDocument is the Mongoose doc type
+import { Person, PersonDocument } from '../models/Person.js'; // Assuming PersonDocument is the Mongoose doc type
 import { Relationship } from '../models/Relationship.js';
+import { FilterQuery } from 'mongoose'; // Import FilterQuery
 import { logger } from '../../../../src/shared/utils/logger.js';
 import multer from 'multer';
 import { recordActivity } from '../services/activityLogService.js'; // Import recordActivity
@@ -79,7 +80,7 @@ router.get('/', [
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string;
 
-    const query: any = {
+    const query: FilterQuery<FamilyTreeDocument> = { // Typed query more specifically
       $or: [
         { ownerId: userId },
         { 'collaborators.userId': userId, 'collaborators.acceptedAt': { $exists: true } }
@@ -236,7 +237,7 @@ router.post('/', [
  */
 router.get('/:id', [
   param('id').isMongoId().withMessage('Invalid family tree ID'),
-], async (req: Request, res: Response, next: NextFunction) => { // Added types and next
+], async (req: Request, res: Response, _next: NextFunction) => { // Renamed next to _next
   const tracer = trace.getTracer('genealogy-service-familytree-routes');
   await tracer.startActiveSpan('familyTree.getById.handler', async (span: Span) => {
     try {
@@ -298,10 +299,11 @@ router.get('/:id', [
     logger.info('Family tree retrieved', {
       userId,
       familyTreeId,
-      correlationId: req.correlationId
-      span.setStatus({ code: SpanStatusCode.OK });
-      span.end();
-    } catch (error) {
+      correlationId: req.correlationId, // Added comma
+    }); // Closed logger object
+    span.setStatus({ code: SpanStatusCode.OK }); // Moved outside
+    span.end(); // Moved outside
+  } catch (error) {
       const err = error as Error;
       span.recordException(err);
       span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
@@ -378,7 +380,7 @@ router.put('/:id', [
     const allowedUpdates = ['name', 'description', 'privacy', 'settings'];
     const updates = Object.keys(req.body)
       .filter(key => allowedUpdates.includes(key))
-      .reduce((obj: any, key) => {
+      .reduce((obj: Record<string, unknown>, key) => { // Changed Record<string, any> to Record<string, unknown>
         obj[key] = req.body[key];
         return obj;
       }, {});
@@ -691,7 +693,7 @@ router.put('/:treeId/collaborators/:collaboratorUserId', [
 
     // Fetch collaborator's name/email for targetResourceName if possible
     // This might require a User model lookup if not already on collaborator object
-    const collaboratorInfo = familyTree.collaborators[collaboratorIndex]; // This is the updated one
+    // const collaboratorInfo = familyTree.collaborators[collaboratorIndex]; // This is the updated one // Commented out
     // const collaboratorUser = await User.findById(collaboratorUserId).select('name email'); // Example
     // const targetResourceName = collaboratorUser ? (collaboratorUser.name || collaboratorUser.email) : collaboratorUserId;
 
@@ -1005,8 +1007,27 @@ router.get('/:treeId/members/:memberId/details', [
       Relationship.findSiblings(memberId, treeId).populate('personDetails', 'firstName lastName profilePhoto birthDate deathDate gender'),
     ]);
 
-    const mapToRelatedPerson = (relationship: any) => {
-      if (!relationship.personDetails) return null; // Should not happen if populated correctly
+    // Define a more specific type for populated relationships if Relationship model type is not directly usable
+    interface PopulatedRelationship {
+      personDetails: {
+        _id: string;
+        firstName?: string;
+        lastName?: string;
+        profilePhoto?: string;
+        birthDate?: { date?: Date, place?: string };
+        deathDate?: { date?: Date, place?: string };
+        gender?: string;
+      } | null; // personDetails could be null if populate fails or no match
+      type: string;
+      // Add other fields from Relationship model as needed
+      person1Id: { toString: () => string }; // Assuming it's an ObjectId or similar
+      person2Id: { toString: () => string };
+      person1Details?: Partial<PersonDocument> | null; // Typed more specifically
+      person2Details?: Partial<PersonDocument> | null; // Typed more specifically
+    }
+
+    const mapToRelatedPerson = (relationship: PopulatedRelationship) => {
+      if (!relationship.personDetails) return null;
       return {
         _id: relationship.personDetails._id,
         firstName: relationship.personDetails.firstName,
@@ -1022,10 +1043,11 @@ router.get('/:treeId/members/:memberId/details', [
 
     // The findSiblings method returns RelationshipDoc[], where person1Id or person2Id is the sibling.
     // We need to ensure personDetails refers to the SIBLING, not the original memberId.
-    const mapSiblingToRelatedPerson = (relationship: any) => {
-        let siblingDetails = relationship.personDetails; // This might be pre-populated if personDetails was a virtual ref
-                                                        // or if the populate logic in findSiblings is smart.
-                                                        // Assuming findSiblings populates the OTHER person.
+    const mapSiblingToRelatedPerson = (relationship: PopulatedRelationship) => {
+        let siblingDetails = relationship.personDetails;
+        // This might be pre-populated if personDetails was a virtual ref
+        // or if the populate logic in findSiblings is smart.
+        // Assuming findSiblings populates the OTHER person.
 
         // If personDetails is not directly the sibling, try to determine which one it is.
         if (relationship.person1Id.toString() === memberId) {
@@ -1236,8 +1258,21 @@ router.post('/:treeId/import/gedcom',
         // Basic source handling (concatenate into notes or a dedicated field if model supports)
         indiNode.tree?.filter(n => n.tag === 'SOUR').forEach(n => { if(n.data) notes.push(`Source: ${n.data}`); });
 
+        // Define a type for personData or use Partial<PersonDocument> if Person is a Mongoose model
+        interface GedcomPersonData {
+          familyTreeId: string;
+          userId?: string;
+          firstName: string;
+          lastName?: string;
+          gender: string;
+          birthDate?: { date?: Date; place?: string };
+          deathDate?: { date?: Date; place?: string };
+          isLiving: boolean;
+          notes?: string;
+          gedcomId: string;
+        }
 
-        const personData: any = {
+        const personData: GedcomPersonData = {
           familyTreeId: treeId,
           userId: userId, // Uploader
           firstName: firstName || 'Unknown',
@@ -1470,7 +1505,13 @@ router.get('/:treeId/export/gedcom', [
       // Family (FAM) Records
       // This requires identifying unique families. A common way is to group children by parents.
       // Or iterate relationships: find spouse relationships to define a family, then attach children.
-      const families = new Map<string, { husb?: string, wife?: string, chil: string[], marr?: any }>();
+      interface GedcomFamilyData {
+        husb?: string;
+        wife?: string;
+        chil: string[];
+        marr?: { date?: string; place?: string };
+      }
+      const families = new Map<string, GedcomFamilyData>();
 
       for (const rel of relationships) {
         if (rel.type === 'spouse') {
@@ -1483,7 +1524,8 @@ router.get('/:treeId/export/gedcom', [
           if (!families.has(familyKey)) {
             families.set(familyKey, { chil: [] });
           }
-          const family = families.get(familyKey)!;
+          const family = families.get(familyKey);
+          if (!family) continue; // Should not happen due to the check above, but good for type safety
 
           // Determine HUSB/WIFE based on Person.gender if available, otherwise assign arbitrarily for now
           const person1Doc = persons.find(p => p._id.toString() === rel.person1Id.toString());
@@ -1518,7 +1560,7 @@ router.get('/:treeId/export/gedcom', [
               if (!parentGedId || !childGedId) continue;
 
               // Find the family where this parent is a spouse
-              for (const [key, family] of families.entries()) {
+              for (const [, family] of families.entries()) { // key removed as it's unused
                   if (family.husb === parentGedId || family.wife === parentGedId) {
                       if (!family.chil.includes(childGedId)) {
                           family.chil.push(childGedId);
@@ -1550,7 +1592,7 @@ router.get('/:treeId/export/gedcom', [
       // For FAMC: Iterate through families, for CHIL, find their INDI record and add FAMC tag.
       // This part is tricky to interleave with the above INDI generation efficiently without multiple passes or complex data structures.
       // For now, creating a new set of lines to append/insert for FAMS/FAMC.
-      const linkLines: string[] = [];
+      // const linkLines: string[] = []; // Commented out as unused
       for (const person of persons) {
         const personGedId = mongoPersonIdToGedcomIdMap.get(person._id.toString());
         if (!personGedId) continue;

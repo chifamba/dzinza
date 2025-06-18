@@ -5,8 +5,8 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import app from "../../src/server";
 import { FamilyTree } from "../../src/models/FamilyTree";
 import { Person } from "../../src/models/Person";
-import { Relationship } from "../../src/models/Relationship";
-import jwt from "jsonwebtoken";
+// import { Relationship } from "../../src/models/Relationship"; // Unused import
+// import jwt from "jsonwebtoken"; // Unused import
 
 // Mock authentication middleware
 jest.mock("../../../../src/shared/middleware/auth", () => ({
@@ -30,8 +30,8 @@ describe("Family Tree API Routes", () => {
   let mongoServer: MongoMemoryServer;
   let testTreeId: string;
   let testPersonId1: string;
-  let testPersonId2: string;
-  let testRelationshipId: string;
+  // let testPersonId2: string; // Unused variable
+  // let testRelationshipId: string; // Unused variable
 
   // Setup before all tests
   beforeAll(async () => {
@@ -68,25 +68,25 @@ describe("Family Tree API Routes", () => {
     const savedPerson1 = await person1.save();
     testPersonId1 = savedPerson1._id.toString();
 
-    const person2 = new Person({
-      firstName: "Jane",
-      lastName: "Doe",
-      gender: "female",
-      birthDate: "1955-05-05",
-      familyTreeId: testTreeId,
-    });
-    const savedPerson2 = await person2.save();
-    testPersonId2 = savedPerson2._id.toString();
+    // const person2 = new Person({ // Unused variable testPersonId2
+    //   firstName: "Jane",
+    //   lastName: "Doe",
+    //   gender: "female",
+    //   birthDate: "1955-05-05",
+    //   familyTreeId: testTreeId,
+    // });
+    // const savedPerson2 = await person2.save(); // Unused variable testPersonId2
+    // testPersonId2 = savedPerson2._id.toString(); // Unused variable
 
     // Create test relationship
-    const relationship = new Relationship({
-      person1Id: testPersonId1,
-      person2Id: testPersonId2,
-      type: "SPOUSE",
-      familyTreeId: testTreeId,
-    });
-    const savedRelationship = await relationship.save();
-    testRelationshipId = savedRelationship._id.toString();
+    // const relationship = new Relationship({ // Unused variable
+    //   person1Id: testPersonId1,
+    //   person2Id: testPersonId2, // This would cause an error as testPersonId2 is commented
+    //   type: "SPOUSE",
+    //   familyTreeId: testTreeId,
+    // });
+    // const savedRelationship = await relationship.save(); // Part of unused testRelationshipId
+    // testRelationshipId = savedRelationship._id.toString(); // Part of unused testRelationshipId
 
     // Update family tree with root person
     savedTree.rootPersonId = testPersonId1;

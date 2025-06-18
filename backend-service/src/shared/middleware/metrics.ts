@@ -91,7 +91,7 @@ export const metricsMiddleware = (
 
   // Override res.end to capture metrics when response is sent
   const originalEnd = res.end;
-  res.end = function (this: any, ...args: any[]): any {
+  res.end = function (this: Response, ...args: unknown[]): Response { // Typed this, args, and return
     const duration = (Date.now() - start) / 1000;
     const route = req.route?.path || req.path || "unknown";
     const method = req.method;
@@ -117,8 +117,9 @@ export const metricsMiddleware = (
     });
 
     // Call original end method
-    return originalEnd.apply(this, args as any);
-  } as any;
+    // Type assertion for args in apply, assuming originalEnd expects similar signature parts.
+    return originalEnd.apply(this, args as [chunk?: string | Buffer, encoding?: string, cb?: (() => void)?]);
+  }; // Removed 'as any' for the function assignment
 
   next();
 };
@@ -162,37 +163,64 @@ export const getMetricsSnapshot = async () => {
   try {
     const metrics = await register.getMetricsAsJSON();
 
-    const snapshot: any = {
+    interface MetricValue {
+      value: number;
+      labels: Record<string, string | number>;
+      metricName?: string; // For histograms, sum/count might have this
+      quantile?: number; // For histograms/summaries
+    }
+
+    interface PrometheusMetric {
+      name: string;
+      help: string;
+      type: string;
+      values: MetricValue[];
+      aggregator: string;
+    }
+
+    interface MetricsSnapshotValues {
+      httpRequestsTotal: number;
+      activeConnections: number;
+      databaseConnectionsActive: number;
+      averageResponseTime: number;
+    }
+
+    const snapshot: MetricsSnapshotValues = {
       httpRequestsTotal: 0,
       activeConnections: 0,
       databaseConnectionsActive: 0,
       averageResponseTime: 0,
     };
 
-    metrics.forEach((metric: any) => {
+    metrics.forEach((metric: PrometheusMetric) => {
       switch (metric.name) {
-        case "http_requests_total":
+        case "http_requests_total": // This should match the actual metric name from prom-client
+        case "backend_service_http_requests_total": // Or this if prefix is applied by default
           snapshot.httpRequestsTotal = metric.values.reduce(
-            (sum: number, val: any) => sum + val.value,
+            (sum: number, val: MetricValue) => sum + val.value,
             0
           );
           break;
-        case "http_active_connections":
+        case "backend_service_http_active_connections":
           snapshot.activeConnections = metric.values[0]?.value || 0;
           break;
-        case "database_connections_active":
+        case "backend_service_database_connections_active":
           snapshot.databaseConnectionsActive = metric.values[0]?.value || 0;
           break;
-        case "http_request_duration_seconds":
+        case "backend_service_http_request_duration_seconds":
           // Calculate average from histogram
           if (metric.values.length > 0) {
-            const sum =
-              metric.values.find((v: any) => v.labels.quantile === undefined)
-                ?.value || 0;
-            const count =
-              metric.values.find((v: any) => v.metricName?.endsWith("_count"))
-                ?.value || 1;
-            snapshot.averageResponseTime = sum / count;
+            // The sum for a histogram is typically the metric name without _bucket, _sum, or _count
+            // For a histogram, prom-client usually gives _sum and _count metrics separately or as part of values
+            const sumMetricValue = metric.values.find(v => v.metricName === `${metric.name}_sum`);
+            const countMetricValue = metric.values.find(v => v.metricName === `${metric.name}_count`);
+
+            const sum = sumMetricValue?.value || metric.values.find(v => !v.labels.quantile && !v.labels.le)?.value || 0; // Fallback for simple sum if not _sum
+            const count = countMetricValue?.value || 1; // Avoid division by zero
+
+            if (count > 0) {
+                 snapshot.averageResponseTime = sum / count;
+            }
           }
           break;
       }

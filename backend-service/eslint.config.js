@@ -6,7 +6,7 @@ import globals from "globals";
 export default [
   js.configs.recommended,
   {
-    files: ["**/*.ts", "**/*.tsx"],
+    files: ["src/**/*.ts", "services/**/*.ts", "src/**/*.tsx", "services/**/*.tsx"],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
@@ -40,13 +40,32 @@ export default [
   {
     files: ["**/*.test.ts", "**/*.spec.ts"],
     languageOptions: {
+      parser: typescriptParser, // Explicitly set parser for test files
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: "module",
+        // project: undefined, // Ensure project is not inherited, or set to a test-specific tsconfig if needed
+      },
       globals: {
         ...globals.jest,
+        ...globals.node, // Add Node.js globals
       },
     },
+    plugins: {
+      "@typescript-eslint": typescript, // Explicitly add plugin for test files
+    },
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
-      "no-console": "off",
+      "@typescript-eslint/no-unused-vars": [ // Copied from main config, adjust if needed for tests
+        "error",
+        { argsIgnorePattern: "^_" },
+      ],
+      "@typescript-eslint/explicit-function-return-type": "off", // Keep test-specific overrides
+      "@typescript-eslint/explicit-module-boundary-types": "off", // Keep test-specific overrides
+      "@typescript-eslint/no-explicit-any": "off", // Keep test-specific overrides
+      "@typescript-eslint/no-non-null-assertion": "warn", // Copied from main config
+      "no-console": "off", // Keep test-specific overrides
+      "prefer-const": "error", // Copied from main config
+      "no-var": "error", // Copied from main config
     },
   },
   {

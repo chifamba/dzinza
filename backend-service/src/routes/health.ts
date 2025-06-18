@@ -5,6 +5,24 @@ import { logger } from "../shared/utils/logger";
 
 const router = Router();
 
+interface DependencyStatus {
+  status: 'healthy' | 'unhealthy' | 'warning';
+  [key: string]: unknown; // Changed any to unknown
+}
+
+interface HealthStatusDetails {
+  status: 'healthy' | 'unhealthy';
+  timestamp: string;
+  service: string;
+  version: string;
+  dependencies: {
+    database: DependencyStatus;
+    environment: DependencyStatus;
+    migrations: DependencyStatus;
+    [key: string]: DependencyStatus; // For any other dependencies
+  };
+}
+
 /**
  * @swagger
  * /health:
@@ -37,7 +55,7 @@ router.get("/", (req, res) => {
  *         description: One or more dependencies are unhealthy
  */
 router.get("/detailed", async (req, res) => {
-  const healthStatus: any = {
+  const healthStatus: HealthStatusDetails = {
     status: "healthy",
     timestamp: new Date().toISOString(),
     service: "dzinza-api-gateway",
@@ -134,7 +152,7 @@ router.get("/database", async (req, res) => {
       AND table_name IN ('users', 'migrations')
     `);
 
-    const tablesExist = tableCheckResult.rows.map((row: any) => row.table_name);
+    const tablesExist = tableCheckResult.rows.map((row: { table_name: string }) => row.table_name);
 
     res.json({
       status: "healthy",

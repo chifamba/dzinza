@@ -32,7 +32,7 @@ export const useAuth = () => {
 
   // Auth actions
   const login = async (identifier: string, password: string) => {
-    return dispatch(loginAction(identifier, password) as any);
+    return dispatch(loginAction(identifier, password));
   };
 
   const register = async (userData: {
@@ -42,27 +42,27 @@ export const useAuth = () => {
     lastName: string;
     username: string;
   }) => {
-    return dispatch(registerAction(userData) as any);
+    return dispatch(registerAction(userData));
   };
 
   const logout = async () => {
-    return dispatch(logoutAction() as any);
+    return dispatch(logoutAction());
   };
 
   const forgotPassword = async (email: string) => {
-    return dispatch(forgotPasswordAction(email) as any);
+    return dispatch(forgotPasswordAction(email));
   };
 
   const resetPassword = async (token: string, email: string, newPassword: string) => {
-    return dispatch(resetPasswordAction(token, email, newPassword) as any);
+    return dispatch(resetPasswordAction(token, email, newPassword));
   };
 
   const getCurrentUser = async () => {
-    return dispatch(fetchCurrentUser() as any);
+    return dispatch(fetchCurrentUser());
   };
 
   const initializeAuth = async () => {
-    return dispatch(checkAuthStatus() as any);
+    return dispatch(checkAuthStatus());
   };
 
   // Computed values
