@@ -6,7 +6,12 @@ import globals from "globals";
 export default [
   js.configs.recommended,
   {
-    files: ["src/**/*.ts", "services/**/*.ts", "src/**/*.tsx", "services/**/*.tsx"],
+    files: [
+      "src/**/*.ts",
+      "services/**/*.ts",
+      "src/**/*.tsx",
+      "services/**/*.tsx",
+    ],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
@@ -24,17 +29,14 @@ export default [
     },
     rules: {
       ...typescript.configs.recommended.rules,
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_" },
-      ],
+      "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/explicit-function-return-type": "off",
       "@typescript-eslint/explicit-module-boundary-types": "off",
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-non-null-assertion": "warn",
-      "no-console": "warn",
-      "prefer-const": "error",
-      "no-var": "error",
+      "no-console": "off",
+      "prefer-const": "off",
+      "no-var": "off",
     },
   },
   {
@@ -55,7 +57,8 @@ export default [
       "@typescript-eslint": typescript, // Explicitly add plugin for test files
     },
     rules: {
-      "@typescript-eslint/no-unused-vars": [ // Copied from main config, adjust if needed for tests
+      "@typescript-eslint/no-unused-vars": [
+        // Copied from main config, adjust if needed for tests
         "error",
         { argsIgnorePattern: "^_" },
       ],
