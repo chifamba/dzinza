@@ -1,5 +1,5 @@
 ---
-name: Dzinza CI/CD Pipeline (Free Tier Optimized)
+name: Dzinza CI/CD Pipeline
 
 on:
   push:
