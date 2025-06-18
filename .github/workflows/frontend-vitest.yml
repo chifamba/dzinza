@@ -1,0 +1,54 @@
+name: Frontend Vitest CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:  # Allow manual triggering
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  frontend-test:
+    name: Frontend Tests with Vitest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+          npm install -D @vitest/coverage-v8
+      
+      - name: Run migrated tests
+        run: |
+          cd frontend
+          npm run test:ci
+      
+      - name: Generate coverage
+        run: |
+          cd frontend
+          npm run test:coverage -- --run
+      
+      - name: List coverage reports
+        run: |
+          cd frontend
+          ls -la coverage/ || echo "No coverage directory found"
+          
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./frontend/coverage/lcov.info
+          flags: frontend,vitest
+          name: frontend-coverage
