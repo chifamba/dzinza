@@ -12,7 +12,6 @@ import {
 } from "@opentelemetry/sdk-trace-node";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
-import { PinoInstrumentation } from "@opentelemetry/instrumentation-pino"; // If using Pino
 import { PgInstrumentation } from "@opentelemetry/instrumentation-pg"; // For PostgreSQL
 import { MongoDBInstrumentation } from "@opentelemetry/instrumentation-mongodb"; // If using MongoDB
 
@@ -50,11 +49,6 @@ export const initTracer = (
     instrumentations: [
       new HttpInstrumentation(),
       new ExpressInstrumentation(),
-      // new PinoInstrumentation({ // Uncomment and configure if Pino is used directly here
-      //   logHook: (_span, record) => {
-      //       record['resource.service.name'] = serviceName;
-      //   },
-      // }),
       new PgInstrumentation(), // For PostgreSQL (if 'pg' library is used)
       new MongoDBInstrumentation({
         // If backend-service also uses MongoDB directly

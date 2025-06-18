@@ -1,23 +1,24 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import '@testing-library/jest-dom';
 import { useRouter } from 'next/router';
 import ManageCollaboratorsPage from './collaborators'; // Adjust path if page is not in root of [treeId]
 import { FamilyTreeDetails, Invitation, Collaborator, UserProfile } from '../../../types/collaborators';
 
 // Mock Next.js router
-jest.mock('next/router', () => ({
-  useRouter: jest.fn(),
+vi.mock('next/router', () => ({
+  useRouter: vi.fn(),
 }));
 
 // Mock useAuth hook
 const mockCurrentUser: UserProfile | null = { id: 'current-user-123', name: 'Current Test User', email: 'current@example.com' };
-jest.mock('../../../hooks/useAuth', () => ({ // Adjust path to your useAuth hook
+vi.mock('../../../hooks/useAuth', () => ({ // Adjust path to your useAuth hook
   useAuth: () => ({ currentUser: mockCurrentUser, isLoading: false }),
 }));
 
 // Mock fetch
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 const mockTreeId = 'test-tree-id-123';
 
@@ -48,9 +49,9 @@ const mockPendingInvitations: Invitation[] = [
 ];
 
 // Mock authService (used by CollaboratorsList, though not directly tested here, good for consistency)
-jest.mock('../../../services/api/authService', () => ({ // Adjust path
+vi.mock('../../../services/api/authService', () => ({ // Adjust path
     authService: {
-        getUserProfile: jest.fn().mockImplementation(async (userId: string) => {
+        getUserProfile: vi.fn().mockImplementation(async (userId: string) => {
             if (userId === 'owner-user-456') return { id: userId, name: 'Tree Owner', email: 'owner@example.com' };
             if (userId === 'collab-user-789') return { id: userId, name: 'Collaborator One', email: 'collab1@example.com' };
             if (userId === mockCurrentUser!.id) return { id: userId, name: mockCurrentUser!.name, email: mockCurrentUser!.email };

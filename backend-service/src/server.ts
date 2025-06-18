@@ -17,14 +17,11 @@ import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import { logger } from "./shared/utils/logger.js";
 import { errorHandler } from "./shared/middleware/errorHandler";
-import { authMiddleware } from "./shared/middleware/auth";
-import { validateRequest } from "./shared/middleware/validation";
 import { metricsMiddleware } from "./shared/middleware/metrics";
 import { healthRoutes } from "./routes/health";
 import { authRoutes } from "./routes/auth";
 import { swaggerOptions } from "./config/swagger";
 import { database } from "./config/database";
-import { migrationRunner } from "./config/migrations";
 import { getMetrics } from "./shared/middleware/metrics";
 import { initTracer } from "./utils/tracing"; // Import OpenTelemetry tracer initialization
 

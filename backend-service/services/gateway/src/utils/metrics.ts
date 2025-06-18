@@ -1,11 +1,11 @@
-import { Counter, register as globalRegistry } from 'prom-client'; // Use the global registry
+import { Counter } from "prom-client"; // Use the global registry
 
 // Custom metric for proxied requests
 // This metric will be automatically registered with the globalRegistry when defined.
 export const proxiedRequestsCounter = new Counter({
-  name: 'gateway_service_proxied_requests_total',
-  help: 'Total number of requests proxied to backend services by the gateway',
-  labelNames: ['target_service', 'route', 'status_code'], // Added status_code
+  name: "gateway_service_proxied_requests_total",
+  help: "Total number of requests proxied to backend services by the gateway",
+  labelNames: ["target_service", "route", "status_code"], // Added status_code
 });
 
 // Example of how to increment this counter (would be done in proxy logic)

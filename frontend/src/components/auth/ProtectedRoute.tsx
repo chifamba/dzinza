@@ -1,19 +1,20 @@
-import React from 'react';
-import { useSelector } from 'react-redux';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { RootState } from '../../store/store'; // Adjust path as needed
+import React from "react";
+import { useSelector } from "react-redux";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { RootState } from "../../store/store"; // Adjust path as needed
 
-interface ProtectedRouteProps {
-  // No specific props needed if just using Outlet for children
-  // children?: React.ReactNode; // If you prefer to pass children explicitly
+export interface ProtectedRouteProps {
+  children: React.ReactNode;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = () => {
-  const { isAuthenticated, status } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, status } = useSelector(
+    (state: RootState) => state.auth
+  );
   const location = useLocation();
 
   // Optional: Handle loading state if you have an initial auth check
-  if (status === 'loading') {
+  if (status === "loading") {
     // You might want to return a loading spinner here
     // For now, we'll let it potentially show the login page briefly
     // or rely on initial state of isAuthenticated being false.

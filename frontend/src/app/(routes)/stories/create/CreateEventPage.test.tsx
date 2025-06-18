@@ -1,21 +1,22 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import userEvent from '@testing-library/user-event';
 import CreateEventPage from './page'; // Adjust if 'page.tsx' is not the main export
 
 // Mock dependencies
 // Mocking Next.js router
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(), // Mock replace if it's used for navigation after submit
+    push: vi.fn(),
+    replace: vi.fn(), // Mock replace if it's used for navigation after submit
   }),
   // Mock other hooks like useSearchParams if CreateEventPage uses them
 }));
 
 // Mock RichTextEditor as its extensive testing is done separately
 // We only need to ensure its onChange is called and its value is part of the form
-jest.mock('../../../../components/ui/RichTextEditor', () => ({
+vi.mock('../../../../components/ui/RichTextEditor', () => ({
   RichTextEditor: ({ value, onChange, placeholder }: { value: string, onChange: (html: string) => void, placeholder: string }) => (
     <textarea
       data-testid="mock-rich-text-editor"
@@ -27,7 +28,7 @@ jest.mock('../../../../components/ui/RichTextEditor', () => ({
 }));
 
 // Mock fetch
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 const mockPersons = [
   { id: 'person-1', name: 'John Doe', slug: 'john-doe' },

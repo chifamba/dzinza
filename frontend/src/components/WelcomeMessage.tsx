@@ -1,19 +1,22 @@
-import { useTranslation } from 'react-i18next';
-import { formatDate, formatRelativeTime, getTimeBasedGreeting } from '../i18n/utils/culturalFormatting';
+import { useTranslation } from "react-i18next";
+import {
+  formatRelativeTime,
+  getTimeBasedGreeting,
+} from "../i18n/utils/culturalFormatting";
 
 interface WelcomeMessageProps {
   userName?: string;
   lastLoginDate?: Date;
 }
 
-export const WelcomeMessage: React.FC<WelcomeMessageProps> = ({ 
-  userName = 'Guest', 
-  lastLoginDate 
+export const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
+  userName = "Guest",
+  lastLoginDate,
 }) => {
-  const { t, i18n } = useTranslation('common');
-  
+  const { t, i18n } = useTranslation("common");
+
   const greeting = getTimeBasedGreeting(i18n.language);
-  const lastLogin = lastLoginDate 
+  const lastLogin = lastLoginDate
     ? formatRelativeTime(lastLoginDate, i18n.language)
     : null;
 
@@ -22,12 +25,10 @@ export const WelcomeMessage: React.FC<WelcomeMessageProps> = ({
       <h2 className="text-xl font-semibold text-gray-900 mb-2">
         {greeting}, {userName}!
       </h2>
-      <p className="text-gray-600">
-        {t('messages.welcomeBack')}
-      </p>
+      <p className="text-gray-600">{t("messages.welcomeBack")}</p>
       {lastLogin && (
         <p className="text-sm text-gray-500 mt-2">
-          {t('messages.lastLogin')}: {lastLogin}
+          {t("messages.lastLogin")}: {lastLogin}
         </p>
       )}
     </div>

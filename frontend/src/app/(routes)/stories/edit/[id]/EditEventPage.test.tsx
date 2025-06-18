@@ -1,13 +1,14 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import userEvent from '@testing-library/user-event';
 import EditEventPage from './page'; // Adjust if 'page.tsx' is not the main export
 
 // Mock dependencies
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
+    push: vi.fn(),
+    replace: vi.fn(),
   }),
   useParams: () => ({
     id: 'mock-event-id', // Provide a mock event ID
@@ -15,7 +16,7 @@ jest.mock('next/navigation', () => ({
   // Mock other hooks like useSearchParams if EditEventPage uses them
 }));
 
-jest.mock('../../../../../components/ui/RichTextEditor', () => ({
+vi.mock('../../../../../components/ui/RichTextEditor', () => ({
   RichTextEditor: ({ value, onChange, placeholder }: { value: string, onChange: (html: string) => void, placeholder: string }) => (
     <textarea
       data-testid="mock-rich-text-editor"
@@ -27,7 +28,7 @@ jest.mock('../../../../../components/ui/RichTextEditor', () => ({
 }));
 
 // Mock fetch
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 const mockPersons = [
   { id: 'person-1', name: 'John Doe', slug: 'john-doe' },

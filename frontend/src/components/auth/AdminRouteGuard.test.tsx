@@ -1,51 +1,93 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import { MemoryRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom';
-import AdminRouteGuard from './AdminRouteGuard'; // Adjust path as necessary
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import AdminRouteGuard from './AdminRouteGuard';
 
 // Mock useAuth hook
-const mockUseAuth = jest.fn();
-jest.mock('../../hooks/useAuth', () => ({ // Adjust path to your useAuth hook
+const mockUseAuth = vi.fn();
+vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-// Mock child components for testing Outlet rendering
-const MockAdminPage = () => <div data-testid="admin-page">Admin Page Content</div>;
-const MockLoginPage = () => <div data-testid="login-page">Login Page</div>;
-const MockDashboardPage = () => <div data-testid="dashboard-page">User Dashboard</div>;
-
-// Helper to render AdminRouteGuard within a routing context
-const renderWithRouter = (initialEntry = '/admin/protected') => {
-  return render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <Routes>
-        <Route path="/login" element={<MockLoginPage />} />
-        <Route path="/dashboard" element={<MockDashboardPage />} />
-        <Route element={<AdminRouteGuard />}>
-          <Route path="/admin/protected" element={<MockAdminPage />} />
-        </Route>
-      </Routes>
-    </MemoryRouter>
-  );
+// Mock useRouter
+const mockRouter = {
+  push: vi.fn(),
 };
+vi.mock('next/router', () => ({
+  useRouter: () => mockRouter,
+}));
 
-describe('AdminRouteGuard', () => {
+describe('AdminRouteGuard Component', () => {
   beforeEach(() => {
-    // Reset mocks before each test
-    mockUseAuth.mockReset();
+    vi.clearAllMocks();
   });
 
-  it('renders loading indicator when isLoadingAuth is true', () => {
-    mockUseAuth.mockReturnValue({ currentUser: null, isLoadingAuth: true });
-    renderWithRouter();
-    expect(screen.getByText(/Checking authentication.../i)).toBeInTheDocument();
-    expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+  it('renders children when user is admin', () => {
+    mockUseAuth.mockReturnValue({
+      user: { isAdmin: true },
+      loading: false,
+    });
+
+    render(
+      <AdminRouteGuard>
+        <div data-testid="protected-content">Admin Content</div>
+      </AdminRouteGuard>
+    );
+
+    expect(screen.getByTestId('protected-content')).toBeTruthy();
+    expect(screen.getByText('Admin Content')).toBeTruthy();
+    expect(mockRouter.push).not.toHaveBeenCalled();
   });
 
-  it('redirects to /login if user is not authenticated', async () => {
-    mockUseAuth.mockReturnValue({ currentUser: null, isLoadingAuth: false });
-    renderWithRouter();
+  it('redirects to home when user is not admin', () => {
+    mockUseAuth.mockReturnValue({
+      user: { isAdmin: false },
+      loading: false,
+    });
+
+    render(
+      <AdminRouteGuard>
+        <div data-testid="protected-content">Admin Content</div>
+      </AdminRouteGuard>
+    );
+
+    expect(mockRouter.push).toHaveBeenCalledWith('/');
+    expect(screen.queryByTestId('protected-content')).toBeNull();
+  });
+
+  it('redirects to home when user is null', () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      loading: false,
+    });
+
+    render(
+      <AdminRouteGuard>
+        <div data-testid="protected-content">Admin Content</div>
+      </AdminRouteGuard>
+    );
+
+    expect(mockRouter.push).toHaveBeenCalledWith('/');
+    expect(screen.queryByTestId('protected-content')).toBeNull();
+  });
+
+  it('shows loading indicator when auth is loading', () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      loading: true,
+    });
+
+    render(
+      <AdminRouteGuard>
+        <div data-testid="protected-content">Admin Content</div>
+      </AdminRouteGuard>
+    );
+
+    expect(screen.getByText(/loading/i)).toBeTruthy();
+    expect(screen.queryByTestId('protected-content')).toBeNull();
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+});
     // The Navigate component will cause a re-render. We wait for the login page content.
     await waitFor(() => {
       expect(screen.getByTestId('login-page')).toBeInTheDocument();
@@ -59,7 +101,7 @@ describe('AdminRouteGuard', () => {
       isLoadingAuth: false
     });
     // Mock alert as it's called in the component
-    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     renderWithRouter();
 
@@ -76,7 +118,7 @@ describe('AdminRouteGuard', () => {
       currentUser: { id: 'user123', roles: [], name: 'Test User' }, // Empty roles
       isLoadingAuth: false
     });
-    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     renderWithRouter();
     await waitFor(() => expect(screen.getByTestId('dashboard-page')).toBeInTheDocument());
     alertSpy.mockRestore();
@@ -85,7 +127,7 @@ describe('AdminRouteGuard', () => {
         currentUser: { id: 'user123', name: 'Test User' } as any, // roles missing
         isLoadingAuth: false
     });
-    const alertSpy2 = jest.spyOn(window, 'alert').mockImplementation(() => {});
+    const alertSpy2 = vi.spyOn(window, 'alert').mockImplementation(() => {});
     renderWithRouter();
     await waitFor(() => expect(screen.getByTestId('dashboard-page')).toBeInTheDocument());
     alertSpy2.mockRestore();

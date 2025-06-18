@@ -1,20 +1,15 @@
 import { Router, Request, Response, NextFunction } from "express"; // Import Request, Response, NextFunction
-import { trace, SpanStatusCode, context, Span } from "@opentelemetry/api"; // Import OpenTelemetry API
+import { trace, SpanStatusCode, Span } from "@opentelemetry/api"; // Import OpenTelemetry API
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
-import { body, validationResult } from "express-validator";
+import { body } from "express-validator";
 import { User } from "../models/User";
 import { RefreshToken } from "../models/RefreshToken";
 import { AuditLog } from "../models/AuditLog";
 import { rateLimitByEmail } from "../middleware/rateLimitByEmail";
 import { validateRequest } from "../middleware/validation";
 import { logger } from "../utils/logger";
-import {
-  sendWelcomeEmail,
-  sendPasswordResetEmail,
-  sendEmailVerificationEmail,
-} from "../utils/email";
+import { sendWelcomeEmail, sendEmailVerificationEmail } from "../utils/email";
 import { generateTokens, verifyRefreshToken } from "../utils/jwt";
 import { authenticateToken } from "../middleware/authMiddleware"; // Assuming this middleware exists
 
@@ -322,7 +317,7 @@ router.get("/verify-email/:token", async (req, res, next) => {
     logger.error("Error in /verify-email/:token route", { error });
     next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -601,24 +596,9 @@ router.post("/logout", authenticateToken, async (req: any, res, next) => {
       // For example: await RefreshToken.revokeByTokenString(bodyRefreshToken);
       // Or, if your revoke method on the instance is preferred, you might need to fetch it first (less ideal for logout)
       // For simplicity, if RefreshToken.revoke expects the token ID (not the JWT string itself), this needs adjustment.
-      // Let's assume RefreshToken.revoke can handle the JWT string or is adapted.
-      // A common pattern is to store a jti (JWT ID) in refresh tokens and revoke by that.
-      // Given the current RefreshToken.revoke method, it seems to be an instance method.
-      // A static method on RefreshToken model to revoke by token string would be better.
-      // Let's assume `RefreshToken.revoke(tokenId)` where tokenId is the UUID stored.
+      // Let's assume RefreshToken.revoke(tokenId) where tokenId is the UUID stored.
       // The JWT refresh token itself is not usually what's stored directly for revocation lookup.
-      // However, the current `RefreshToken.revoke` in `auth.ts` seems to expect the token string: `await RefreshToken.revoke(refreshToken);`
-      // Let's stick to the existing pattern from Refresh route for now, assuming RefreshToken.revoke can find the token by its string value.
-      // This part might need further refinement based on how RefreshToken.revoke is actually implemented.
-      // For now, let's assume it can find and revoke the token by its string value.
-      const rt = await RefreshToken.findOne({ token: bodyRefreshToken }); // This is not how RefreshToken.token is stored.
-      // RefreshToken.token is the UUID, not the JWT itself.
-      // This logic needs refinement.
-      // For a robust logout, we should ideally revoke the specific refresh token associated with the session if provided.
-      // And also ensure the current access token cannot be used for further calls (though it will expire).
-      // The most straightforward for now is to log the user out.
-      // Revoking refresh token by its actual JWT string value is not standard. Usually, you revoke by its ID or a session ID.
-      // The `RefreshToken.revoke` method is on the instance, not static.
+      // However, the current RefreshToken.revoke method, it seems to be an instance method.
       // This means we need a token ID to fetch it, then call .revoke().
       // The /refresh route uses verifyRefreshToken which then finds the token by its internal ID (tokenId).
       // For logout, if a specific refresh token string is provided, we should try to invalidate it.
@@ -627,16 +607,6 @@ router.post("/logout", authenticateToken, async (req: any, res, next) => {
       // A more secure logout invalidates the refresh token on the server.
       // Let's assume for now the client is responsible for discarding the access token.
       // We will attempt to revoke the refresh token if provided.
-      // This part of the code was problematic. The `RefreshToken.revoke` is an instance method.
-      // The `refreshToken` from body is the JWT string. We need to find the RefreshToken document.
-      // This is better handled by a service that can decode the refresh token, get its ID (jti), and then revoke.
-      // For now, let's focus on the audit log with the authenticated user.
-      // Revoking a refresh token passed in body requires looking it up by its JWT value, which is not typical.
-      // Usually, you'd revoke a specific session or all sessions.
-      // The `RefreshToken` model stores a `token` field which is a UUID (tokenId), not the JWT string.
-      // So, `RefreshToken.revoke(bodyRefreshToken)` would not work as intended if `bodyRefreshToken` is the JWT.
-      // Let's assume the intention is to revoke a token if its ID is known or all tokens for the user.
-      // Given the simplicity, we'll just log the logout action. True server-side invalidation of the specific refresh token string is complex here.
     }
 
     // User ID is now reliably from authenticateToken
@@ -647,7 +617,6 @@ router.post("/logout", authenticateToken, async (req: any, res, next) => {
       userAgent: req.get("User-Agent"),
       timestamp: new Date(),
     });
-    // Removed extra closing brace here
 
     res.json({
       message: "Logout successful",
