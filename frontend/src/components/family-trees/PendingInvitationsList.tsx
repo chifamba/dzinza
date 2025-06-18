@@ -68,7 +68,7 @@ const PendingInvitationsList: React.FC<PendingInvitationsListProps> = ({
       return new Date(dateString).toLocaleDateString(undefined, {
         year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
       });
-    } catch (e) { return dateString; }
+    } catch (_e) { return dateString; } // Renamed e to _e
   };
 
 

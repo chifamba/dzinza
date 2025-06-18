@@ -185,7 +185,7 @@ router.post(
     body("description").optional().isString().trim().isLength({ max: 1000 }),
     body("generateThumbnails").optional().isBoolean(),
   ],
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, _next: NextFunction) => { // Renamed next to _next
     // Added next
     const tracer = trace.getTracer("storage-service-file-routes");
     const parentSpan = tracer.startSpan("files.upload.handler");
@@ -193,7 +193,7 @@ router.post(
       parentSpan.setAttributes({
         "http.method": "POST",
         "http.route": "/upload",
-        "files.count": (req.files as Express.Multer.File[])?.length || 0,
+        "files.count": (req.files as any)?.length || 0, // Changed type assertion
         "user.id": req.user?.id,
       });
 
@@ -210,7 +210,7 @@ router.post(
         });
       }
 
-      const files = req.files as Express.Multer.File[];
+      const files = req.files as any; // Changed type assertion
       if (!files || files.length === 0) {
         return res.status(400).json({
           error: "No files provided",

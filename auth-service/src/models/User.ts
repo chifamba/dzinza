@@ -19,6 +19,13 @@ export interface User {
   mfaEnabled?: boolean;
   createdAt: Date;
   updatedAt: Date;
+  // Added properties based on usage in auth.ts
+  isEmailVerified?: boolean; // Used in /request-verification and /verify-email
+  emailVerificationToken?: string;
+  emailVerificationExpires?: Date;
+  lockedUntil?: Date;
+  // Methods like save() and generateEmailVerificationToken() are harder to add to an interface
+  // without a proper implementation, but their absence might also confuse the parser.
 }
 
 export interface CreateUserData {

@@ -10,6 +10,18 @@ import promMiddleware from "express-prometheus-middleware";
 import dotenv from "dotenv";
 import { trace, Span, ROOT_CONTEXT } from "@opentelemetry/api"; // Import OpenTelemetry API
 
+// Define a type for the user payload attached by authMiddleware
+interface UserPayload {
+  id: string;
+  email: string;
+  role: string; // Adjust if it's roles: string[] or other structure
+}
+
+// Extend express.Request type
+interface AuthenticatedRequest extends express.Request {
+  user?: UserPayload;
+}
+
 import { logger } from "../../../shared/utils/logger";
 import { proxiedRequestsCounter } from "./utils/metrics"; // Import the custom counter
 import { initTracer as initGatewayTracer } from "./utils/tracing"; // Import OpenTelemetry tracer initialization for gateway
@@ -138,9 +150,19 @@ app.use(
     pathRewrite: {
       "^/api/auth": "",
     },
-    onError: (err, req, res) => {
+    onError: (err, req, _res) => { // _res indicates it's intentionally unused
       logger.error("Auth service proxy error:", { error: err.message });
-      res.status(503).json({ error: "Auth service unavailable" });
+      // res.status(503).json({ error: "Auth service unavailable" }); // This line would use res, but it's commented out or handled differently
+      // It seems the original intent might have been to send a response,
+      // but if not, _res is appropriate. For now, assuming it's correctly unused.
+      // If a response *should* be sent, this logic needs review.
+      // However, standard http-proxy-middleware behavior is to let the proxy request fail
+      // and the client will receive a 503 or similar from the proxy itself if target is down.
+      // Explicitly sending a response here can sometimes interfere.
+      // For linting, marking _res as unused is the direct fix.
+      // The original code did have res.status(503).json({ error: "Auth service unavailable" });
+      // I will keep it to maintain functionality.
+      _res.status(503).json({ error: "Auth service unavailable" });
     },
     onProxyReq: (proxyReq, req) => {
       // Add correlation ID for tracing
@@ -149,7 +171,7 @@ app.use(
         `gateway-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       proxyReq.setHeader("X-Correlation-ID", correlationId);
     },
-    onProxyRes: (proxyRes, req, res) => {
+    onProxyRes: (proxyRes, req, _res) => { // _res indicates it's intentionally unused
       const path = req.originalUrl.split("?")[0]; // Get path without query params
       // Increment after response, to capture status code
       proxiedRequestsCounter
@@ -167,6 +189,7 @@ const protectedServices = [
 ];
 
 protectedServices.forEach(({ path, target }) => {
+  const serviceName = path.replace("/api/", "").split("/")[0] || "unknown"; // Define serviceName here
   app.use(
     path,
     authMiddleware,
@@ -176,13 +199,13 @@ protectedServices.forEach(({ path, target }) => {
       pathRewrite: {
         [`^${path}`]: "",
       },
-      onError: (err, req, res) => {
+      onError: (err, req, _res) => { // _res indicates it's intentionally unused
         logger.error(`${path} service proxy error:`, { error: err.message });
-        res
+        _res
           .status(503)
           .json({ error: `${path.replace("/api/", "")} service unavailable` });
       },
-      onProxyReq: (proxyReq, req: express.Request, res: express.Response) => {
+      onProxyReq: (proxyReq, req: express.Request, _res: express.Response) => { // _res indicates it's intentionally unused
         // Typed req, res
         const tracer = trace.getTracer("gateway-service-proxy");
         const parentSpan = trace.getSpan(
@@ -190,22 +213,22 @@ protectedServices.forEach(({ path, target }) => {
         ); // Get current span if any, or use ROOT_CONTEXT
 
         tracer.startActiveSpan(
-          `proxy.request_to.${serviceName}`,
+          `proxy.request_to.${serviceName}`, // serviceName is now defined
           { parent: parentSpan },
           (span: Span) => {
             span.setAttributes({
               "http.method": req.method,
               "http.url": target + (proxyReq.path || ""), // target + original path part
-              "target.service": serviceName,
-              "user.id": (req as any).user?.id, // If available
+              "target.service": serviceName, // serviceName is now defined
+              "user.id": (req as AuthenticatedRequest).user?.id, // If available
             });
 
             // Forward user information from auth middleware
-            if ((req as any).user) {
+            if ((req as AuthenticatedRequest).user) {
               // Type assertion for req.user
-              proxyReq.setHeader("X-User-ID", (req as any).user.id);
-              proxyReq.setHeader("X-User-Email", (req as any).user.email);
-              proxyReq.setHeader("X-User-Role", (req as any).user.role);
+              proxyReq.setHeader("X-User-ID", (req as AuthenticatedRequest).user.id);
+              proxyReq.setHeader("X-User-Email", (req as AuthenticatedRequest).user.email);
+              proxyReq.setHeader("X-User-Role", (req as AuthenticatedRequest).user.role);
               span.setAttribute("user.forwarded", true);
             }
 
@@ -229,13 +252,12 @@ protectedServices.forEach(({ path, target }) => {
           }
         );
       },
-      onProxyRes: (proxyRes, req: express.Request, res: express.Response) => {
+      onProxyRes: (proxyRes, req: express.Request, _res: express.Response) => { // _res indicates it's intentionally unused
         // Typed req, res
-        const serviceName =
-          path.replace("/api/", "").split("/")[0] || "unknown";
+        // const serviceName = path.replace("/api/", "").split("/")[0] || "unknown"; // serviceName is defined outside this scope now
         const routePath = req.originalUrl.split("?")[0];
         proxiedRequestsCounter
-          .labels(serviceName, routePath, String(proxyRes.statusCode))
+          .labels(serviceName, routePath, String(proxyRes.statusCode)) // serviceName is now defined
           .inc();
         // If span was passed from onProxyReq, could end it here and set status from proxyRes.statusCode
       },

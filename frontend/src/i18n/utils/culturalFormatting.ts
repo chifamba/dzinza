@@ -191,7 +191,7 @@ export const formatName = (
  */
 export const formatPhoneNumber = (
   phoneNumber: string,
-  locale: string
+  _locale: string // Renamed locale to _locale
 ): string => {
   try {
     // Remove all non-digit characters

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Mail, CheckCircle, AlertCircle, TreePine, RefreshCw } from 'lucide-react';
+import { Mail, CheckCircle, TreePine, RefreshCw } from 'lucide-react'; // Removed AlertCircle
 import { authApi } from '../../services/api/auth';
 import { useAuth } from '../../hooks/useAuth';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
@@ -24,24 +24,7 @@ const VerifyEmail = () => {
   const email = location.state?.email || user?.email;
 
   // Auto-verify if token is in URL
-  useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const token = urlParams.get('token');
-    
-    if (token) {
-      verifyEmail(token);
-    }
-  }, [location.search]);
-
-  // Countdown for resend button
-  useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [countdown]);
-
-  const verifyEmail = async (token: string) => {
+  const verifyEmail = useCallback(async (token: string) => {
     try {
       setIsVerifying(true);
       setError(null);
@@ -59,7 +42,24 @@ const VerifyEmail = () => {
     } finally {
       setIsVerifying(false);
     }
-  };
+  }, [navigate]); // Added navigate as a dependency
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const token = urlParams.get('token');
+
+    if (token) {
+      verifyEmail(token);
+    }
+  }, [location.search, verifyEmail]); // Added verifyEmail to dependency array
+
+  // Countdown for resend button
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
   const resendVerificationEmail = async () => {
     try {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { SystemHealthData, ServiceHealth } from '../../types/admin'; // Adjust path as necessary
+import { SystemHealthData } from '../../types/admin'; // Adjust path as necessary, removed ServiceHealth
 import { logger } from '@shared/utils/logger';
 import { RefreshCw } from 'lucide-react'; // Icon for refresh button
 

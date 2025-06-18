@@ -236,7 +236,7 @@ router.post('/', [
  */
 router.get('/:id', [
   param('id').isMongoId().withMessage('Invalid family tree ID'),
-], async (req: Request, res: Response, next: NextFunction) => { // Added types and next
+], async (req: Request, res: Response, _next: NextFunction) => { // Renamed next to _next
   const tracer = trace.getTracer('genealogy-service-familytree-routes');
   await tracer.startActiveSpan('familyTree.getById.handler', async (span: Span) => {
     try {
@@ -298,10 +298,11 @@ router.get('/:id', [
     logger.info('Family tree retrieved', {
       userId,
       familyTreeId,
-      correlationId: req.correlationId
-      span.setStatus({ code: SpanStatusCode.OK });
-      span.end();
-    } catch (error) {
+      correlationId: req.correlationId, // Added comma
+    }); // Closed logger object
+    span.setStatus({ code: SpanStatusCode.OK }); // Moved outside
+    span.end(); // Moved outside
+  } catch (error) {
       const err = error as Error;
       span.recordException(err);
       span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
@@ -691,7 +692,7 @@ router.put('/:treeId/collaborators/:collaboratorUserId', [
 
     // Fetch collaborator's name/email for targetResourceName if possible
     // This might require a User model lookup if not already on collaborator object
-    const collaboratorInfo = familyTree.collaborators[collaboratorIndex]; // This is the updated one
+    // const collaboratorInfo = familyTree.collaborators[collaboratorIndex]; // This is the updated one // Commented out
     // const collaboratorUser = await User.findById(collaboratorUserId).select('name email'); // Example
     // const targetResourceName = collaboratorUser ? (collaboratorUser.name || collaboratorUser.email) : collaboratorUserId;
 
@@ -1518,7 +1519,7 @@ router.get('/:treeId/export/gedcom', [
               if (!parentGedId || !childGedId) continue;
 
               // Find the family where this parent is a spouse
-              for (const [key, family] of families.entries()) {
+              for (const [, family] of families.entries()) { // key removed as it's unused
                   if (family.husb === parentGedId || family.wife === parentGedId) {
                       if (!family.chil.includes(childGedId)) {
                           family.chil.push(childGedId);
@@ -1550,7 +1551,7 @@ router.get('/:treeId/export/gedcom', [
       // For FAMC: Iterate through families, for CHIL, find their INDI record and add FAMC tag.
       // This part is tricky to interleave with the above INDI generation efficiently without multiple passes or complex data structures.
       // For now, creating a new set of lines to append/insert for FAMS/FAMC.
-      const linkLines: string[] = [];
+      // const linkLines: string[] = []; // Commented out as unused
       for (const person of persons) {
         const personGedId = mongoPersonIdToGedcomIdMap.get(person._id.toString());
         if (!personGedId) continue;

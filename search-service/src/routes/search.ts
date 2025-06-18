@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from "express"; // Added NextFunction
-import { trace, SpanStatusCode, Span, Attributes } from '@opentelemetry/api'; // Import OpenTelemetry API
+import { trace, SpanStatusCode, Span } from '@opentelemetry/api'; // Import OpenTelemetry API, removed Attributes
 import { body, query, validationResult } from "express-validator";
 import {
   ElasticsearchService,
@@ -200,7 +200,7 @@ router.post(
     body("page").optional().isInt({ min: 1 }),
     body("size").optional().isInt({ min: 1, max: 100 }),
   ],
-  async (req: Request, res: Response, next: NextFunction) => { // Added next
+  async (req: Request, res: Response, _next: NextFunction) => { // Renamed next to _next
     const tracer = trace.getTracer('search-service-routes');
     await tracer.startActiveSpan('search.general.handler', async (span: Span) => {
       try {
@@ -275,6 +275,7 @@ router.post(
       });
     } catch (error) {
       logger.error("Search error:", error);
+      res.status(500).json({ // Added res.status(500).json()
         error: "Search failed",
         message: "An error occurred while searching",
       });

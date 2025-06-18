@@ -7,9 +7,6 @@ import {
   Search, 
   Camera, 
   Dna,
-  TrendingUp,
-  Calendar,
-  MapPin,
   Bell,
   Plus,
   ArrowRight

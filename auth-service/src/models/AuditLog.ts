@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { v4 as uuidv4 } from "uuid"; // Import uuid v4
 
 const pool = new Pool({
   host: process.env.DB_HOST || "localhost",
@@ -30,7 +31,7 @@ export interface CreateAuditLogData {
 export class AuditLog {
   static async create(logData: CreateAuditLogData): Promise<AuditLog> {
     try {
-      const id = require("uuid").v4();
+      const id = uuidv4(); // Use uuidv4
       const result = await pool.query(
         `INSERT INTO audit_logs (id, user_id, action, ip_address, user_agent, timestamp, details)
          VALUES ($1, $2, $3, $4, $5, $6, $7)

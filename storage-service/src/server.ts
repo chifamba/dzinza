@@ -250,7 +250,7 @@ app.use(
     maxAge: "1d",
     etag: true,
     lastModified: true,
-    setHeaders: (res, path) => {
+    setHeaders: (res, _path) => { // Renamed path to _path
       res.setHeader("Cache-Control", "public, max-age=86400");
       res.setHeader("X-Content-Type-Options", "nosniff");
     },

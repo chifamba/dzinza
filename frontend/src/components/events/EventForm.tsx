@@ -127,7 +127,8 @@ const EventForm: React.FC<EventFormProps> = ({
   // Effect for initial fetch and when familyTreeId changes (maintaining current search)
   useEffect(() => {
     fetchPersons(formData.familyTreeId, personSearchTerm);
-  }, [formData.familyTreeId, fetchPersons]); // personSearchTerm is not added here to avoid loop with debounce; debounce effect handles search term changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.familyTreeId, fetchPersons]); // personSearchTerm is intentionally omitted here to avoid loop with debounce; debounce effect handles search term changes.
 
   // Effect for debounced search when personSearchTerm changes
   useEffect(() => {

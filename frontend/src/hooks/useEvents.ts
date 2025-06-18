@@ -108,7 +108,7 @@ export const useEvents = ({
     } finally {
       setIsLoading(false);
     }
-  }, [pagination.page, pagination.limit, sort, filters, initialPagination.page, initialPagination.limit]);
+  }, [pagination.page, pagination.limit, sort, filters, initialPagination]); // Added initialPagination object
 
   useEffect(() => {
     fetchEvents();

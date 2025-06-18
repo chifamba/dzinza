@@ -65,7 +65,7 @@ const Register = () => {
       navigate('/auth/verify-email', { 
         state: { email: formData.email } 
       });
-    } catch (err) {
+    } catch (_err) { // Renamed err to _err
       // Error is handled by useAuth hook
     }
   };

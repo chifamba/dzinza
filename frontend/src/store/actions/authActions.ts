@@ -54,8 +54,8 @@ export const login = (email: string, password: string, mfaCode?: string) => { //
       }
       
       return response; // Return the full response for UI to handle MFA or success
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Login failed';
+    } catch (_error) { // Renamed error to _error
+      const message = _error instanceof Error ? _error.message : 'Login failed';
       dispatch(loginFailure(message));
       throw error;
     }
@@ -73,8 +73,8 @@ export const uploadUserAvatar = (file: File) => {
       dispatch(updateProfileSuccess(updatedUser)); // Update user state with new profile (including avatar URL)
 
       return updatedUser; // Return updated user data
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Avatar upload failed';
+    } catch (_error) { // Renamed error to _error
+      const message = _error instanceof Error ? _error.message : 'Avatar upload failed';
       dispatch(updateProfileFailure(message)); // Use existing failure action
       throw error;
     }
@@ -97,8 +97,8 @@ export const updateUserProfile = (profileData: UpdateProfileData) => {
       dispatch(updateProfileSuccess(updatedUser)); // Pass the updated user to the reducer
 
       return updatedUser;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to update profile';
+    } catch (_error) { // Renamed error to _error
+      const message = _error instanceof Error ? _error.message : 'Failed to update profile';
       dispatch(updateProfileFailure(message));
       throw error;
     }
@@ -127,8 +127,8 @@ export const register = (userData: { // Removed username from parameter type
       }));
       
       return response;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Registration failed';
+    } catch (_error) { // Renamed error to _error
+      const message = _error instanceof Error ? _error.message : 'Registration failed';
       dispatch(registerFailure(message));
       throw error;
     }
@@ -146,8 +146,8 @@ export const forgotPassword = (email: string) => {
       dispatch(forgotPasswordSuccess(response.message));
       
       return response;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Forgot password failed';
+    } catch (_error) { // Renamed error to _error
+      const message = _error instanceof Error ? _error.message : 'Forgot password failed';
       dispatch(forgotPasswordFailure(message));
       throw error;
     }
@@ -165,8 +165,8 @@ export const resetPassword = (token: string, email: string, newPassword: string)
       dispatch(resetPasswordSuccess(response.message));
       
       return response;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Password reset failed';
+    } catch (_error) { // Renamed error to _error
+      const message = _error instanceof Error ? _error.message : 'Password reset failed';
       dispatch(resetPasswordFailure(message));
       throw error;
     }
@@ -191,8 +191,8 @@ export const fetchCurrentUser = () => {
       }
       
       return user;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to fetch user profile';
+    } catch (_error) { // Renamed error to _error
+      const message = _error instanceof Error ? _error.message : 'Failed to fetch user profile';
       dispatch(fetchProfileFailure(message));
       // Do not rethrow here if checkAuthStatus handles it, to avoid unhandled promise rejection
       // throw error;
@@ -210,10 +210,10 @@ export const refreshAccessToken = () => {
       dispatch(refreshTokenSuccess({ accessToken: response.accessToken }));
       
       return response;
-    } catch (error) {
+    } catch (_error) { // Renamed error to _error
       // If refresh fails, logout the user
       dispatch(logout());
-      throw error;
+      throw _error;
     }
   };
 };
@@ -223,9 +223,9 @@ export const logout = () => {
   return async (dispatch: Dispatch) => {
     try {
       await authService.logout();
-    } catch (error) {
+    } catch (_error) { // Renamed error to _error
       // Continue with logout even if API call fails
-      console.warn('Logout API call failed:', error);
+      console.warn('Logout API call failed:', _error);
     } finally {
       dispatch(logoutAction());
     }
@@ -250,14 +250,14 @@ export const checkAuthStatus = () => {
       dispatch(fetchProfileSuccess(user));
       
       return true;
-    } catch (error) {
+    } catch (_error) { // Renamed error to _error
       // Token is invalid, try to refresh
       try {
         await dispatch(refreshAccessToken());
         const user = await authService.getCurrentUser();
         dispatch(fetchProfileSuccess(user));
         return true;
-      } catch (refreshError) {
+      } catch (_refreshError) { // Renamed refreshError to _refreshError
         // Both token and refresh failed, logout
         dispatch(logout());
         return false;

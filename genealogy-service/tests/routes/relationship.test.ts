@@ -359,13 +359,13 @@ describe("Relationship API Routes", () => {
       const savedPerson4 = await person4.save();
 
       // Create first relationship
-      const rel1 = new Relationship({
-        person1Id: savedPerson3._id,
-        person2Id: savedPerson4._id,
-        type: "SPOUSE",
-        familyTreeId: testTreeId,
-      });
-      const savedRel1 = await rel1.save();
+      // const rel1 = new Relationship({ // Commented out as rel1 is now unused
+      //   person1Id: savedPerson3._id,
+      //   person2Id: savedPerson4._id,
+      //   type: "SPOUSE",
+      //   familyTreeId: testTreeId,
+      // });
+      // const _savedRel1 = await rel1.save(); // Commented out as it's unused and causing lint error
 
       // Create second relationship of a different type
       const rel2 = new Relationship({

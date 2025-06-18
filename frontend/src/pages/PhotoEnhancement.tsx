@@ -7,20 +7,14 @@ import {
   Wand2, 
   RotateCcw, 
   Palette, 
-  Contrast, 
-  Sun, 
   Eye,
   Settings,
-  Save,
   Share,
   History,
   Zap,
   Image as ImageIcon,
   Maximize,
-  ZoomIn,
-  ZoomOut,
-  Move,
-  Crop
+  ZoomIn
 } from 'lucide-react';
 
 interface Enhancement {

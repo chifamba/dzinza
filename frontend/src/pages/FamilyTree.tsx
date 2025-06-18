@@ -11,8 +11,6 @@ import {
   Filter,
   Share,
   Download,
-  Maximize,
-  Users,
   Calendar,
   MapPin
 } from 'lucide-react';
@@ -33,7 +31,7 @@ const FamilyTree = () => {
   const { t } = useTranslation('familyTree');
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([
+  const [familyMembers, _setFamilyMembers] = useState<FamilyMember[]>([ // Renamed setFamilyMembers
     {
       id: '1',
       name: 'John Smith',

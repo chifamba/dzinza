@@ -6,7 +6,7 @@ import rateLimit from "express-rate-limit";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import promMiddleware from "express-prometheus-middleware";
-import { createProxyMiddleware } from "http-proxy-middleware";
+// import { createProxyMiddleware } from "http-proxy-middleware"; // Unused import
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 

@@ -7,6 +7,30 @@ import { v4 as uuidv4 } from "uuid";
 import { database } from "../config/database";
 import { logger } from "../shared/utils/logger";
 
+// Define a type for the user payload attached by authMiddleware (if applicable to /me)
+interface UserPayload {
+  id: string;
+  email: string;
+  // Add other fields like roles if present in JWT and attached to req.user
+}
+
+// Extend express.Request type
+interface AuthenticatedRequest extends Request {
+  user?: UserPayload;
+}
+
+// Define interfaces for JWT payloads
+interface RefreshTokenPayload extends jwt.JwtPayload {
+  userId: string;
+  type: 'refresh';
+}
+
+interface AccessTokenPayload extends jwt.JwtPayload {
+  userId: string;
+  email?: string;
+  username?: string;
+}
+
 const router = Router();
 
 // JWT Configuration
@@ -90,7 +114,7 @@ router.post(
     const tracer = trace.getTracer("backend-service-auth-routes");
     return await tracer.startActiveSpan(
       "backend.auth.register.handler",
-      async (span: Span): Promise<any> => {
+      async (span: Span): Promise<void | Response> => { // Changed Promise<any>
         try {
           // Check for validation errors
           const errors = validationResult(req);
@@ -239,7 +263,7 @@ router.post(
     const tracer = trace.getTracer("backend-service-auth-routes");
     return await tracer.startActiveSpan(
       "backend.auth.login.handler",
-      async (span: Span): Promise<any> => {
+      async (span: Span): Promise<void | Response> => { // Changed Promise<any>
         try {
           // Check for validation errors
           const errors = validationResult(req);
@@ -396,7 +420,7 @@ router.post(
  *       401:
  *         description: Invalid refresh token
  */
-router.post("/refresh", async (req, res, next): Promise<any> => {
+router.post("/refresh", async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => { // Added types and changed Promise<any>
   try {
     const { refreshToken } = req.body;
 
@@ -408,7 +432,7 @@ router.post("/refresh", async (req, res, next): Promise<any> => {
     }
 
     // Verify refresh token
-    const decoded = jwt.verify(refreshToken, JWT_SECRET) as any;
+    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET as string) as RefreshTokenPayload;
 
     if (decoded.type !== "refresh") {
       return res.status(401).json({
@@ -485,7 +509,7 @@ router.post("/refresh", async (req, res, next): Promise<any> => {
  *       401:
  *         description: Authentication required
  */
-router.get("/me", async (req, res, next): Promise<any> => {
+router.get("/me", async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void | Response> => { // Changed Promise<any> and req type
   try {
     const authHeader = req.headers.authorization;
 
@@ -497,7 +521,7 @@ router.get("/me", async (req, res, next): Promise<any> => {
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET as string) as AccessTokenPayload;
 
     // Get user details
     const userResult = await database.query(
@@ -544,19 +568,6 @@ router.get("/me", async (req, res, next): Promise<any> => {
       },
     });
   } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(401).json({
-        error: "Authentication Failed",
-        message: "Invalid access token",
-      });
-    }
-
-    logger.error("Get user profile failed:", error, { service: "auth" });
-    next(error);
-  }
-});
-
-export { router as authRoutes };
     if (error instanceof jwt.JsonWebTokenError) {
       return res.status(401).json({
         error: "Authentication Failed",

@@ -1,6 +1,6 @@
 // src/types/comments.ts
 
-import mongoose from "mongoose"; // Only for type if directly using ObjectId from backend models, otherwise string
+// import mongoose from "mongoose"; // Only for type if directly using ObjectId from backend models, otherwise string
 
 export type CommentResourceType = 'Event' | 'Story';
 

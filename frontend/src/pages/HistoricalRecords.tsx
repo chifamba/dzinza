@@ -14,8 +14,7 @@ import {
   Eye,
   BookOpen,
   Archive,
-  Globe,
-  Clock
+  Globe
 } from 'lucide-react';
 
 interface HistoricalRecord {

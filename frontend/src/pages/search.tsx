@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useCallback } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom"; // Link might not be needed
+import { useSearchParams } from "react-router-dom"; // Link might not be needed, removed useNavigate
 import { useSearchResults } from "../hooks/useSearchResults"; // Adjust path
 import {
   SearchResultItem,

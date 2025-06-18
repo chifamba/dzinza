@@ -34,7 +34,7 @@ const PersonEventsList: React.FC<PersonEventsListProps> = ({ personId }) => {
     if (!dateString) return 'N/A';
     try {
       return new Date(dateString).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-    } catch (e) {
+    } catch (_e) { // Renamed e to _e
       return dateString;
     }
   };

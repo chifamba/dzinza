@@ -1,5 +1,5 @@
 import React, { useState, useEffect, FormEvent } from 'react';
-import { SearchParams, SearchableTypeParam } from '../../types/search'; // Adjust path
+import { SearchableTypeParam } from '../../types/search'; // Adjust path, removed SearchParams
 
 // Dummy UI components
 const Input = ({ ...props }) => <input className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-600" {...props} />;

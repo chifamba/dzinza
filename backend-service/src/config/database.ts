@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import { Pool, PoolClient, QueryResult } from "pg"; // Added QueryResult
 import mongoose from "mongoose";
 import { logger } from "../shared/utils/logger";
 
@@ -75,9 +75,9 @@ const disconnectFromDatabase = async (): Promise<void> => {
 };
 
 // Database query method
-const query = async (text: string, params?: any[]): Promise<any> => {
+const query = async (text: string, params?: unknown[]): Promise<QueryResult> => { // Changed types
   try {
-    const result = await pgPool.query(text, params);
+    const result: QueryResult = await pgPool.query(text, params);
     return result;
   } catch (error) {
     logger.error("Database query error:", error);

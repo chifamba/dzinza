@@ -59,7 +59,7 @@ const Login = () => {
       }
       
       navigate('/dashboard');
-    } catch (err) {
+    } catch (_err) { // Renamed err to _err
       // Error is handled by useAuth hook
     }
   };

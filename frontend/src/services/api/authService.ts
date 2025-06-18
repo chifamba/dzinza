@@ -9,14 +9,15 @@ export interface UserData extends ApiUser {
 }
 
 // Define frontend-specific payload types or use/map to types from auth.ts
-export interface FrontendLoginPayload extends LoginData {} // email, password, mfaCode?
-export interface FrontendRegisterPayload extends Omit<ApiRegisterData, 'preferredLanguage'> {
+export type FrontendLoginPayload = LoginData; // email, password, mfaCode?
+export type FrontendRegisterPayload = Omit<ApiRegisterData, 'preferredLanguage'>;
+// No additional members, so type alias is suitable.
   // Assuming preferredLanguage is handled differently or not set at initial registration by this service layer
   // Or, if it's required, ensure it's part of FrontendRegisterPayload and passed to authApi.register
   // For this task, aligning with the goal of removing 'username' if not core:
   // The ApiRegisterData in auth.ts did not have username, so this is mostly aligned.
   // If username was here before, it's now removed from this payload too.
-}
+// Removed extra closing brace
 
 
 export interface FrontendAuthResponse {

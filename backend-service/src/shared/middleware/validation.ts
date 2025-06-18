@@ -61,7 +61,7 @@ export const sanitizeRequest = (
 /**
  * Helper function to sanitize object properties
  */
-function sanitizeObject(obj: any): any {
+function sanitizeObject(obj: unknown): unknown { // Changed obj: any to obj: unknown, and return type to unknown
   if (obj === null || obj === undefined) {
     return obj;
   }
@@ -71,7 +71,7 @@ function sanitizeObject(obj: any): any {
   }
 
   if (typeof obj === "object") {
-    const sanitized: any = {};
+    const sanitized: Record<string, unknown> = {}; // Changed type of sanitized
     for (const [key, value] of Object.entries(obj)) {
       // Skip prototype pollution attempts
       if (key === "__proto__" || key === "constructor" || key === "prototype") {
