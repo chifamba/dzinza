@@ -79,6 +79,29 @@ Please read our [Contributing Guide (within docs/docs.md#contributing-guide)](do
 - 🔧 Submit code improvements (Python backend services, frontend adaptation to new APIs, shared libraries).
 - 🧪 Help with testing the new Python services and their integration with the frontend.
 
+## 🧪 Testing
+
+The project uses Vitest for frontend testing. For more information on the test setup, see:
+
+- [VITEST_MIGRATION.md](frontend/VITEST_MIGRATION.md) - Detailed migration guide from Jest to Vitest
+- [VITEST_MIGRATION_SUMMARY.md](frontend/VITEST_MIGRATION_SUMMARY.md) - Quick summary of the migration status
+
+### Running Tests
+
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+```
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
