@@ -1,9 +1,9 @@
 import React from 'react';
 
-interface TableColumn {
+interface TableColumn<T extends object = object> { // Make TableColumn generic
   header: string;
-  accessor: string; // Key in the data objects
-  render?: (data: any) => React.ReactNode; // Optional custom renderer
+  accessor: keyof T | string; // Allow keyof T or string for flexibility
+  render?: (data: T) => React.ReactNode; // Use generic type T
 }
 
 interface TableProps<T extends object> {
@@ -42,7 +42,8 @@ const Table = <T extends object>({
                     key={col.accessor}
                     className="px-6 py-4 whitespace-nowrap text-sm text-gray-700"
                   >
-                    {col.render ? col.render(row) : (row as any)[col.accessor]}
+                    {/* Use type assertion for accessor if it's a string, or ensure accessor is keyof T */}
+                    {col.render ? col.render(row) : row[col.accessor as keyof T]}
                   </td>
                 ))}
               </tr>

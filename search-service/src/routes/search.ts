@@ -7,7 +7,17 @@ import {
   PersonSearchParams,
 } from "../services/elasticsearch";
 import { logger } from "../utils/logger";
-import "../types/express";
+import "../types/express"; // This might already define AuthenticatedRequest globally
+
+// Define a type for the user payload if not globally available via ../types/express
+interface UserPayload {
+  id: string;
+  // Add other relevant user fields if needed by this route
+}
+
+interface AuthenticatedRequest extends Request {
+  user?: UserPayload;
+}
 
 const router = express.Router();
 
@@ -209,7 +219,7 @@ router.post(
           'http.route': '/',
           'search.query': req.body.query,
           'search.types': req.body.type?.join(','),
-          'user.id': (req as any).user?.id,
+          'user.id': (req as AuthenticatedRequest).user?.id,
         });
 
         const errors = validationResult(req);
@@ -222,11 +232,11 @@ router.post(
         });
       }
 
-      if (!(req as any).user) {
+      const userFromAuth = (req as AuthenticatedRequest).user;
+      if (!userFromAuth) {
         return res.status(401).json({ error: "User authentication required" });
       }
-
-      const userId = (req as any).user.id;
+      const userId = userFromAuth.id; // userFromAuth is guaranteed non-null here
       const searchQuery: SearchQuery = {
         ...req.body,
         userId, // Always filter by current user
@@ -356,11 +366,11 @@ router.post(
         });
       }
 
-      if (!(req as any).user) {
+      const userFromAuthForPersonSearch = (req as AuthenticatedRequest).user;
+      if (!userFromAuthForPersonSearch) {
         return res.status(401).json({ error: "User authentication required" });
       }
-
-      const userId = (req as any).user.id;
+      const userId = userFromAuthForPersonSearch.id; // userFromAuthForPersonSearch is guaranteed non-null here
       const searchParams: PersonSearchParams = req.body;
 
       // Log search for analytics
@@ -517,11 +527,11 @@ router.post(
         });
       }
 
-      if (!(req as any).user) {
+      const userFromAuthForIndex = (req as AuthenticatedRequest).user;
+      if (!userFromAuthForIndex) {
         return res.status(401).json({ error: "User authentication required" });
       }
-
-      const userId = (req as any).user.id;
+      const userId = userFromAuthForIndex.id; // userFromAuthForIndex is guaranteed non-null here
       const document = {
         ...req.body,
         userId,

@@ -14,14 +14,16 @@ export interface PaginatedPersonsResponse {
   };
 }
 
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
 export interface PaginatedEventsResponse {
   events: Event[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
+  pagination: PaginationInfo;
 }
 
 
@@ -42,8 +44,8 @@ class GenealogyService {
     return response.data;
   }
 
-  async listFamilyTrees(params?: { page?: number; limit?: number; search?: string }): Promise<{ trees: FamilyTree[], pagination: any}> {
-     const response: AxiosResponse<{ trees: FamilyTree[], pagination: any}> = await apiClient.get(this.treeBaseURL, { params });
+  async listFamilyTrees(params?: { page?: number; limit?: number; search?: string }): Promise<{ trees: FamilyTree[], pagination: PaginationInfo}> {
+     const response: AxiosResponse<{ trees: FamilyTree[], pagination: PaginationInfo}> = await apiClient.get(this.treeBaseURL, { params });
      return response.data;
   }
 
@@ -58,7 +60,7 @@ class GenealogyService {
 
   // Person Methods
   async getPersons(familyTreeId: string, search?: string, page?: number, limit?: number): Promise<PaginatedPersonsResponse> {
-    const params: any = { familyTreeId, page, limit };
+    const params: { familyTreeId: string; page?: number; limit?: number; search?: string } = { familyTreeId, page, limit };
     if (search) {
       params.search = search;
     }
@@ -125,7 +127,7 @@ class GenealogyService {
 
   // Event Methods
   async getEventsForPerson(personId: string, familyTreeId?: string, page?: number, limit?: number): Promise<PaginatedEventsResponse> {
-    const params: any = { relatedPersonId: personId, page, limit };
+    const params: { relatedPersonId: string; familyTreeId?: string; page?: number; limit?: number } = { relatedPersonId: personId, page, limit };
     if (familyTreeId) {
       params.familyTreeId = familyTreeId;
     }

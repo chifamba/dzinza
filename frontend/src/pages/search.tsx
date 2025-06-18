@@ -165,12 +165,12 @@ const SearchResultsPage: React.FC = () => {
           .split(",")
           .map((t) => t.trim())
           .filter(Boolean);
-        (searchApiFilters as any)[key] =
+        (searchApiFilters as Record<string, string | string[] | number | undefined>)[key] =
           tagsArray.length > 0 ? tagsArray : undefined;
       } else if (value === "" || value === null) {
-        (searchApiFilters as any)[key] = undefined; // Ensure empty strings become undefined to be removed from URL
+        (searchApiFilters as Record<string, string | string[] | number | undefined>)[key] = undefined; // Ensure empty strings become undefined to be removed from URL
       } else {
-        (searchApiFilters as any)[key] = value;
+        (searchApiFilters as Record<string, string | string[] | number | undefined>)[key] = value;
       }
     });
     updateSearchParams(searchApiFilters);

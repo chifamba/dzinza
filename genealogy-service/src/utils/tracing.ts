@@ -6,12 +6,13 @@ import { SimpleSpanProcessor, ConsoleSpanExporter, BatchSpanProcessor } from '@o
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express'; // Assuming Express
 // Add other relevant instrumentations e.g. MongoDB, Mongoose if used
+import { logger } from '../../shared/utils/logger.js'; // Import shared logger
 
 // Fallback logger
-const consoleLogger = {
-  info: (message: string, ...args: any[]) => console.log(`[Genealogy Tracing INFO] ${message}`, ...args),
-  error: (message: string, ...args: any[]) => console.error(`[Genealogy Tracing ERROR] ${message}`, ...args),
-};
+// const consoleLogger = { // Removed consoleLogger
+//   info: (message: string, ...args: any[]) => console.log(`[Genealogy Tracing INFO] ${message}`, ...args),
+//   error: (message: string, ...args: any[]) => console.error(`[Genealogy Tracing ERROR] ${message}`, ...args),
+// };
 
 export const initTracer = (serviceName: string, jaegerEndpoint: string, nodeEnv: string) => {
   const traceExporter = new OTLPTraceExporter({
@@ -38,19 +39,19 @@ export const initTracer = (serviceName: string, jaegerEndpoint: string, nodeEnv:
 
   try {
     sdk.start();
-    consoleLogger.info(`OpenTelemetry Tracing initialized for service: ${serviceName}, environment: ${nodeEnv}`);
-    consoleLogger.info(`Jaeger exporter configured with endpoint: ${jaegerEndpoint}`);
+    logger.info(`OpenTelemetry Tracing initialized for service: ${serviceName}, environment: ${nodeEnv}`);
+    logger.info(`Jaeger exporter configured with endpoint: ${jaegerEndpoint}`);
     if (nodeEnv !== 'production') {
-      consoleLogger.info('ConsoleSpanExporter is active for development/debugging.');
+      logger.info('ConsoleSpanExporter is active for development/debugging.');
     }
   } catch (error) {
-    consoleLogger.error(`Error initializing OpenTelemetry Tracing for ${serviceName}:`, error);
+    logger.error({ err: error }, `Error initializing OpenTelemetry Tracing for ${serviceName}:`);
   }
 
   const shutdown = () => {
     sdk.shutdown()
-      .then(() => consoleLogger.info(`OpenTelemetry Tracing terminated for ${serviceName}`))
-      .catch((error) => consoleLogger.error(`Error terminating OpenTelemetry Tracing for ${serviceName}`, error))
+      .then(() => logger.info(`OpenTelemetry Tracing terminated for ${serviceName}`))
+      .catch((error) => logger.error({ err: error }, `Error terminating OpenTelemetry Tracing for ${serviceName}`))
       .finally(() => process.exit(0));
   };
 

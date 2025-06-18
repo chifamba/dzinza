@@ -45,8 +45,10 @@ const PhotoEnhancement = () => {
     { id: '4', name: t('processing.colorRestoration'), status: 'pending', progress: 0 },
     { id: '5', name: t('processing.finalProcessing'), status: 'pending', progress: 0 }
   ]);
-  const [activeTab, setActiveTab] = useState<'enhance' | 'history' | 'gallery'>('enhance');
-  const [selectedTool, setSelectedTool] = useState<'auto' | 'colorize' | 'restore' | 'enhance'>('auto');
+  type PhotoTab = 'enhance' | 'history' | 'gallery';
+  const [activeTab, setActiveTab] = useState<PhotoTab>('enhance');
+  type EnhancementTool = 'auto' | 'colorize' | 'restore' | 'enhance';
+  const [selectedTool, setSelectedTool] = useState<EnhancementTool>('auto');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const enhancements: Enhancement[] = [
@@ -217,7 +219,7 @@ const PhotoEnhancement = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => setActiveTab(tab.id as PhotoTab)}
                   className={`flex items-center space-x-2 py-2 px-4 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
                       ? 'border-dzinza-500 text-dzinza-600'
@@ -246,7 +248,7 @@ const PhotoEnhancement = () => {
                     return (
                       <button
                         key={tool.id}
-                        onClick={() => setSelectedTool(tool.id as any)}
+                        onClick={() => setSelectedTool(tool.id as EnhancementTool)}
                         className={`w-full p-4 rounded-lg text-left transition-all ${
                           selectedTool === tool.id
                             ? `${tool.bgColor} border border-${tool.color.split('-')[1]}-200`

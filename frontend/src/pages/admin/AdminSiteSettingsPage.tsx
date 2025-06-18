@@ -119,20 +119,29 @@ const AdminSiteSettingsPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json' /* Auth handled globally */ },
         body: JSON.stringify(payload),
       });
-      const responseData: SiteSettingsData = await response.json();
-      if (!response.ok) {
-        throw new Error((responseData as any).message || (responseData as any).errors?.[0]?.msg || 'Failed to update settings.');
+
+      // Define a type for expected error structure
+      interface ErrorResponse {
+        message?: string;
+        errors?: Array<{ msg: string; [key: string]: unknown }>;
       }
+
+      const responseData: SiteSettingsData | ErrorResponse = await response.json();
+      if (!response.ok) {
+        const errorPayload = responseData as ErrorResponse;
+        throw new Error(errorPayload.message || errorPayload.errors?.[0]?.msg || 'Failed to update settings.');
+      }
+      const settingsData = responseData as SiteSettingsData; // responseData is SiteSettingsData if response.ok
       setSuccessMessage('Site settings updated successfully!');
-      setCurrentSettings(responseData); // Update current settings with response
+      setCurrentSettings(settingsData); // Update current settings with response
       setFormState({ // Re-initialize form with saved data to reflect backend state
-        siteName: responseData.siteName,
-        maintenanceMode: responseData.maintenanceMode,
-        allowNewRegistrations: responseData.allowNewRegistrations,
-        defaultLanguage: responseData.defaultLanguage,
-        contactEmail: responseData.contactEmail || '',
+        siteName: settingsData.siteName,
+        maintenanceMode: settingsData.maintenanceMode,
+        allowNewRegistrations: settingsData.allowNewRegistrations,
+        defaultLanguage: settingsData.defaultLanguage,
+        contactEmail: settingsData.contactEmail || '',
       });
-      setFeatureFlagsState(responseData.featureFlags || {});
+      setFeatureFlagsState(settingsData.featureFlags || {});
     } catch (err) {
       logger.error('Error updating site settings:', err);
       setError(err instanceof Error ? err.message : 'An unknown error occurred during update.');

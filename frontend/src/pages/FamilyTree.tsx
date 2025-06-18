@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { useTranslation } from 'react-i18next';
 import { 
   Plus, 
@@ -96,7 +96,7 @@ const FamilyTree = () => {
     return familyMembers.filter(member => member.generation === generation);
   };
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: DropResult) => {
     // Handle drag and drop logic here
     console.log('Drag ended:', result);
   };

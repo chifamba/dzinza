@@ -92,7 +92,8 @@ const AdminUserListPage: React.FC = () => {
 
     const endpoint = `/api/admin/users/${user._id}`;
     let method = 'PUT';
-    let body: any = { isActive: !user.isActive };
+    interface UpdateUserPayload { isActive: boolean; }
+    let body: UpdateUserPayload | undefined = { isActive: !user.isActive };
 
     if (!user.isActive) { // Activating
         // No specific body change needed beyond isActive: true

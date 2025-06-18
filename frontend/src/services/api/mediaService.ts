@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import { AxiosResponse } from 'axios';
+import { PaginationInfo } from './genealogyService'; // Assuming PaginationInfo is exported here
 
 // Define a basic structure for ApiFile. This should align with your backend's File model.
 // Consider re-using or extending a type from another service if it's identical (e.g., from auth.ts if User has similar file refs)
@@ -88,8 +89,8 @@ class MediaService {
     page?: number;
     limit?: number;
     // Add other filter params as needed
-  }): Promise<{ data: ApiFile[], meta: any }> { // Define a proper meta type
-    const response: AxiosResponse<{ data: ApiFile[], meta: any }> = await apiClient.get(
+  }): Promise<{ data: ApiFile[], meta: PaginationInfo }> { // Define a proper meta type
+    const response: AxiosResponse<{ data: ApiFile[], meta: PaginationInfo }> = await apiClient.get(
       this.baseURL,
       { params }
     );

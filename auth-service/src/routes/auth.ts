@@ -271,20 +271,14 @@ router.post(
  *       400:
  *         description: Invalid or expired token
  */
-router.get("/verify-email/:token", async (req, res, next) => {
+router.get("/verify-email/:token", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { token: _token } = req.params; // Renamed token to _token as user will be null for now
+    const { token } = req.params;
 
-    // const user = await User.findOne({ // Note: User.findOne is not defined in the provided models/User.ts
-    //   emailVerificationToken: _token,
-    //   emailVerificationExpires: { $gt: new Date() },
-    // });
-    const user: User | null = null; // Temporary for linting, acknowledging User.findOne is problematic
+    const user = await User.findByVerificationToken(token);
 
     if (!user) {
-      logger.warn("Invalid or expired email verification token received", {
-        token: _token,
-      });
+      logger.warn("Invalid or expired email verification token received", { token });
       return res
         .status(400)
         .json({
@@ -293,36 +287,26 @@ router.get("/verify-email/:token", async (req, res, next) => {
         });
     }
 
-    // These lines were problematic and are kept commented for now, as they rely on a different User model structure.
-    // user.isEmailVerified = true;
-    // user.emailVerificationToken = undefined;
-    // user.emailVerificationExpires = undefined;
-    // await user.save(); // user.save() is also not in the provided models/User.ts
+    await User.verifyUserEmail(user.id); // Use the new static method
 
-    // The following lines would fail if user is null or doesn't have _id/email.
-    // For linting, we'll assume if user were not null, these would be valid.
-    // However, to prevent runtime errors with user being null, these should be conditional or removed if the logic is truly non-functional.
-    // For now, commenting them out to ensure lint passes without runtime assumptions for this block.
-    /*
     await AuditLog.create({
-      userId: user._id,
+      userId: user.id, // Use user.id (from User interface)
       action: "EMAIL_VERIFIED",
       ipAddress: req.ip,
       userAgent: req.get("User-Agent"),
       timestamp: new Date(),
     });
     logger.info(`Email verified successfully for user ${user.email}`, {
-      userId: user._id,
+      userId: user.id,
     });
-    */
 
     // Optionally, redirect to a frontend page:
     // return res.redirect(`${process.env.FRONTEND_URL}/email-verified-success`);
     res
       .status(200)
-      .json({ message: "Email verified successfully. You can now login." }); // This message might be misleading if verification logic is bypassed
+      .json({ message: "Email verified successfully. You can now login." });
   } catch (error) {
-    logger.error("Error in /verify-email/:token route", { error });
+    logger.error({ err: error }, "Error in /verify-email/:token route"); // Pass error object to logger
     next(error);
   }
 });

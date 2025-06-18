@@ -1,11 +1,11 @@
 import express, { Request, Response, NextFunction } from "express";
-import multer from "multer";
+import multer, { File as MulterFile } from "multer";
 import { body, query, param, validationResult } from "express-validator";
 import { fileTypeFromBuffer } from "file-type";
-import mongoose from "mongoose";
+import mongoose, { FilterQuery } from "mongoose";
 import { S3Service, UploadOptions } from "../services/s3";
 import { ImageProcessor } from "../services/imageProcessor";
-import { File } from "../models/File";
+import { File, IFile } from "../models/File"; // Assuming IFile is exported
 import { logger } from "@shared/utils/logger";
 import { trace } from '@opentelemetry/api';
 import type { Span, SpanStatusCode } from '@opentelemetry/api';
@@ -193,7 +193,7 @@ router.post(
       parentSpan.setAttributes({
         "http.method": "POST",
         "http.route": "/upload",
-        "files.count": (req.files as any)?.length || 0, // Changed type assertion
+        "files.count": (req.files as MulterFile[])?.length || 0,
         "user.id": req.user?.id,
       });
 
@@ -210,7 +210,7 @@ router.post(
         });
       }
 
-      const files = req.files as any; // Changed type assertion
+      const files = req.files as MulterFile[];
       if (!files || files.length === 0) {
         return res.status(400).json({
           error: "No files provided",
@@ -543,9 +543,9 @@ router.get(
       } = req.query;
 
       // Build query
-      const query: any = { userId };
+      const query: FilterQuery<IFile> = { userId };
 
-      if (familyTreeId) query.familyTreeId = familyTreeId;
+      if (familyTreeId) query.familyTreeId = familyTreeId as string; // Ensure string type for FilterQuery
       if (category) query.category = category;
       if (privacy) query.privacy = privacy;
       if (tags) {
@@ -563,7 +563,7 @@ router.get(
       const skip = (Number(page) - 1) * Number(limit);
 
       // Build sort
-      const sort: any = {};
+      const sort: Record<string, 1 | -1> = {};
       sort[sortBy as string] = sortOrder === "asc" ? 1 : -1;
 
       // Execute query

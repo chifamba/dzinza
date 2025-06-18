@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { logger } from "../shared/utils/logger"; // Import logger
 
 const pool = new Pool({
   host: process.env.DB_HOST || "localhost",
@@ -46,7 +47,7 @@ export class RefreshToken {
       );
       return result.rows[0];
     } catch (error) {
-      console.error("Error creating refresh token:", error);
+      logger.error({ err: error }, "Error creating refresh token:");
       throw error;
     }
   }
@@ -59,7 +60,7 @@ export class RefreshToken {
       );
       return result.rows[0] || null;
     } catch (error) {
-      console.error("Error finding refresh token:", error);
+      logger.error({ err: error }, "Error finding refresh token:");
       throw error;
     }
   }
@@ -71,7 +72,7 @@ export class RefreshToken {
         [token]
       );
     } catch (error) {
-      console.error("Error revoking refresh token:", error);
+      logger.error({ err: error }, "Error revoking refresh token:");
       throw error;
     }
   }
@@ -83,7 +84,7 @@ export class RefreshToken {
         [userId]
       );
     } catch (error) {
-      console.error("Error revoking user tokens:", error);
+      logger.error({ err: error }, "Error revoking user tokens:");
       throw error;
     }
   }
@@ -94,7 +95,7 @@ export class RefreshToken {
         "DELETE FROM refresh_tokens WHERE expires_at < NOW() OR is_revoked = true"
       );
     } catch (error) {
-      console.error("Error cleaning up refresh tokens:", error);
+      logger.error({ err: error }, "Error cleaning up refresh tokens:");
       throw error;
     }
   }

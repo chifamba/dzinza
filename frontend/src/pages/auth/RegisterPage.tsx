@@ -37,8 +37,17 @@ const RegisterPage: React.FC = () => {
       // Decide navigation: to login for email verification, or dashboard if auto-login
       navigate('/login');
       // alert('Registration successful! Please check your email to verify your account.'); // Or navigate to dashboard if auto-login
-    } catch (err: any) {
-      dispatch(registerFailure(err.message || 'Failed to register'));
+    } catch (err: unknown) {
+      let message = 'Failed to register'; // Default
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        if (axiosError.response?.data?.message) {
+          message = axiosError.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      dispatch(registerFailure(message));
     }
   };
 

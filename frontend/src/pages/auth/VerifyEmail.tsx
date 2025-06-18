@@ -28,17 +28,25 @@ const VerifyEmail = () => {
     try {
       setIsVerifying(true);
       setError(null);
-      
+
       await authApi.verifyEmail({ token });
       setIsVerified(true);
-      
+
       // Redirect to dashboard after successful verification
       setTimeout(() => {
         navigate('/dashboard');
       }, 3000);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Email verification failed';
-      setError(errorMessage);
+    } catch (err: unknown) {
+      let message = 'Email verification failed'; // Default
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        if (axiosError.response?.data?.message) {
+          message = axiosError.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      setError(message);
     } finally {
       setIsVerifying(false);
     }
@@ -70,9 +78,17 @@ const VerifyEmail = () => {
       await authApi.resendVerificationEmail();
       setResendSuccess(true);
       setCountdown(60); // 60 second cooldown
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Failed to resend verification email';
-      setError(errorMessage);
+    } catch (err: unknown) {
+      let message = 'Failed to resend verification email'; // Default
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        if (axiosError.response?.data?.message) {
+          message = axiosError.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      setError(message);
     } finally {
       setIsResending(false);
     }

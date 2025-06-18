@@ -28,8 +28,17 @@ const LoginPage: React.FC = () => {
       const response = await authService.login({ email, password });
       dispatch(loginSuccess(response));
       navigate('/dashboard');
-    } catch (err: any) {
-      dispatch(loginFailure(err.message || 'Failed to login'));
+    } catch (err: unknown) {
+      let message = 'Failed to login'; // Default
+      if (typeof err === 'object' && err !== null && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        if (axiosError.response?.data?.message) {
+          message = axiosError.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      dispatch(loginFailure(message));
     }
   };
 
