@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Button, Input } from '../ui';
-import { loginStart, loginSuccess, loginFailure } from '../../store/slices/authSlice';
-import { authService } from '../../services/api/authService';
-import { AppDispatch, RootState } from '../../store/store';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { Modal, Button, Input } from "../ui";
+import {
+  loginStart,
+  loginSuccess,
+  loginFailure,
+} from "../../store/slices/authSlice";
+import { authService } from "../../services/api/authService";
+import { AppDispatch, RootState } from "../../store/store";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -12,8 +16,8 @@ interface LoginModalProps {
 }
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const dispatch: AppDispatch = useDispatch();
 
@@ -22,37 +26,42 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     dispatch(loginStart());
-    
+
     try {
       const response = await authService.login({ email, password });
       dispatch(loginSuccess(response));
-      
+
       // Close modal and navigate to dashboard on success
       onClose();
-      navigate('/dashboard');
-      
+      navigate("/dashboard");
+
       // Reset form
-      setEmail('');
-      setPassword('');
+      setEmail("");
+      setPassword("");
     } catch (err: unknown) {
-      let message = 'Failed to login';
-      
-      if (typeof err === 'object' && err !== null && 'response' in err) {
-        const axiosError = err as { response?: { data?: { message?: string } } };
+      let message = "Failed to login";
+
+      if (typeof err === "object" && err !== null && "response" in err) {
+        const axiosError = err as {
+          response?: { data?: { message?: string } };
+        };
         if (axiosError.response?.data?.message) {
           message = axiosError.response.data.message;
         }
       } else if (err instanceof Error) {
         message = err.message;
       }
-      
+
       dispatch(loginFailure(message));
-      
+
       // If login fails completely, redirect to login page
-      if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('credentials')) {
+      if (
+        message.toLowerCase().includes("invalid") ||
+        message.toLowerCase().includes("credentials")
+      ) {
         setTimeout(() => {
           onClose();
-          navigate('/login');
+          navigate("/login");
         }, 2000); // Show error for 2 seconds then redirect
       }
     }
@@ -60,14 +69,14 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
   const handleClose = () => {
     // Reset form when closing
-    setEmail('');
-    setPassword('');
+    setEmail("");
+    setPassword("");
     onClose();
   };
 
   const handleModalClose = () => {
     // Only close if not loading
-    if (status !== 'loading') {
+    if (status !== "loading") {
       handleClose();
     }
   };
@@ -88,9 +97,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="admin@dzinza.org"
-          disabled={status === 'loading'}
+          disabled={status === "loading"}
         />
-        
+
         <Input
           label="Password"
           name="password"
@@ -100,27 +109,25 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Enter your password"
-          disabled={status === 'loading'}
+          disabled={status === "loading"}
         />
-        
-        {error && status === 'failed' && (
+
+        {error && status === "failed" && (
           <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
             {error}
-            {error.toLowerCase().includes('invalid') && (
-              <div className="mt-1 text-xs">
-                Redirecting to login page...
-              </div>
+            {error.toLowerCase().includes("invalid") && (
+              <div className="mt-1 text-xs">Redirecting to login page...</div>
             )}
           </div>
         )}
-        
+
         <div className="flex space-x-3 pt-4">
           <Button
             type="button"
             variant="secondary"
             className="flex-1"
             onClick={handleClose}
-            disabled={status === 'loading'}
+            disabled={status === "loading"}
           >
             Cancel
           </Button>
@@ -128,36 +135,36 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             type="submit"
             variant="primary"
             className="flex-1"
-            disabled={status === 'loading'}
+            disabled={status === "loading"}
           >
-            {status === 'loading' ? 'Signing in...' : 'Sign in'}
+            {status === "loading" ? "Signing in..." : "Sign in"}
           </Button>
         </div>
-        
+
         <div className="text-center text-sm text-gray-600 pt-2">
           <button
             type="button"
             onClick={() => {
               handleClose();
-              navigate('/forgot-password');
+              navigate("/forgot-password");
             }}
             className="text-blue-600 hover:text-blue-500 underline"
-            disabled={status === 'loading'}
+            disabled={status === "loading"}
           >
             Forgot your password?
           </button>
         </div>
-        
+
         <div className="text-center text-sm text-gray-600 border-t pt-4">
-          Don't have an account?{' '}
+          Don't have an account?{" "}
           <button
             type="button"
             onClick={() => {
               handleClose();
-              navigate('/register');
+              navigate("/register");
             }}
             className="text-blue-600 hover:text-blue-500 underline font-medium"
-            disabled={status === 'loading'}
+            disabled={status === "loading"}
           >
             Sign up
           </button>
