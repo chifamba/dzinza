@@ -21,6 +21,10 @@ jobs:
     outputs:
       has-frontend: ${{ steps.check.outputs.has-frontend }}
       has-backend: ${{ steps.check.outputs.has-backend }}
+      has-auth: ${{ steps.check.outputs.has-auth }}
+      has-genealogy: ${{ steps.check.outputs.has-genealogy }}
+      has-search: ${{ steps.check.outputs.has-search }}
+      has-storage: ${{ steps.check.outputs.has-storage }}
       has-tests: ${{ steps.check.outputs.has-tests }}
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +53,46 @@ jobs:
             fi
           else
             echo "has-backend=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Auth service checks
+          if [ -f "auth-service/package.json" ]; then
+            echo "has-auth=true" >> $GITHUB_OUTPUT
+            if ! grep -q '"build"\|"start"' auth-service/package.json; then
+              MISSING_CRITICAL+=("auth-service/package.json missing 'build' or 'start' script")
+            fi
+          else
+            echo "has-auth=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Genealogy service checks
+          if [ -f "genealogy-service/package.json" ]; then
+            echo "has-genealogy=true" >> $GITHUB_OUTPUT
+            if ! grep -q '"build"\|"start"' genealogy-service/package.json; then
+              MISSING_CRITICAL+=("genealogy-service/package.json missing 'build' or 'start' script")
+            fi
+          else
+            echo "has-genealogy=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Search service checks
+          if [ -f "search-service/package.json" ]; then
+            echo "has-search=true" >> $GITHUB_OUTPUT
+            if ! grep -q '"build"\|"start"' search-service/package.json; then
+              MISSING_CRITICAL+=("search-service/package.json missing 'build' or 'start' script")
+            fi
+          else
+            echo "has-search=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Storage service checks
+          if [ -f "storage-service/package.json" ]; then
+            echo "has-storage=true" >> $GITHUB_OUTPUT
+            if ! grep -q '"build"\|"start"' storage-service/package.json; then
+              MISSING_CRITICAL+=("storage-service/package.json missing 'build' or 'start' script")
+            fi
+          else
+            echo "has-storage=false" >> $GITHUB_OUTPUT
           fi
 
           # Test checks
@@ -104,6 +148,30 @@ jobs:
           cd backend-service
           npm ci
 
+      - name: Install auth-service dependencies
+        if: needs.validate.outputs.has-auth == 'true'
+        run: |
+          cd auth-service
+          npm ci
+
+      - name: Install genealogy-service dependencies
+        if: needs.validate.outputs.has-genealogy == 'true'
+        run: |
+          cd genealogy-service
+          npm ci
+
+      - name: Install search-service dependencies
+        if: needs.validate.outputs.has-search == 'true'
+        run: |
+          cd search-service
+          npm ci
+
+      - name: Install storage-service dependencies
+        if: needs.validate.outputs.has-storage == 'true'
+        run: |
+          cd storage-service
+          npm ci
+
       - name: Build frontend
         if: needs.validate.outputs.has-frontend == 'true'
         run: |
@@ -116,15 +184,41 @@ jobs:
           cd backend-service
           npm run build
 
+      - name: Build auth-service
+        if: needs.validate.outputs.has-auth == 'true'
+        run: |
+          cd auth-service
+          npm run build
+
+      - name: Build genealogy-service
+        if: needs.validate.outputs.has-genealogy == 'true'
+        run: |
+          cd genealogy-service
+          npm run build
+
+      - name: Build search-service
+        if: needs.validate.outputs.has-search == 'true'
+        run: |
+          cd search-service
+          npm run build
+
+      - name: Build storage-service
+        if: needs.validate.outputs.has-storage == 'true'
+        run: |
+          cd storage-service
+          npm run build
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
           path: |
             frontend/dist/
-            frontend/build/
             backend-service/dist/
-            backend-service/build/
+            auth-service/dist/
+            genealogy-service/dist/
+            search-service/dist/
+            storage-service/dist/
           retention-days: 1
 
   # Mandatory code quality checks
@@ -149,6 +243,18 @@ jobs:
           if [ "${{ needs.validate.outputs.has-backend }}" == "true" ]; then
             cd backend-service && npm ci && cd ..
           fi
+          if [ "${{ needs.validate.outputs.has-auth }}" == "true" ]; then
+            cd auth-service && npm ci && cd ..
+          fi
+          if [ "${{ needs.validate.outputs.has-genealogy }}" == "true" ]; then
+            cd genealogy-service && npm ci && cd ..
+          fi
+          if [ "${{ needs.validate.outputs.has-search }}" == "true" ]; then
+            cd search-service && npm ci && cd ..
+          fi
+          if [ "${{ needs.validate.outputs.has-storage }}" == "true" ]; then
+            cd storage-service && npm ci && cd ..
+          fi
 
       - name: Run linting (frontend)
         if: needs.validate.outputs.has-frontend == 'true'
@@ -172,6 +278,50 @@ jobs:
             exit 1
           fi
 
+      - name: Run linting (auth-service)
+        if: needs.validate.outputs.has-auth == 'true'
+        run: |
+          cd auth-service
+          if grep -q '"lint"' package.json; then
+            npm run lint
+          else
+            echo "::error::auth-service package.json must include a 'lint' script"
+            exit 1
+          fi
+
+      - name: Run linting (genealogy-service)
+        if: needs.validate.outputs.has-genealogy == 'true'
+        run: |
+          cd genealogy-service
+          if grep -q '"lint"' package.json; then
+            npm run lint
+          else
+            echo "::error::genealogy-service package.json must include a 'lint' script"
+            exit 1
+          fi
+
+      - name: Run linting (search-service)
+        if: needs.validate.outputs.has-search == 'true'
+        run: |
+          cd search-service
+          if grep -q '"lint"' package.json; then
+            npm run lint
+          else
+            echo "::error::search-service package.json must include a 'lint' script"
+            exit 1
+          fi
+
+      - name: Run linting (storage-service)
+        if: needs.validate.outputs.has-storage == 'true'
+        run: |
+          cd storage-service
+          if grep -q '"lint"' package.json; then
+            npm run lint
+          else
+            echo "::error::storage-service package.json must include a 'lint' script"
+            exit 1
+          fi
+
       - name: Run type checking (frontend)
         if: needs.validate.outputs.has-frontend == 'true'
         run: |
@@ -186,6 +336,46 @@ jobs:
         if: needs.validate.outputs.has-backend == 'true'
         run: |
           cd backend-service
+          if grep -q '"typecheck"\|"type-check"' package.json; then
+            npm run typecheck || npm run type-check
+          elif [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          fi
+
+      - name: Run type checking (auth-service)
+        if: needs.validate.outputs.has-auth == 'true'
+        run: |
+          cd auth-service
+          if grep -q '"typecheck"\|"type-check"' package.json; then
+            npm run typecheck || npm run type-check
+          elif [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          fi
+
+      - name: Run type checking (genealogy-service)
+        if: needs.validate.outputs.has-genealogy == 'true'
+        run: |
+          cd genealogy-service
+          if grep -q '"typecheck"\|"type-check"' package.json; then
+            npm run typecheck || npm run type-check
+          elif [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          fi
+
+      - name: Run type checking (search-service)
+        if: needs.validate.outputs.has-search == 'true'
+        run: |
+          cd search-service
+          if grep -q '"typecheck"\|"type-check"' package.json; then
+            npm run typecheck || npm run type-check
+          elif [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          fi
+
+      - name: Run type checking (storage-service)
+        if: needs.validate.outputs.has-storage == 'true'
+        run: |
+          cd storage-service
           if grep -q '"typecheck"\|"type-check"' package.json; then
             npm run typecheck || npm run type-check
           elif [ -f "tsconfig.json" ]; then
@@ -208,6 +398,26 @@ jobs:
           if [ "${{ needs.validate.outputs.has-backend }}" == "true" ]; then
             echo "Running backend security audit..."
             cd backend-service && (npm audit --audit-level=high || AUDIT_FAILED=true) && cd ..
+          fi
+
+          if [ "${{ needs.validate.outputs.has-auth }}" == "true" ]; then
+            echo "Running auth-service security audit..."
+            cd auth-service && (npm audit --audit-level=high || AUDIT_FAILED=true) && cd ..
+          fi
+
+          if [ "${{ needs.validate.outputs.has-genealogy }}" == "true" ]; then
+            echo "Running genealogy-service security audit..."
+            cd genealogy-service && (npm audit --audit-level=high || AUDIT_FAILED=true) && cd ..
+          fi
+
+          if [ "${{ needs.validate.outputs.has-search }}" == "true" ]; then
+            echo "Running search-service security audit..."
+            cd search-service && (npm audit --audit-level=high || AUDIT_FAILED=true) && cd ..
+          fi
+
+          if [ "${{ needs.validate.outputs.has-storage }}" == "true" ]; then
+            echo "Running storage-service security audit..."
+            cd storage-service && (npm audit --audit-level=high || AUDIT_FAILED=true) && cd ..
           fi
 
           if [ "$AUDIT_FAILED" == "true" ]; then
@@ -238,6 +448,18 @@ jobs:
           if [ "${{ needs.validate.outputs.has-backend }}" == "true" ]; then
             cd backend-service && npm ci && cd ..
           fi
+          if [ "${{ needs.validate.outputs.has-auth }}" == "true" ]; then
+            cd auth-service && npm ci && cd ..
+          fi
+          if [ "${{ needs.validate.outputs.has-genealogy }}" == "true" ]; then
+            cd genealogy-service && npm ci && cd ..
+          fi
+          if [ "${{ needs.validate.outputs.has-search }}" == "true" ]; then
+            cd search-service && npm ci && cd ..
+          fi
+          if [ "${{ needs.validate.outputs.has-storage }}" == "true" ]; then
+            cd storage-service && npm ci && cd ..
+          fi
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -265,6 +487,46 @@ jobs:
             echo "::warning::No test script found in backend package.json"
           fi
 
+      - name: Run auth-service tests
+        if: needs.validate.outputs.has-auth == 'true'
+        run: |
+          cd auth-service
+          if grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "::warning::No test script found in auth-service package.json"
+          fi
+
+      - name: Run genealogy-service tests
+        if: needs.validate.outputs.has-genealogy == 'true'
+        run: |
+          cd genealogy-service
+          if grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "::warning::No test script found in genealogy-service package.json"
+          fi
+
+      - name: Run search-service tests
+        if: needs.validate.outputs.has-search == 'true'
+        run: |
+          cd search-service
+          if grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "::warning::No test script found in search-service package.json"
+          fi
+
+      - name: Run storage-service tests
+        if: needs.validate.outputs.has-storage == 'true'
+        run: |
+          cd storage-service
+          if grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "::warning::No test script found in storage-service package.json"
+          fi
+
   # Docker builds (only for main branch to save minutes)
   docker:
     name: Build Docker Images
@@ -279,6 +541,14 @@ jobs:
             condition: ${{ needs.validate.outputs.has-frontend == 'true' }}
           - service: backend-service
             condition: ${{ needs.validate.outputs.has-backend == 'true' }}
+          - service: auth-service
+            condition: ${{ needs.validate.outputs.has-auth == 'true' }}
+          - service: genealogy-service
+            condition: ${{ needs.validate.outputs.has-genealogy == 'true' }}
+          - service: search-service
+            condition: ${{ needs.validate.outputs.has-search == 'true' }}
+          - service: storage-service
+            condition: ${{ needs.validate.outputs.has-storage == 'true' }}
     steps:
       - uses: actions/checkout@v4
         if: matrix.condition
@@ -355,3 +625,7 @@ jobs:
           echo "🐳 Docker images available at:"
           echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/frontend:latest"
           echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/backend-service:latest"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/auth-service:latest"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/genealogy-service:latest"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/search-service:latest"
+          echo "  - ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/storage-service:latest"
