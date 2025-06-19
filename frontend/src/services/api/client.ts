@@ -1,7 +1,16 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, {
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  AxiosError,
+} from "axios";
 
 // Base configuration
-const BASE_URL = import.meta.env.VITE_AUTH_SERVICE_URL || 'http://localhost:3002';
+// In development, use relative URLs to leverage Vite proxy
+// In production, use the environment variable
+const BASE_URL = import.meta.env.PROD
+  ? import.meta.env.VITE_AUTH_SERVICE_URL || "http://localhost:3002"
+  : ""; // Use relative URLs in development to leverage proxy
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
 
 interface ApiError {
@@ -24,7 +33,7 @@ class ApiClient {
       baseURL: BASE_URL,
       timeout: API_TIMEOUT,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
 
@@ -35,7 +44,8 @@ class ApiClient {
     // Request interceptor to add auth token
     this.instance.interceptors.request.use(
       (config: AxiosRequestConfig) => {
-        const tokenKey = import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token';
+        const tokenKey =
+          import.meta.env.VITE_JWT_STORAGE_KEY || "dzinza_access_token";
         const token = localStorage.getItem(tokenKey);
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
@@ -51,7 +61,9 @@ class ApiClient {
     this.instance.interceptors.response.use(
       (response: AxiosResponse) => response,
       async (error: AxiosError<ApiError>) => {
-        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+        const originalRequest = error.config as AxiosRequestConfig & {
+          _retry?: boolean;
+        };
 
         // If error is 401 and we haven't already tried to refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
@@ -59,33 +71,38 @@ class ApiClient {
             // If we're already refreshing, queue this request
             return new Promise((resolve, reject) => {
               this.failedQueue.push({ resolve, reject });
-            }).then(token => {
-              if (originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${token}`;
-              }
-              return this.instance(originalRequest);
-            }).catch(err => {
-              return Promise.reject(err);
-            });
+            })
+              .then((token) => {
+                if (originalRequest.headers) {
+                  originalRequest.headers.Authorization = `Bearer ${token}`;
+                }
+                return this.instance(originalRequest);
+              })
+              .catch((err) => {
+                return Promise.reject(err);
+              });
           }
 
           originalRequest._retry = true;
           this.isRefreshing = true;
 
           try {
-            const refreshTokenKey = import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token';
-            const accessTokenKey = import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token';
+            const refreshTokenKey =
+              import.meta.env.VITE_REFRESH_TOKEN_KEY || "dzinza_refresh_token";
+            const accessTokenKey =
+              import.meta.env.VITE_JWT_STORAGE_KEY || "dzinza_access_token";
             const refreshToken = localStorage.getItem(refreshTokenKey);
             if (!refreshToken) {
-              throw new Error('No refresh token available');
+              throw new Error("No refresh token available");
             }
 
             const response = await axios.post(`${BASE_URL}/auth/refresh`, {
               refreshToken,
             });
 
-            const { accessToken, refreshToken: newRefreshToken } = response.data;
-            
+            const { accessToken, refreshToken: newRefreshToken } =
+              response.data;
+
             localStorage.setItem(accessTokenKey, accessToken);
             localStorage.setItem(refreshTokenKey, newRefreshToken);
 
@@ -100,11 +117,13 @@ class ApiClient {
           } catch (refreshError) {
             // Refresh failed, clear tokens and redirect to login
             this.processQueue(refreshError, null);
-            const accessTokenKey = import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token';
-            const refreshTokenKey = import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token';
+            const accessTokenKey =
+              import.meta.env.VITE_JWT_STORAGE_KEY || "dzinza_access_token";
+            const refreshTokenKey =
+              import.meta.env.VITE_REFRESH_TOKEN_KEY || "dzinza_refresh_token";
             localStorage.removeItem(accessTokenKey);
             localStorage.removeItem(refreshTokenKey);
-            
+
             // Dispatch custom event to trigger logout
             // Recommendation: Add a global event listener for 'auth:logout' in your main App component
             // or a top-level layout component. This listener should dispatch the Redux logout action
@@ -115,8 +134,8 @@ class ApiClient {
             //   window.addEventListener('auth:logout', handleLogout);
             //   return () => window.removeEventListener('auth:logout', handleLogout);
             // }, [dispatch]);
-            window.dispatchEvent(new CustomEvent('auth:logout'));
-            
+            window.dispatchEvent(new CustomEvent("auth:logout"));
+
             return Promise.reject(refreshError);
           } finally {
             this.isRefreshing = false;
@@ -141,23 +160,41 @@ class ApiClient {
   }
 
   // HTTP Methods
-  async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async get<T = unknown>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.instance.get(url, config);
   }
 
-  async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async post<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.instance.post(url, data, config);
   }
 
-  async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async put<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.instance.put(url, data, config);
   }
 
-  async patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async patch<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.instance.patch(url, data, config);
   }
 
-  async delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async delete<T = unknown>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.instance.delete(url, config);
   }
 
@@ -169,17 +206,17 @@ class ApiClient {
     additionalData?: Record<string, any>
   ): Promise<AxiosResponse<T>> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     if (additionalData) {
-      Object.keys(additionalData).forEach(key => {
+      Object.keys(additionalData).forEach((key) => {
         formData.append(key, additionalData[key]);
       });
     }
 
     return this.instance.post(url, formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
       onUploadProgress,
     });
@@ -188,14 +225,14 @@ class ApiClient {
   // Download file
   async downloadFile(url: string, filename?: string): Promise<void> {
     const response = await this.instance.get(url, {
-      responseType: 'blob',
+      responseType: "blob",
     });
 
     const blob = new Blob([response.data]);
     const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = downloadUrl;
-    link.download = filename || 'download';
+    link.download = filename || "download";
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -206,23 +243,23 @@ class ApiClient {
   setAuthToken(token: string | null) {
     if (token) {
       this.instance.defaults.headers.common.Authorization = `Bearer ${token}`;
-      localStorage.setItem('accessToken', token);
+      localStorage.setItem("accessToken", token);
     } else {
       delete this.instance.defaults.headers.common.Authorization;
-      localStorage.removeItem('accessToken');
+      localStorage.removeItem("accessToken");
     }
   }
 
   // Get current auth token
   getAuthToken(): string | null {
-    return localStorage.getItem('accessToken');
+    return localStorage.getItem("accessToken");
   }
 
   // Clear auth token
   clearAuthToken() {
     delete this.instance.defaults.headers.common.Authorization;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
   }
 }
 

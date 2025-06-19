@@ -25,6 +25,7 @@ import { errorHandler } from "./shared/middleware/errorHandler";
 import { metricsMiddleware } from "./shared/middleware/metrics";
 import { healthRoutes } from "./routes/health";
 import { authRoutes } from "./routes/auth";
+import { notificationRoutes } from "./routes/notifications";
 import { swaggerOptions } from "./config/swagger";
 import { database } from "./config/database";
 import { getMetrics } from "./shared/middleware/metrics";
@@ -71,7 +72,13 @@ app.use(
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN?.split(",") || ["http://localhost:3000"],
+    origin: process.env.CORS_ORIGIN?.split(",") || [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:5175",
+      "http://localhost:5176",
+    ],
     credentials: true,
     optionsSuccessStatus: 200,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -121,6 +128,9 @@ app.use("/health", healthRoutes);
 // Authentication routes (handled by gateway)
 app.use("/api/auth", authRoutes);
 
+// Notification routes
+app.use("/api/notifications", notificationRoutes);
+
 // Metrics endpoint
 app.get("/metrics", getMetrics);
 
@@ -168,7 +178,17 @@ app.use('/api/storage',
 );
 */
 
-// 404 handler
+// API endpoints that are not yet implemented
+app.use("/api/*", (req, res) => {
+  logger.warn(`API endpoint not implemented: ${req.method} ${req.originalUrl}`);
+  res.status(501).json({
+    error: "Not Implemented",
+    message: `API endpoint ${req.method} ${req.originalUrl} is not yet implemented`,
+    note: "This endpoint is planned for future implementation",
+  });
+});
+
+// 404 handler for non-API routes
 app.use("*", (req, res) => {
   res.status(404).json({
     error: "Route not found",

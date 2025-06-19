@@ -19,7 +19,7 @@ INSERT INTO users (
     is_active
 ) 
 VALUES (
-    'admin@dzinza.com',
+    'admin@dzinza.org',
     'admin',
     '$2a$12$RjWxsKktGGD9crf7VQwrzegIB4bFLx5t.sGCfYalaHa/4uUy15TVu',
     'Admin',

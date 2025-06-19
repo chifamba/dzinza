@@ -31,7 +31,7 @@ For development and testing, the following default users are automatically creat
 
 ### Admin User
 
-- **Email**: `admin@dzinza.com`
+- **Email**: `admin@dzinza.org`
 - **Password**: `AdminPassword123!`
 - **Role**: Administrator with full system access
 
