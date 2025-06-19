@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom'; // Assuming react-router-dom is used for navigation
+import { useSelector } from 'react-redux';
 import NotificationIndicator from '../notifications/NotificationIndicator';
 import GlobalSearchBar from '../search/GlobalSearchBar'; // Import GlobalSearchBar
+import LoginModal from '../auth/LoginModal';
+import { Button } from '../ui';
+import { RootState } from '../../store/store';
 
 interface NavItem {
   label: string;
@@ -20,6 +24,16 @@ const Navbar: React.FC<NavbarProps> = ({
   navItems,
   className = '',
 }) => {
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+
+  const handleLoginClick = () => {
+    setIsLoginModalOpen(true);
+  };
+
+  const handleCloseLoginModal = () => {
+    setIsLoginModalOpen(false);
+  };
   return (
     <nav
       className={`
@@ -54,16 +68,41 @@ const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right side items & Mobile Menu Toggle */}
         <div className="flex items-center space-x-2 sm:space-x-3">
-          <div className="hidden sm:flex items-center space-x-2"> {/* Icons visible on sm+ */}
+          <div className="hidden sm:flex items-center space-x-3"> {/* Icons visible on sm+ */}
             <NotificationIndicator />
-            {/* Placeholder for User Menu or other icons */}
-            {/* <UserMenu /> */}
+            
+            {/* Login Button - only show if not authenticated */}
+            {!isAuthenticated && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleLoginClick}
+                className="px-4 py-2"
+              >
+                Login
+              </Button>
+            )}
+            
+            {/* Placeholder for User Menu when authenticated */}
+            {/* {isAuthenticated && <UserMenu />} */}
           </div>
 
           {/* Mobile: Search might be an icon that expands, or nav items move to menu */}
-          <div className="sm:hidden"> {/* Mobile specific utilities / search toggle area */}
+          <div className="sm:hidden flex items-center space-x-2"> {/* Mobile specific utilities / search toggle area */}
              {/* On mobile, perhaps only show NotificationIndicator, search could be an icon toggle */}
              <NotificationIndicator />
+             
+             {/* Mobile Login Button */}
+             {!isAuthenticated && (
+               <Button
+                 variant="primary"
+                 size="sm"
+                 onClick={handleLoginClick}
+                 className="px-3 py-1 text-xs"
+               >
+                 Login
+               </Button>
+             )}
           </div>
 
           {/* Mobile menu button */}
@@ -81,6 +120,12 @@ const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
       </div>
+      
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={handleCloseLoginModal}
+      />
     </nav>
   );
 };
