@@ -1,7 +1,11 @@
 import { readFileSync, readdirSync } from "fs";
-import { join } from "path";
-import { database } from "./database";
-import { logger } from "../shared/utils/logger";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import { database } from "./database.js";
+import { logger } from "../shared/utils/logger.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export interface Migration {
   id: string;

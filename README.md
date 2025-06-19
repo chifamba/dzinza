@@ -25,7 +25,25 @@ An open-source, interactive genealogy platform for building family trees, discov
 6.  **Access Frontend**: Open your browser and go to `http://localhost:8080` (or `http://dzinza.local` if you have set up local DNS).
 7.  **Explore the Documentation**: For comprehensive information, start with our main [Project Documentation (docs/docs.md)](docs/docs.md).
 
-## 📚 Documentation
+## � Default Credentials
+
+For development and testing, the following default users are automatically created:
+
+### Admin User
+
+- **Email**: `admin@dzinza.com`
+- **Password**: `AdminPassword123!`
+- **Role**: Administrator with full system access
+
+### Test User
+
+- **Email**: `test@dzinza.com`
+- **Password**: `TestPassword123!`
+- **Role**: Regular user for testing user-level functionality
+
+⚠️ **Security Notice**: Change these default passwords immediately in production environments. These credentials are only for development and testing purposes.
+
+## �📚 Documentation
 
 All project documentation is centralized in [**docs/docs.md**](docs/docs.md). This comprehensive document includes:
 

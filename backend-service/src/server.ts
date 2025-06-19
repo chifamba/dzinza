@@ -1,6 +1,11 @@
 // Load environment variables first
 import dotenv from "dotenv";
 import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load root .env file first (shared configuration)
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
@@ -15,7 +20,7 @@ import compression from "compression";
 import rateLimit from "express-rate-limit";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
-import { logger } from "./shared/utils/logger.js";
+import { logger } from "./shared/utils/logger";
 import { errorHandler } from "./shared/middleware/errorHandler";
 import { metricsMiddleware } from "./shared/middleware/metrics";
 import { healthRoutes } from "./routes/health";

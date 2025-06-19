@@ -14,17 +14,35 @@ interface HealthCheckResult {
   error?: string;
 }
 
-// PostgreSQL configuration
-const pgPool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: parseInt(process.env.DB_PORT || "5432"),
-  database: process.env.DB_NAME || "dzinza",
-  user: process.env.DB_USER || "dzinza_user",
-  password: process.env.DB_PASSWORD || "password",
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+// Create PostgreSQL pool lazily to ensure environment variables are loaded
+let pgPool: Pool | null = null;
+
+const createPgPool = () => {
+  if (!pgPool) {
+    const pgConfig = {
+      host: process.env.DB_HOST || "localhost",
+      port: parseInt(process.env.DB_PORT || "5432"),
+      database: process.env.DB_NAME || "dzinza",
+      user: process.env.DB_USER || "dzinza_user",
+      password: process.env.DB_PASSWORD || "password",
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+    };
+
+    // Log the database configuration (without password)
+    logger.info("PostgreSQL configuration:", {
+      host: pgConfig.host,
+      port: pgConfig.port,
+      database: pgConfig.database,
+      user: pgConfig.user,
+      passwordSet: !!pgConfig.password,
+    });
+
+    pgPool = new Pool(pgConfig);
+  }
+  return pgPool;
+};
 
 // MongoDB configuration
 const initMongoDB = async (): Promise<typeof mongoose> => {
@@ -45,8 +63,11 @@ const initMongoDB = async (): Promise<typeof mongoose> => {
 // Database connection manager
 const connectToDatabase = async (): Promise<DatabaseConfig> => {
   try {
+    // Create PostgreSQL pool (this ensures env vars are loaded)
+    const pool = createPgPool();
+
     // Test PostgreSQL connection
-    const pgClient = await pgPool.connect();
+    const pgClient = await pool.connect();
     logger.info("Connected to PostgreSQL");
     pgClient.release();
 
@@ -54,7 +75,7 @@ const connectToDatabase = async (): Promise<DatabaseConfig> => {
     const mongodb = await initMongoDB();
 
     return {
-      postgres: pgPool,
+      postgres: pool,
       mongodb,
     };
   } catch (error) {
@@ -65,7 +86,9 @@ const connectToDatabase = async (): Promise<DatabaseConfig> => {
 
 const disconnectFromDatabase = async (): Promise<void> => {
   try {
-    await pgPool.end();
+    if (pgPool) {
+      await pgPool.end();
+    }
     await mongoose.disconnect();
     logger.info("Disconnected from all databases");
   } catch (error) {
@@ -75,9 +98,14 @@ const disconnectFromDatabase = async (): Promise<void> => {
 };
 
 // Database query method
-const query = async (text: string, params?: unknown[]): Promise<QueryResult> => { // Changed types
+const query = async (
+  text: string,
+  params?: unknown[]
+): Promise<QueryResult> => {
+  // Changed types
   try {
-    const result: QueryResult = await pgPool.query(text, params);
+    const pool = createPgPool();
+    const result: QueryResult = await pool.query(text, params);
     return result;
   } catch (error) {
     logger.error("Database query error:", error);
@@ -89,7 +117,8 @@ const query = async (text: string, params?: unknown[]): Promise<QueryResult> => 
 const transaction = async (
   callback: (client: PoolClient) => Promise<void>
 ): Promise<void> => {
-  const client = await pgPool.connect();
+  const pool = createPgPool();
+  const client = await pool.connect();
   try {
     await client.query("BEGIN");
     await callback(client);
@@ -106,7 +135,8 @@ const transaction = async (
 const healthCheck = async (): Promise<HealthCheckResult> => {
   const startTime = Date.now();
   try {
-    const client = await pgPool.connect();
+    const pool = createPgPool();
+    const client = await pool.connect();
     await client.query("SELECT 1");
     client.release();
     const latency = Date.now() - startTime;
@@ -128,13 +158,15 @@ const healthCheck = async (): Promise<HealthCheckResult> => {
 
 // Get pool information
 const getPool = () => ({
-  totalCount: pgPool.totalCount,
-  idleCount: pgPool.idleCount,
-  waitingCount: pgPool.waitingCount,
+  totalCount: pgPool?.totalCount || 0,
+  idleCount: pgPool?.idleCount || 0,
+  waitingCount: pgPool?.waitingCount || 0,
 });
 
 export const database = {
-  postgres: pgPool,
+  get postgres() {
+    return createPgPool();
+  },
   mongodb: mongoose,
   initialize: connectToDatabase,
   connect: connectToDatabase,
