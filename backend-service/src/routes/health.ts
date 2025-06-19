@@ -1,17 +1,17 @@
 import { Router } from "express";
-import { database } from "../config/database";
-import { migrationRunner } from "../config/migrations";
-import { logger } from "../shared/utils/logger";
+import { database } from "@/config/database";
+import { migrationRunner } from "@/config/migrations";
+import { logger } from "@shared/utils/logger";
 
 const router = Router();
 
 interface DependencyStatus {
-  status: 'healthy' | 'unhealthy' | 'warning';
+  status: "healthy" | "unhealthy" | "warning";
   [key: string]: unknown; // Changed any to unknown
 }
 
 interface HealthStatusDetails {
-  status: 'healthy' | 'unhealthy';
+  status: "healthy" | "unhealthy";
   timestamp: string;
   service: string;
   version: string;
@@ -60,7 +60,11 @@ router.get("/detailed", async (req, res) => {
     timestamp: new Date().toISOString(),
     service: "dzinza-api-gateway",
     version: process.env.npm_package_version || "1.0.0",
-    dependencies: {},
+    dependencies: {
+      database: { status: "healthy", responseTime: 0 },
+      environment: { status: "healthy", responseTime: 0 },
+      migrations: { status: "healthy", responseTime: 0 },
+    },
   };
 
   let overallHealthy = true;
@@ -152,7 +156,9 @@ router.get("/database", async (req, res) => {
       AND table_name IN ('users', 'migrations')
     `);
 
-    const tablesExist = tableCheckResult.rows.map((row: { table_name: string }) => row.table_name);
+    const tablesExist = tableCheckResult.rows.map(
+      (row: { table_name: string }) => row.table_name
+    );
 
     res.json({
       status: "healthy",

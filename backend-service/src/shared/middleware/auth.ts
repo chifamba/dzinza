@@ -22,7 +22,8 @@ export const authMiddleware = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-): Promise<void | Response> => { // Changed Promise<any>
+): Promise<void | Response> => {
+  // Changed Promise<any>
   try {
     const authHeader = req.headers.authorization;
 
@@ -98,7 +99,8 @@ export const optionalAuthMiddleware = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-): Promise<void | Response> => { // Changed Promise<any>
+): Promise<void | Response> => {
+  // Changed Promise<any>
   const authHeader = req.headers.authorization;
 
   if (authHeader && authHeader.startsWith("Bearer ")) {

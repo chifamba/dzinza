@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { validationResult } from "express-validator";
-import { logger } from "../utils/logger";
+import { logger } from "../utils/logger.js";
 
 /**
  * Middleware to validate request using express-validator
@@ -52,7 +52,7 @@ export const sanitizeRequest = (
 
   // Sanitize query parameters
   if (req.query && typeof req.query === "object") {
-    req.query = sanitizeObject(req.query);
+    req.query = sanitizeObject(req.query) as any;
   }
 
   next();
@@ -61,7 +61,8 @@ export const sanitizeRequest = (
 /**
  * Helper function to sanitize object properties
  */
-function sanitizeObject(obj: unknown): unknown { // Changed obj: any to obj: unknown, and return type to unknown
+function sanitizeObject(obj: unknown): unknown {
+  // Changed obj: any to obj: unknown, and return type to unknown
   if (obj === null || obj === undefined) {
     return obj;
   }

@@ -4,8 +4,8 @@ import { body, validationResult } from "express-validator";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
-import { database } from "../config/database";
-import { logger } from "../shared/utils/logger";
+import { database } from "@/config/database.js";
+import { logger } from "@shared/utils/logger.js";
 
 // Define a type for the user payload attached by authMiddleware (if applicable to /me)
 interface UserPayload {
@@ -22,7 +22,7 @@ interface AuthenticatedRequest extends Request {
 // Define interfaces for JWT payloads
 interface RefreshTokenPayload extends jwt.JwtPayload {
   userId: string;
-  type: 'refresh';
+  type: "refresh";
 }
 
 interface AccessTokenPayload extends jwt.JwtPayload {
@@ -114,7 +114,8 @@ router.post(
     const tracer = trace.getTracer("backend-service-auth-routes");
     return await tracer.startActiveSpan(
       "backend.auth.register.handler",
-      async (span: Span): Promise<void | Response> => { // Changed Promise<any>
+      async (span: Span): Promise<void | Response> => {
+        // Changed Promise<any>
         try {
           // Check for validation errors
           const errors = validationResult(req);
@@ -263,7 +264,8 @@ router.post(
     const tracer = trace.getTracer("backend-service-auth-routes");
     return await tracer.startActiveSpan(
       "backend.auth.login.handler",
-      async (span: Span): Promise<void | Response> => { // Changed Promise<any>
+      async (span: Span): Promise<void | Response> => {
+        // Changed Promise<any>
         try {
           // Check for validation errors
           const errors = validationResult(req);
@@ -420,80 +422,91 @@ router.post(
  *       401:
  *         description: Invalid refresh token
  */
-router.post("/refresh", async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => { // Added types and changed Promise<any>
-  try {
-    const { refreshToken } = req.body;
+router.post(
+  "/refresh",
+  async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void | Response> => {
+    // Added types and changed Promise<any>
+    try {
+      const { refreshToken } = req.body;
 
-    if (!refreshToken) {
-      return res.status(401).json({
-        error: "Authentication Failed",
-        message: "Refresh token is required",
-      });
-    }
+      if (!refreshToken) {
+        return res.status(401).json({
+          error: "Authentication Failed",
+          message: "Refresh token is required",
+        });
+      }
 
-    // Verify refresh token
-    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET as string) as RefreshTokenPayload;
+      // Verify refresh token
+      const decoded = jwt.verify(
+        refreshToken,
+        JWT_REFRESH_SECRET as string
+      ) as RefreshTokenPayload;
 
-    if (decoded.type !== "refresh") {
-      return res.status(401).json({
-        error: "Authentication Failed",
-        message: "Invalid token type",
-      });
-    }
+      if (decoded.type !== "refresh") {
+        return res.status(401).json({
+          error: "Authentication Failed",
+          message: "Invalid token type",
+        });
+      }
 
-    // Get user details
-    const userResult = await database.query(
-      `
+      // Get user details
+      const userResult = await database.query(
+        `
       SELECT id, email, username, is_active
       FROM users 
       WHERE id = $1 AND is_active = true
     `,
-      [decoded.userId]
-    );
+        [decoded.userId]
+      );
 
-    if (userResult.rows.length === 0) {
-      return res.status(401).json({
-        error: "Authentication Failed",
-        message: "User not found or inactive",
-      });
-    }
+      if (userResult.rows.length === 0) {
+        return res.status(401).json({
+          error: "Authentication Failed",
+          message: "User not found or inactive",
+        });
+      }
 
-    const user = userResult.rows[0];
+      const user = userResult.rows[0];
 
-    // Generate new access token
-    const accessToken = jwt.sign(
-      {
+      // Generate new access token
+      const accessToken = jwt.sign(
+        {
+          userId: user.id,
+          email: user.email,
+          username: user.username,
+        },
+        JWT_SECRET as string,
+        { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
+      );
+
+      logger.info("Token refreshed successfully", {
+        service: "auth",
         userId: user.id,
-        email: user.email,
-        username: user.username,
-      },
-      JWT_SECRET as string,
-      { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
-    );
-
-    logger.info("Token refreshed successfully", {
-      service: "auth",
-      userId: user.id,
-    });
-
-    return res.json({
-      message: "Token refreshed successfully",
-      tokens: {
-        accessToken,
-      },
-    });
-  } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(401).json({
-        error: "Authentication Failed",
-        message: "Invalid refresh token",
       });
-    }
 
-    logger.error("Token refresh failed:", error, { service: "auth" });
-    next(error);
+      return res.json({
+        message: "Token refreshed successfully",
+        tokens: {
+          accessToken,
+        },
+      });
+    } catch (error) {
+      if (error instanceof jwt.JsonWebTokenError) {
+        return res.status(401).json({
+          error: "Authentication Failed",
+          message: "Invalid refresh token",
+        });
+      }
+
+      logger.error("Token refresh failed:", error, { service: "auth" });
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -509,23 +522,29 @@ router.post("/refresh", async (req: Request, res: Response, next: NextFunction):
  *       401:
  *         description: Authentication required
  */
-router.get("/me", async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void | Response> => { // Changed Promise<any> and req type
-  try {
-    const authHeader = req.headers.authorization;
+router.get(
+  "/me",
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        error: "Authentication Failed",
-        message: "Authorization header is required",
-      });
-    }
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.status(401).json({
+          error: "Authentication Failed",
+          message: "Authorization header is required",
+        });
+        return;
+      }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    const decoded = jwt.verify(token, JWT_SECRET as string) as AccessTokenPayload;
+      const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+      const decoded = jwt.verify(
+        token,
+        JWT_SECRET as string
+      ) as AccessTokenPayload;
 
-    // Get user details
-    const userResult = await database.query(
-      `
+      // Get user details
+      const userResult = await database.query(
+        `
       SELECT 
         id, email, username, first_name, last_name, phone, date_of_birth,
         gender, profile_picture_url, bio, location, language, timezone,
@@ -533,51 +552,54 @@ router.get("/me", async (req: AuthenticatedRequest, res: Response, next: NextFun
       FROM users 
       WHERE id = $1 AND is_active = true
     `,
-      [decoded.userId]
-    );
+        [decoded.userId]
+      );
 
-    if (userResult.rows.length === 0) {
-      return res.status(401).json({
-        error: "Authentication Failed",
-        message: "User not found or inactive",
+      if (userResult.rows.length === 0) {
+        res.status(401).json({
+          error: "Authentication Failed",
+          message: "User not found or inactive",
+        });
+        return;
+      }
+
+      const user = userResult.rows[0];
+
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          phone: user.phone,
+          dateOfBirth: user.date_of_birth,
+          gender: user.gender,
+          profilePictureUrl: user.profile_picture_url,
+          bio: user.bio,
+          location: user.location,
+          language: user.language,
+          timezone: user.timezone,
+          emailVerified: user.email_verified,
+          twoFactorEnabled: user.two_factor_enabled,
+          subscriptionTier: user.subscription_tier,
+          lastLogin: user.last_login,
+          createdAt: user.created_at,
+        },
       });
+    } catch (error) {
+      if (error instanceof jwt.JsonWebTokenError) {
+        res.status(401).json({
+          error: "Authentication Failed",
+          message: "Invalid access token",
+        });
+        return;
+      }
+
+      logger.error("Get user profile failed:", error, { service: "auth" });
+      next(error);
     }
-
-    const user = userResult.rows[0];
-
-    return res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        phone: user.phone,
-        dateOfBirth: user.date_of_birth,
-        gender: user.gender,
-        profilePictureUrl: user.profile_picture_url,
-        bio: user.bio,
-        location: user.location,
-        language: user.language,
-        timezone: user.timezone,
-        emailVerified: user.email_verified,
-        twoFactorEnabled: user.two_factor_enabled,
-        subscriptionTier: user.subscription_tier,
-        lastLogin: user.last_login,
-        createdAt: user.created_at,
-      },
-    });
-  } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(401).json({
-        error: "Authentication Failed",
-        message: "Invalid access token",
-      });
-    }
-
-    logger.error("Get user profile failed:", error, { service: "auth" });
-    next(error);
   }
-});
+);
 
 export { router as authRoutes };

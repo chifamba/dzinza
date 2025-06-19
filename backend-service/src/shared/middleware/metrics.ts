@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import client from "prom-client";
+import * as client from "prom-client";
 import { logger } from "../utils/logger";
 
 // Create a Registry
@@ -91,7 +91,8 @@ export const metricsMiddleware = (
 
   // Override res.end to capture metrics when response is sent
   const originalEnd = res.end;
-  res.end = function (this: Response, ...args: unknown[]): Response { // Typed this, args, and return
+  res.end = function (this: Response, ...args: unknown[]): Response {
+    // Typed this, args, and return
     const duration = (Date.now() - start) / 1000;
     const route = req.route?.path || req.path || "unknown";
     const method = req.method;
@@ -116,9 +117,8 @@ export const metricsMiddleware = (
       userAgent: req.get("User-Agent"),
     });
 
-    // Call original end method
-    // Type assertion for args in apply, assuming originalEnd expects similar signature parts.
-    return originalEnd.apply(this, args as [chunk?: string | Buffer, encoding?: string, cb?: (() => void)?]);
+    // Call original end method with proper typing
+    return originalEnd.apply(this, args as any);
   }; // Removed 'as any' for the function assignment
 
   next();
@@ -156,6 +156,13 @@ export const recordDatabaseQuery = (
   databaseQueryDuration.labels(operation, table).observe(duration / 1000); // Convert ms to seconds
 };
 
+export interface MetricsSnapshotValues {
+  httpRequestsTotal: number;
+  activeConnections: number;
+  databaseConnectionsActive: number;
+  averageResponseTime: number;
+}
+
 /**
  * Get current metrics values for health checks
  */
@@ -178,13 +185,6 @@ export const getMetricsSnapshot = async () => {
       aggregator: string;
     }
 
-    interface MetricsSnapshotValues {
-      httpRequestsTotal: number;
-      activeConnections: number;
-      databaseConnectionsActive: number;
-      averageResponseTime: number;
-    }
-
     const snapshot: MetricsSnapshotValues = {
       httpRequestsTotal: 0,
       activeConnections: 0,
@@ -192,7 +192,7 @@ export const getMetricsSnapshot = async () => {
       averageResponseTime: 0,
     };
 
-    metrics.forEach((metric: PrometheusMetric) => {
+    metrics.forEach((metric: any) => {
       switch (metric.name) {
         case "http_requests_total": // This should match the actual metric name from prom-client
         case "backend_service_http_requests_total": // Or this if prefix is applied by default
@@ -212,14 +212,22 @@ export const getMetricsSnapshot = async () => {
           if (metric.values.length > 0) {
             // The sum for a histogram is typically the metric name without _bucket, _sum, or _count
             // For a histogram, prom-client usually gives _sum and _count metrics separately or as part of values
-            const sumMetricValue = metric.values.find(v => v.metricName === `${metric.name}_sum`);
-            const countMetricValue = metric.values.find(v => v.metricName === `${metric.name}_count`);
+            const sumMetricValue = metric.values.find(
+              (v: any) => v.metricName === `${metric.name}_sum`
+            );
+            const countMetricValue = metric.values.find(
+              (v: any) => v.metricName === `${metric.name}_count`
+            );
 
-            const sum = sumMetricValue?.value || metric.values.find(v => !v.labels.quantile && !v.labels.le)?.value || 0; // Fallback for simple sum if not _sum
+            const sum =
+              sumMetricValue?.value ||
+              metric.values.find((v: any) => !v.labels.quantile && !v.labels.le)
+                ?.value ||
+              0; // Fallback for simple sum if not _sum
             const count = countMetricValue?.value || 1; // Avoid division by zero
 
             if (count > 0) {
-                 snapshot.averageResponseTime = sum / count;
+              snapshot.averageResponseTime = sum / count;
             }
           }
           break;

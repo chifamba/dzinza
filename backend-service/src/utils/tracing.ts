@@ -14,7 +14,7 @@ import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
 import { PgInstrumentation } from "@opentelemetry/instrumentation-pg"; // For PostgreSQL
 import { MongoDBInstrumentation } from "@opentelemetry/instrumentation-mongodb"; // If using MongoDB
-import { logger } from '../shared/utils/logger'; // Adjust path as needed
+import { logger } from "../shared/utils/logger.js"; // Adjust path as needed
 
 // Assuming logger is available, e.g., from shared utilities
 // import { logger } from '../shared/utils/logger'; // Adjust path as needed
@@ -65,16 +65,12 @@ export const initTracer = (
     logger.info(
       `OpenTelemetry Tracing initialized for service: ${serviceName}, environment: ${nodeEnv}`
     );
-    logger.info(
-      `Jaeger exporter configured with endpoint: ${jaegerEndpoint}`
-    );
+    logger.info(`Jaeger exporter configured with endpoint: ${jaegerEndpoint}`);
     if (nodeEnv !== "production") {
-      logger.info(
-        "ConsoleSpanExporter is active for development/debugging."
-      );
+      logger.info("ConsoleSpanExporter is active for development/debugging.");
     }
   } catch (error) {
-    logger.error({ err: error }, "Error initializing OpenTelemetry Tracing:");
+    logger.error("Error initializing OpenTelemetry Tracing:", error);
   }
 
   // Graceful shutdown
@@ -82,14 +78,12 @@ export const initTracer = (
     sdk
       .shutdown()
       .then(() =>
-        logger.info(
-          `OpenTelemetry Tracing terminated for ${serviceName}`
-        )
+        logger.info(`OpenTelemetry Tracing terminated for ${serviceName}`)
       )
       .catch((error) =>
         logger.error(
-          { err: error },
-          `Error terminating OpenTelemetry Tracing for ${serviceName}`
+          `Error terminating OpenTelemetry Tracing for ${serviceName}:`,
+          error
         )
       )
       .finally(() => process.exit(0));
