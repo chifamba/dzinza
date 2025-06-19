@@ -1,12 +1,12 @@
 import request from "supertest";
 import express from "express";
-import { healthRoutes } from "../../../src/routes/health";
-import { database } from "../../../src/config/database";
-import { migrationRunner } from "../../../src/config/migrations";
-import { logger } from "../../../src/shared/utils/logger";
+import { healthRoutes } from "../../src/routes/health";
+import { database } from "../../src/config/database";
+import { migrationRunner } from "../../src/config/migrations";
+import { logger } from "../../src/shared/utils/logger";
 
 // Mock the dependencies
-jest.mock("../../../src/config/database", () => ({
+jest.mock("../../src/config/database", () => ({
   database: {
     healthCheck: jest.fn(),
     query: jest.fn(),
@@ -14,7 +14,7 @@ jest.mock("../../../src/config/database", () => ({
   },
 }));
 
-jest.mock("../../../src/config/migrations", () => ({
+jest.mock("../../src/config/migrations", () => ({
   migrationRunner: {
     getMigrationStatus: jest.fn(),
   },
