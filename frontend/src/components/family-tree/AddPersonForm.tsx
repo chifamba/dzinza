@@ -4,22 +4,27 @@ import { FamilyMember } from "../../types/genealogy"; // Adjust path
 import { Input, Button } from "../ui"; // Adjust path
 
 interface AddPersonFormProps {
-  onAddPerson: (
+  onSubmit: (
     personData: Omit<
       FamilyMember,
       "id" | "parentIds" | "childIds" | "spouseIds"
     >
   ) => Promise<void>;
   onCancel: () => void;
-  isLoading: boolean;
+  isSubmitting: boolean;
   error?: string | null;
+  context?: {
+    relativeToId: string;
+    relationType: "parent" | "child" | "spouse";
+  } | null;
 }
 
 const AddPersonForm: React.FC<AddPersonFormProps> = ({
-  onAddPerson,
+  onSubmit,
   onCancel,
-  isLoading,
+  isSubmitting,
   error,
+  context,
 }) => {
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -31,12 +36,26 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const personData = { name, birthDate, deathDate, gender, profileImageUrl };
-    await onAddPerson(personData);
+    const personData = { 
+      name, 
+      birthDate: birthDate || undefined, 
+      deathDate: deathDate || undefined, 
+      gender, 
+      profileImageUrl: profileImageUrl || undefined 
+    };
+    await onSubmit(personData);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {context && (
+        <div className="mb-4 p-3 bg-blue-50 rounded-md">
+          <p className="text-sm text-blue-700">
+            Adding {context.relationType} to selected family member
+          </p>
+        </div>
+      )}
+      
       <Input
         label="Full Name"
         name="name"
@@ -45,42 +64,37 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="John Doe"
-        disabled={isLoading}
+        disabled={isSubmitting}
       />
-      <Input
-        label="Birth Date (YYYY-MM-DD)"
-        name="birthDate"
-        type="text" // Could be date type, but text is simpler for now
-        value={birthDate}
-        onChange={(e) => setBirthDate(e.target.value)}
-        placeholder="1990-01-01"
-        disabled={isLoading}
-      />
-      <Input
-        label="Death Date (YYYY-MM-DD)"
-        name="deathDate"
-        type="text"
-        value={deathDate}
-        onChange={(e) => setDeathDate(e.target.value)}
-        placeholder="2050-01-01"
-        disabled={isLoading}
-      />
-      <div>
-        <label
-          htmlFor="gender"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Input
+          label="Birth Date"
+          name="birthDate"
+          type="date"
+          value={birthDate}
+          onChange={(e) => setBirthDate(e.target.value)}
+          disabled={isSubmitting}
+        />
+        <Input
+          label="Death Date (Optional)"
+          name="deathDate"
+          type="date"
+          value={deathDate}
+          onChange={(e) => setDeathDate(e.target.value)}
+          disabled={isSubmitting}
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">
           Gender
         </label>
         <select
-          id="gender"
-          name="gender"
           value={gender}
-          onChange={(e) =>
-            setGender(e.target.value as "male" | "female" | "other" | "unknown")
-          }
-          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          disabled={isLoading}
+          onChange={(e) => setGender(e.target.value as "male" | "female" | "other" | "unknown")}
+          disabled={isSubmitting}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="unknown">Unknown</option>
           <option value="male">Male</option>
@@ -88,27 +102,38 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({
           <option value="other">Other</option>
         </select>
       </div>
+      
       <Input
         label="Profile Image URL (Optional)"
         name="profileImageUrl"
-        type="text"
+        type="url"
         value={profileImageUrl}
         onChange={(e) => setProfileImageUrl(e.target.value)}
-        placeholder="https://example.com/image.jpg"
-        disabled={isLoading}
+        placeholder="https://example.com/photo.jpg"
+        disabled={isSubmitting}
       />
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      <div className="flex justify-end space-x-3 pt-2">
+
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
+      <div className="flex justify-end space-x-3 pt-4">
         <Button
           type="button"
-          variant="secondary"
+          variant="outline"
           onClick={onCancel}
-          disabled={isLoading}
+          disabled={isSubmitting}
         >
           Cancel
         </Button>
-        <Button type="submit" variant="primary" disabled={isLoading}>
-          {isLoading ? "Adding..." : "Add Person"}
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={isSubmitting || !name.trim()}
+        >
+          {isSubmitting ? "Adding..." : "Add Family Member"}
         </Button>
       </div>
     </form>

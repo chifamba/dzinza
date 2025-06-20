@@ -576,9 +576,31 @@ const EditableFamilyTreeDisplay: React.FC = () => {
         />
       )}
 
-      {/* Existing modals would go here - Add Person, Edit Person, etc. */}
-      {/* For brevity, I'm not including all the existing modal implementations */}
-      {/* but they would be integrated here with the same structure as the original */}
+      {/* Add Person Modal */}
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setAddPersonContext(null);
+          setSubmitAddError(null);
+        }}
+        title="Add Family Member"
+        size="lg"
+      >
+        <AddPersonForm
+          onSubmit={handleSubmitAddPerson}
+          onCancel={() => {
+            setIsAddModalOpen(false);
+            setAddPersonContext(null);
+            setSubmitAddError(null);
+          }}
+          isSubmitting={isSubmittingAdd}
+          error={submitAddError}
+          context={addPersonContext}
+        />
+      </Modal>
+
+      {/* Other existing modals can be added here as needed */}
     </div>
   );
 };
