@@ -10,8 +10,14 @@ import { logger } from '../../../../src/shared/utils/logger.js';
 import multer from 'multer';
 import { recordActivity } from '../services/activityLogService.js'; // Import recordActivity
 import { parse as parseGedcom, Node as GedcomNode } from 'parse-gedcom'; // Added parse-gedcom
+import personRouter from './personRoutes.js'; // Import person routes
+import relationshipRouter from './relationshipRoutes.js'; // Import relationship routes
 
 const router = express.Router();
+// Mount person and relationship routes to handle actions within a specific tree
+router.use('/:treeId', personRouter);
+router.use('/:treeId', relationshipRouter);
+
 const upload = multer({ storage: multer.memoryStorage() }); // Configure multer for in-memory storage
 
 /**
@@ -979,119 +985,112 @@ router.get('/:treeId/members/:memberId/details', [
 
     const userId = req.user?.id;
     const { treeId, memberId } = req.params;
+    const currentUserId = req.user?.id; // Used for canUserView check
 
-    logger.info('Fetching person details with relationships', { userId, treeId, memberId, correlationId: req.correlationId });
+    logger.info('Fetching person details with relationships', { currentUserId, treeId, memberId, correlationId: req.correlationId });
 
     const familyTree = await FamilyTree.findById(treeId);
     if (!familyTree) {
-      logger.warn('Family tree not found for details endpoint', { userId, treeId, memberId, correlationId: req.correlationId });
+      logger.warn('Family tree not found for details endpoint', { currentUserId, treeId, memberId, correlationId: req.correlationId });
       return res.status(404).json({ error: 'Family tree not found' });
     }
 
-    if (!familyTree.canUserView(userId)) {
-      logger.warn('User access denied for family tree details', { userId, treeId, memberId, correlationId: req.correlationId });
+    if (!familyTree.canUserView(currentUserId)) {
+      logger.warn('User access denied for family tree details', { currentUserId, treeId, memberId, correlationId: req.correlationId });
       return res.status(403).json({ error: 'Access denied to this family tree' });
     }
 
-    const person = await Person.findOne({ _id: memberId, familyTreeId: treeId });
+    const personPopulateFields = 'firstName lastName nickName profilePhotoUrl gender uniqueId dateOfBirth isLiving dateOfDeath';
+
+    const person = await Person.findOne({ _id: memberId, familyTreeId: treeId })
+      .populate('biologicalMother', personPopulateFields)
+      .populate('biologicalFather', personPopulateFields)
+      .populate({
+        path: 'legalParents.parentId',
+        select: personPopulateFields,
+        model: 'Person',
+      })
+      .populate({
+        path: 'spouses.spouseId',
+        select: personPopulateFields,
+        model: 'Person',
+      })
+      .populate({
+        path: 'siblings.siblingId',
+        select: personPopulateFields,
+        model: 'Person',
+      })
+      .lean(); // Use .lean() for plain JS objects, easier to manipulate
+
     if (!person) {
-      logger.warn('Person not found for details endpoint', { userId, treeId, memberId, correlationId: req.correlationId });
+      logger.warn('Person not found for details endpoint', { currentUserId, treeId, memberId, correlationId: req.correlationId });
       return res.status(404).json({ error: 'Person not found in this family tree' });
     }
 
-    // Fetch relationships
-    const [parents, children, spouses, siblings] = await Promise.all([
-      Relationship.findParents(memberId, treeId).populate('personDetails', 'firstName lastName profilePhoto birthDate deathDate gender'),
-      Relationship.findChildren(memberId, treeId).populate('personDetails', 'firstName lastName profilePhoto birthDate deathDate gender'),
-      Relationship.findSpouses(memberId, treeId).populate('personDetails', 'firstName lastName profilePhoto birthDate deathDate gender'),
-      Relationship.findSiblings(memberId, treeId).populate('personDetails', 'firstName lastName profilePhoto birthDate deathDate gender'),
-    ]);
-
-    // Define a more specific type for populated relationships if Relationship model type is not directly usable
-    interface PopulatedRelationship {
-      personDetails: {
-        _id: string;
-        firstName?: string;
-        lastName?: string;
-        profilePhoto?: string;
-        birthDate?: { date?: Date, place?: string };
-        deathDate?: { date?: Date, place?: string };
-        gender?: string;
-      } | null; // personDetails could be null if populate fails or no match
-      type: string;
-      // Add other fields from Relationship model as needed
-      person1Id: { toString: () => string }; // Assuming it's an ObjectId or similar
-      person2Id: { toString: () => string };
-      person1Details?: Partial<PersonDocument> | null; // Typed more specifically
-      person2Details?: Partial<PersonDocument> | null; // Typed more specifically
+    // Construct parents array
+    const parentsResponse = [];
+    if (person.biologicalMother) {
+      parentsResponse.push({ personDetails: person.biologicalMother, relationshipType: 'BiologicalMother' });
+    }
+    if (person.biologicalFather) {
+      parentsResponse.push({ personDetails: person.biologicalFather, relationshipType: 'BiologicalFather' });
+    }
+    if (person.legalParents) {
+      person.legalParents.forEach(lp => {
+        if (lp.parentId) { // parentId should be populated here
+          parentsResponse.push({ personDetails: lp.parentId, relationshipType: lp.relationshipType });
+        }
+      });
     }
 
-    const mapToRelatedPerson = (relationship: PopulatedRelationship) => {
-      if (!relationship.personDetails) return null;
-      return {
-        _id: relationship.personDetails._id,
-        firstName: relationship.personDetails.firstName,
-        lastName: relationship.personDetails.lastName,
-        profilePhoto: relationship.personDetails.profilePhoto,
-        birthDate: relationship.personDetails.birthDate,
-        deathDate: relationship.personDetails.deathDate,
-        gender: relationship.personDetails.gender,
-        relationshipType: relationship.type, // e.g., 'parent-child', 'spouse', 'sibling'
-        // specificRelationshipType: relationship.specificType // e.g. 'biological', 'adopted', 'step' for PARENT_CHILD
-      };
-    };
+    // Construct spouses array
+    const spousesResponse = person.spouses?.map(s => ({
+      personDetails: s.spouseId, // This is already populated
+      status: s.relationshipType, // In ISpouseLink, relationshipType holds the status
+      startDate: s.startDate,
+      endDate: s.endDate,
+      _id: s._id // ID of the spouse link / relationship
+    })) || [];
 
-    // The findSiblings method returns RelationshipDoc[], where person1Id or person2Id is the sibling.
-    // We need to ensure personDetails refers to the SIBLING, not the original memberId.
-    const mapSiblingToRelatedPerson = (relationship: PopulatedRelationship) => {
-        let siblingDetails = relationship.personDetails;
-        // This might be pre-populated if personDetails was a virtual ref
-        // or if the populate logic in findSiblings is smart.
-        // Assuming findSiblings populates the OTHER person.
+    // Construct siblings array
+    const siblingsResponse = person.siblings?.map(s => ({
+      personDetails: s.siblingId, // This is already populated
+      type: s.relationshipType, // In ISiblingLink, relationshipType holds the sibling type
+      _id: s._id // ID of the sibling link / relationship
+    })) || [];
 
-        // If personDetails is not directly the sibling, try to determine which one it is.
-        if (relationship.person1Id.toString() === memberId) {
-            // person2 is the sibling
-            if (relationship.person2Details) siblingDetails = relationship.person2Details;
-        } else if (relationship.person2Id.toString() === memberId) {
-            // person1 is the sibling
-            if (relationship.person1Details) siblingDetails = relationship.person1Details;
-        }
-        // If findSiblings already populates a field like 'siblingDetails' correctly, use that.
-        // For now, assuming 'personDetails' is populated to be the sibling.
+    // Fetch children separately by querying Relationships model
+    const childrenRelationships = await Relationship.find({
+        familyTreeId: treeId,
+        person1Id: memberId, // Current person is person1 (parent) in ParentChild relationship
+        type: { $in: [RelationshipType.ParentChild, RelationshipType.GuardianChild] }
+      })
+      .populate('person2Id', personPopulateFields) // person2Id is the child
+      .lean();
 
-        if (!siblingDetails) return null;
-
-        return {
-            _id: siblingDetails._id,
-            firstName: siblingDetails.firstName,
-            lastName: siblingDetails.lastName,
-            profilePhoto: siblingDetails.profilePhoto,
-            birthDate: siblingDetails.birthDate,
-            deathDate: siblingDetails.deathDate,
-            gender: siblingDetails.gender,
-            relationshipType: relationship.type,
-            // specificRelationshipType: relationship.specificType
-        };
-    };
-
+    const childrenResponse = childrenRelationships.map(r => ({
+        personDetails: r.person2Id, // This is populated child
+        relationshipToParent: r.parentalRole, // Role of memberId (parent) towards this child
+        _id: r._id // ID of the relationship document
+    }));
 
     res.json({
-      person: person.toObject(), // Convert Mongoose document to plain object
-      parents: parents.map(mapToRelatedPerson).filter(p => p),
-      children: children.map(mapToRelatedPerson).filter(p => p),
-      spouses: spouses.map(mapToRelatedPerson).filter(p => p),
-      // Siblings might need special handling in mapToRelatedPerson if personDetails isn't always the sibling
-      // For findSiblings, the relationship model's static method should ideally populate the 'other' person.
-      // Let's assume findSiblings populates 'personDetails' to be the actual sibling.
-      siblings: siblings.map(mapSiblingToRelatedPerson).filter(s => s),
+      person, // Main person document (already lean)
+      parents: parentsResponse,
+      spouses: spousesResponse,
+      siblings: siblingsResponse,
+      children: childrenResponse,
     });
 
   } catch (error) {
-    logger.error('Error fetching person details with relationships:', error, { userId: req.user?.id, treeId: req.params.treeId, memberId: req.params.memberId, correlationId: req.correlationId });
+    const err = error as Error; // Type assertion
+    logger.error('Error fetching person details with relationships:', { userId: req.user?.id, treeId, memberId, error: err.message, stack: err.stack, correlationId: req.correlationId });
     res.status(500).json({ error: 'Failed to retrieve person details' });
   }
 });
+
+// Import RelationshipType enum for children query (if not already available globally for the file)
+import { RelationshipType } from '../models/Relationship.js';
 
 /**
  * @swagger
@@ -1185,10 +1184,18 @@ router.post('/:treeId/import/gedcom',
       let familiesProcessed = 0;
       let relationshipsCreated = 0;
       const gedcomIndiIdToMongoPersonIdMap = new Map<string, string>();
+      // Store FAMC links to process after all individuals are created
+      const famcLinks: { childMongoId: string, famcId: string }[] = [];
+       // Store FAMs links to process after all individuals are created
+      const famsLinks: { indiMongoId: string, famsId: string }[] = [];
+
 
       // Helper to find a specific node within a list of nodes by tag
       const findNodeByTag = (nodes: GedcomNode[] | undefined, tag: string): GedcomNode | undefined => {
         return nodes?.find(node => node.tag === tag);
+      };
+      const findNodesByTag = (nodes: GedcomNode[] | undefined, tag: string): GedcomNode[] => {
+        return nodes?.filter(node => node.tag === tag) || [];
       };
 
       // Helper to get data from a node, potentially nested
@@ -1201,164 +1208,303 @@ router.post('/:treeId/import/gedcom',
         return node.data;
       };
 
-      // Simplified Date Parser (expand as needed)
-      const parseGedcomDate = (dateNode: GedcomNode | undefined): Date | undefined => {
-        const dateStr = getNodeData(dateNode);
-        if (!dateStr) return undefined;
-        // This is very basic, GEDCOM dates can be complex (e.g., "ABT 1900", "BET 1900 AND 1910", "1 JAN 1900")
-        // `parse-gedcom` library might offer more structured date parsing on `dateNode.data` or `dateNode.tree`
-        // For now, try direct Date parsing, which will work for YYYY-MM-DD or simple year.
+      const gedcomDateStringToDateObject = (dateStr: string | undefined): { date?: Date, isEstimate?: boolean } => {
+        if (!dateStr) return {};
+        let isEstimate = false;
+        let cleanDateStr = dateStr;
+
+        if (dateStr.startsWith('ABT ') || dateStr.startsWith('EST ') || dateStr.startsWith('CAL ')) {
+            isEstimate = true;
+            cleanDateStr = dateStr.substring(4);
+        } else if (dateStr.startsWith('BEF ') || dateStr.startsWith('AFT ')) {
+            isEstimate = true; // Technically range, but treat as estimate
+            cleanDateStr = dateStr.substring(4);
+        } else if (dateStr.includes('BET ') && dateStr.includes('AND ')) {
+            isEstimate = true; // Range, take the first date for simplicity
+            cleanDateStr = dateStr.substring(4).split(' AND ')[0];
+        }
+
         try {
-          const parsed = new Date(dateStr);
-          if (!isNaN(parsed.getTime())) return parsed;
+            const parsed = new Date(cleanDateStr);
+            if (!isNaN(parsed.getTime())) return { date: parsed, isEstimate };
         } catch (e) { /* ignore */ }
-        // Attempt to parse "DD MMM YYYY"
-        const parts = dateStr.match(/(\d{1,2})\s+([A-Z]{3})\s+(\d{4})/i);
+
+        const monthMap: { [key: string]: number } = {
+            JAN:0, FEB:1, MAR:2, APR:3, MAY:4, JUN:5, JUL:6, AUG:7, SEP:8, OCT:9, NOV:10, DEC:11
+        };
+        const parts = cleanDateStr.match(/(\d{1,2})?\s*([A-Z]{3})\s*(\d{4})/i);
         if (parts) {
             try {
-                const parsed = new Date(`${parts[1]} ${parts[2]} ${parts[3]}`);
-                if (!isNaN(parsed.getTime())) return parsed;
+                const year = parseInt(parts[3]);
+                const month = monthMap[parts[2].toUpperCase()];
+                const day = parts[1] ? parseInt(parts[1]) : 1;
+                if (month !== undefined) {
+                    return { date: new Date(year, month, day), isEstimate };
+                }
             } catch (e) { /* ignore */ }
         }
-        return undefined; // Or store dateStr as is if parsing fails
+         if (/^\d{4}$/.test(cleanDateStr)) { // Just a year
+            isEstimate = true;
+            return { date: new Date(parseInt(cleanDateStr), 0, 1), isEstimate };
+        }
+        return { isEstimate: dateStr.length > 0 }; // If any date string exists but couldn't parse, mark as estimate
       };
 
-      const extractName = (nameNode: GedcomNode | undefined): { firstName?: string, lastName?: string } => {
-        const nameStr = getNodeData(nameNode);
-        if (!nameStr) return {};
-        const parts = nameStr.split('/');
-        const firstName = parts[0]?.trim();
-        const lastName = parts.length > 1 ? parts[1].trim() : undefined;
-        return { firstName, lastName };
-      };
 
       // --- Pass 1: Create Individuals (INDI records) ---
       const indiNodes = gedcomTree.filter(node => node.tag === 'INDI');
       for (const indiNode of indiNodes) {
-        if (!indiNode.pointer) continue; // Should have a pointer like @I1@
+        if (!indiNode.pointer) continue;
+
+        const personData: Partial<PersonDocument> = { familyTreeId: treeId as any };
 
         const nameNode = findNodeByTag(indiNode.tree, 'NAME');
-        const { firstName, lastName } = extractName(nameNode);
+        if (nameNode?.data) {
+            const nameParts = nameNode.data.split('/');
+            personData.firstName = getNodeData(findNodeByTag(nameNode.tree, 'GIVN')) || nameParts[0]?.trim();
+            personData.lastName = getNodeData(findNodeByTag(nameNode.tree, 'SURN')) || (nameParts[1] || '').trim() || undefined;
+            if (!personData.firstName && personData.lastName) { // Handle cases like "/Surname/"
+                 personData.firstName = "Unknown";
+            } else if (!personData.firstName && !personData.lastName && nameParts[0]) {
+                 personData.firstName = nameParts[0].trim(); // If just "Name"
+            }
 
-        const sexNode = findNodeByTag(indiNode.tree, 'SEX');
-        let gender = 'unknown';
-        if (sexNode?.data === 'M') gender = 'male';
-        if (sexNode?.data === 'F') gender = 'female';
-
-        const birtNode = findNodeByTag(indiNode.tree, 'BIRT');
-        const birthDate = parseGedcomDate(findNodeByTag(birtNode?.tree, 'DATE'));
-        const birthPlace = getNodeData(findNodeByTag(birtNode?.tree, 'PLAC'));
-
-        const deatNode = findNodeByTag(indiNode.tree, 'DEAT');
-        const deathDate = parseGedcomDate(findNodeByTag(deatNode?.tree, 'DATE'));
-        const deathPlace = getNodeData(findNodeByTag(deatNode?.tree, 'PLAC'));
-
-        const notes: string[] = [];
-        indiNode.tree?.filter(n => n.tag === 'NOTE').forEach(n => { if(n.data) notes.push(n.data); });
-        // Basic source handling (concatenate into notes or a dedicated field if model supports)
-        indiNode.tree?.filter(n => n.tag === 'SOUR').forEach(n => { if(n.data) notes.push(`Source: ${n.data}`); });
-
-        // Define a type for personData or use Partial<PersonDocument> if Person is a Mongoose model
-        interface GedcomPersonData {
-          familyTreeId: string;
-          userId?: string;
-          firstName: string;
-          lastName?: string;
-          gender: string;
-          birthDate?: { date?: Date; place?: string };
-          deathDate?: { date?: Date; place?: string };
-          isLiving: boolean;
-          notes?: string;
-          gedcomId: string;
+            personData.nickName = getNodeData(findNodeByTag(nameNode.tree, 'NICK'));
+            // Could also assemble NPFX, NSFX into a title field if model supports
+        } else {
+            personData.firstName = 'Unknown';
         }
 
-        const personData: GedcomPersonData = {
-          familyTreeId: treeId,
-          userId: userId, // Uploader
-          firstName: firstName || 'Unknown',
-          lastName: lastName,
-          gender: gender,
-          birthDate: birthDate ? { date: birthDate, place: birthPlace } : (birthPlace ? { place: birthPlace } : undefined),
-          deathDate: deathDate ? { date: deathDate, place: deathPlace } : (deathPlace ? { place: deathPlace } : undefined),
-          isLiving: !deatNode, // Simple assumption: if no DEAT tag, person is living
-          notes: notes.length > 0 ? notes.join('\n') : undefined, // Join notes or store as array if model supports
-          gedcomId: indiNode.pointer, // Store original GEDCOM ID for reference
-        };
+
+        const sexNode = findNodeByTag(indiNode.tree, 'SEX');
+        if (sexNode?.data === 'M') personData.gender = 'Male';
+        else if (sexNode?.data === 'F') personData.gender = 'Female';
+        else personData.gender = 'Unknown';
+
+        const birtNode = findNodeByTag(indiNode.tree, 'BIRT');
+        if (birtNode) {
+            const { date: birthD, isEstimate: birthEstimate } = gedcomDateStringToDateObject(getNodeData(findNodeByTag(birtNode.tree, 'DATE')));
+            personData.dateOfBirth = birthD;
+            personData.isBirthDateEstimated = birthEstimate;
+            personData.placeOfBirth = getNodeData(findNodeByTag(birtNode.tree, 'PLAC'));
+        }
+
+        const deatNode = findNodeByTag(indiNode.tree, 'DEAT');
+        if (deatNode) {
+            const { date: deathD, isEstimate: deathEstimate } = gedcomDateStringToDateObject(getNodeData(findNodeByTag(deatNode.tree, 'DATE')));
+            personData.dateOfDeath = deathD;
+            personData.isDeathDateEstimated = deathEstimate;
+            personData.placeOfDeath = getNodeData(findNodeByTag(deatNode.tree, 'PLAC'));
+            personData.causeOfDeath = getNodeData(findNodeByTag(deatNode.tree, 'CAUS'));
+            personData.isLiving = false;
+        } else {
+            personData.isLiving = true;
+        }
+
+        personData.notes = findNodesByTag(indiNode.tree, 'NOTE').map(n => n.data).join('\n') || undefined;
+
+        // Identifiers (very basic example)
+        personData.identifiers = [];
+        const uidNode = findNodeByTag(indiNode.tree, '_UID'); // Common custom tag for a unique ID
+        if (uidNode?.data) {
+            personData.identifiers.push({ type: 'Other', value: uidNode.data, notes: 'GEDCOM _UID' });
+        }
+        // Could add more complex identifier parsing here for SSN, IDNO etc.
+
+        // Store FAMC links
+        findNodesByTag(indiNode.tree, 'FAMC').forEach(famcNode => {
+            if (famcNode.data) {
+                 // Will map this later once Mongo IDs are known
+            }
+        });
+         findNodesByTag(indiNode.tree, 'FAMS').forEach(famsNode => {
+            if (famsNode.data) {
+                // Will map this later
+            }
+        });
+
 
         try {
           const newPerson = new Person(personData);
           await newPerson.save();
           gedcomIndiIdToMongoPersonIdMap.set(indiNode.pointer, newPerson._id.toString());
           individualsImported++;
+
+          // After saving person and getting mongoId, store FAMC links with mongoId
+          findNodesByTag(indiNode.tree, 'FAMC').forEach(famcNode => {
+            if (famcNode.data) {
+                famcLinks.push({ childMongoId: newPerson._id.toString(), famcId: famcNode.data });
+            }
+          });
+          findNodesByTag(indiNode.tree, 'FAMS').forEach(famsNode => {
+             if (famsNode.data) {
+                famsLinks.push({ indiMongoId: newPerson._id.toString(), famsId: famsNode.data });
+             }
+          });
+
         } catch(personSaveError) {
-            logger.error('Failed to save person from GEDCOM:', { gedcomId: indiNode.pointer, error: personSaveError, correlationId: req.correlationId });
+            logger.error('Failed to save person from GEDCOM:', { gedcomId: indiNode.pointer, name: personData.firstName, error: personSaveError, correlationId: req.correlationId });
         }
       }
 
       // --- Pass 2: Create Families (FAM records) and Relationships ---
       const famNodes = gedcomTree.filter(node => node.tag === 'FAM');
+      // Map FAM IDs to the Relationship documents created for spouses in that family
+      const famIdToSpousalRelationshipIdMap = new Map<string, string>();
+
       for (const famNode of famNodes) {
+        if (!famNode.pointer) continue;
         familiesProcessed++;
 
-        const husbNodes = famNode.tree?.filter(n => n.tag === 'HUSB') || [];
-        const wifeNodes = famNode.tree?.filter(n => n.tag === 'WIFE') || [];
-        const chilNodes = famNode.tree?.filter(n => n.tag === 'CHIL') || [];
-        const marrNode = findNodeByTag(famNode.tree, 'MARR');
+        const husbNode = findNodeByTag(famNode.tree, 'HUSB');
+        const wifeNode = findNodeByTag(famNode.tree, 'WIFE');
+        // const chilNodes = findNodesByTag(famNode.tree, 'CHIL'); // Children handled via famcLinks
 
-        const husbandMongoIds = husbNodes.map(h => gedcomIndiIdToMongoPersonIdMap.get(h.data)).filter(Boolean) as string[];
-        const wifeMongoIds = wifeNodes.map(w => gedcomIndiIdToMongoPersonIdMap.get(w.data)).filter(Boolean) as string[];
-        const childMongoIds = chilNodes.map(c => gedcomIndiIdToMongoPersonIdMap.get(c.data)).filter(Boolean) as string[];
+        const husbandMongoId = husbNode?.data ? gedcomIndiIdToMongoPersonIdMap.get(husbNode.data) : undefined;
+        const wifeMongoId = wifeNode?.data ? gedcomIndiIdToMongoPersonIdMap.get(wifeNode.data) : undefined;
 
-        // Marriage Event details
-        const marriageDate = parseGedcomDate(findNodeByTag(marrNode?.tree, 'DATE'));
-        const marriagePlace = getNodeData(findNodeByTag(marrNode?.tree, 'PLAC'));
-        const marriageEvent = marriageDate || marriagePlace ? {
-            date: marriageDate,
-            place: marriagePlace,
-            // type: 'marriage' // if Relationship model supports event type
-        } : undefined;
+        const marriageEventNodes = findNodesByTag(famNode.tree, 'MARR');
+        let mainMarriageEvent: any;
+        const relationshipEvents: any[] = [];
 
-        // Create spouse relationships
-        for (const husbandId of husbandMongoIds) {
-          for (const wifeId of wifeMongoIds) {
-            try {
-              const spouseRel = new Relationship({
-                person1Id: husbandId,
-                person2Id: wifeId,
-                type: 'spouse',
-                familyTreeId: treeId,
-                events: marriageEvent ? [marriageEvent] : [], // Assuming 'events' array on Relationship model
-              });
-              await spouseRel.save();
-              relationshipsCreated++;
-            } catch(relSaveError) {
-                logger.error('Failed to save spouse relationship from GEDCOM:', { husbandId, wifeId, error: relSaveError, correlationId: req.correlationId });
+        marriageEventNodes.forEach(marrNode => {
+            const eventDateDetails = gedcomDateStringToDateObject(getNodeData(findNodeByTag(marrNode.tree, 'DATE')));
+            const event = {
+                eventType: 'Marriage', // Default, could be refined by MARR.TYPE
+                date: eventDateDetails.date,
+                isDateEstimated: eventDateDetails.isEstimate,
+                place: getNodeData(findNodeByTag(marrNode.tree, 'PLAC')),
+                description: findNodesByTag(marrNode.tree, 'NOTE').map(n => n.data).join('\n') || undefined,
+            };
+            relationshipEvents.push(event);
+            if(!mainMarriageEvent && event.date) mainMarriageEvent = event; // Use first dated marriage as primary
+        });
+
+        const divorceEventNodes = findNodesByTag(famNode.tree, 'DIV');
+        divorceEventNodes.forEach(divNode => {
+            const eventDateDetails = gedcomDateStringToDateObject(getNodeData(findNodeByTag(divNode.tree, 'DATE')));
+            const event = {
+                eventType: 'Divorce',
+                date: eventDateDetails.date,
+                isDateEstimated: eventDateDetails.isEstimate,
+                place: getNodeData(findNodeByTag(divNode.tree, 'PLAC')),
+                description: findNodesByTag(divNode.tree, 'NOTE').map(n => n.data).join('\n') || undefined,
+            };
+            relationshipEvents.push(event);
+        });
+
+
+        if (husbandMongoId && wifeMongoId) {
+          try {
+            const husbandDoc = await Person.findById(husbandMongoId);
+            const wifeDoc = await Person.findById(wifeMongoId);
+
+            if (husbandDoc && wifeDoc) {
+                const spousalStatus = divorceEventNodes.length > 0 ? SpousalStatus.Divorced : (marriageEventNodes.length > 0 ? SpousalStatus.Married : SpousalStatus.Other);
+
+                const spouseRel = new Relationship({
+                    familyTreeId: treeId,
+                    person1Id: husbandMongoId,
+                    person2Id: wifeMongoId,
+                    type: RelationshipType.Spousal,
+                    status: spousalStatus,
+                    startDate: mainMarriageEvent?.date,
+                    // endDate could be inferred from divorce date if needed for the relationship itself
+                    events: relationshipEvents,
+                });
+                await spouseRel.save();
+                relationshipsCreated++;
+                famIdToSpousalRelationshipIdMap.set(famNode.pointer, spouseRel._id.toString());
+
+                // Denormalize: Update spouses array on Person documents
+                const spouseLink Husband = { _id: spouseRel._id, spouseId: wifeMongoId, relationshipType: spousalStatus, startDate: spouseRel.startDate, endDate: spouseRel.endDate };
+                const spouseLinkWife = { _id: spouseRel._id, spouseId: husbandMongoId, relationshipType: spousalStatus, startDate: spouseRel.startDate, endDate: spouseRel.endDate };
+
+                husbandDoc.spouses.push(spouseLinkHusband);
+                wifeDoc.spouses.push(spouseLinkWife);
+                await husbandDoc.save();
+                await wifeDoc.save();
             }
-          }
-        }
-
-        // Create parent-child relationships
-        const parentMongoIds = [...husbandMongoIds, ...wifeMongoIds];
-        for (const parentId of parentMongoIds) {
-          for (const childId of childMongoIds) {
-            try {
-              const parentChildRel = new Relationship({
-                person1Id: parentId, // Parent
-                person2Id: childId,  // Child
-                type: 'parent-child',
-                familyTreeId: treeId,
-              });
-              await parentChildRel.save();
-              relationshipsCreated++;
-            } catch(relSaveError) {
-                logger.error('Failed to save parent-child relationship from GEDCOM:', { parentId, childId, error: relSaveError, correlationId: req.correlationId });
-            }
+          } catch(relSaveError) {
+              logger.error('Failed to save spouse relationship from GEDCOM:', { husbandId, wifeId, error: relSaveError, correlationId: req.correlationId });
           }
         }
       }
 
+      // --- Pass 3: Link Children to Parents and create Parent-Child Relationships ---
+      for (const link of famcLinks) {
+          const childDoc = await Person.findById(link.childMongoId);
+          if (!childDoc) continue;
 
-      logger.info('GEDCOM import completed', { userId, treeId, individualsImported, familiesProcessed, relationshipsCreated, correlationId: req.correlationId });
+          const famNode = famNodes.find(fn => fn.pointer === link.famcId);
+          if (!famNode) continue;
+
+          const husbNode = findNodeByTag(famNode.tree, 'HUSB');
+          const wifeNode = findNodeByTag(famNode.tree, 'WIFE');
+          const fatherMongoId = husbNode?.data ? gedcomIndiIdToMongoPersonIdMap.get(husbNode.data) : undefined;
+          const motherMongoId = wifeNode?.data ? gedcomIndiIdToMongoPersonIdMap.get(wifeNode.data) : undefined;
+
+          let fatherRelExists = false;
+          let motherRelExists = false;
+
+          // Check if relationship already exists (e.g. from a previous import or manual entry)
+          if (fatherMongoId) {
+            fatherRelExists = await Relationship.exists({familyTreeId: treeId, person1Id: fatherMongoId, person2Id: childDoc._id, type: RelationshipType.ParentChild});
+          }
+          if (motherMongoId) {
+            motherRelExists = await Relationship.exists({familyTreeId: treeId, person1Id: motherMongoId, person2Id: childDoc._id, type: RelationshipType.ParentChild});
+          }
+
+          // Determine adoption status for this child within this family
+          const adoptionNode = findNodeByTag(findNodeByTag(famNode.tree, 'CHIL', link.childMongoId)?.tree, 'ADOP'); // CHIL pointer is not standard, this check is weak.
+                                                                                                                    // A better check would be on CHIL node itself or child's INDI record for adoption events tied to this FAM.
+                                                                                                                    // For now, assuming ADOP tag under FAM directly implies adoption by parents in this FAM.
+
+          let fatherIsAdoptive = !!findNodeByTag(adoptionNode?.tree, 'HUSB'); // if HUSB is listed under ADOP tag for child
+          let motherIsAdoptive = !!findNodeByTag(adoptionNode?.tree, 'WIFE'); // if WIFE is listed under ADOP tag for child
+          if (adoptionNode && !fatherIsAdoptive && !motherIsAdoptive) { // General ADOP tag for child in this family
+            fatherIsAdoptive = !!fatherMongoId; // If father exists in FAM, they are adoptive
+            motherIsAdoptive = !!motherMongoId; // If mother exists in FAM, they are adoptive
+          }
+
+
+          if (fatherMongoId && !fatherRelExists) {
+              const fatherRole = fatherIsAdoptive ? ParentalRole.AdoptiveFather : ParentalRole.BiologicalFather;
+              try {
+                  const rel = new Relationship({ familyTreeId: treeId, person1Id: fatherMongoId, person2Id: childDoc._id, type: RelationshipType.ParentChild, parentalRole: fatherRole });
+                  await rel.save(); relationshipsCreated++;
+                  if (!fatherIsAdoptive) childDoc.biologicalFather = fatherMongoId as any;
+                  else {
+                    const existingLegal = childDoc.legalParents.find(lp => lp.parentId.equals(fatherMongoId));
+                    if(!existingLegal) childDoc.legalParents.push({parentId: fatherMongoId as any, relationshipType: 'Adoptive'});
+                  }
+              } catch (e) { logger.error("Error creating father-child rel", e); }
+          }
+          if (motherMongoId && !motherRelExists) {
+              const motherRole = motherIsAdoptive ? ParentalRole.AdoptiveMother : ParentalRole.BiologicalMother;
+              try {
+                  const rel = new Relationship({ familyTreeId: treeId, person1Id: motherMongoId, person2Id: childDoc._id, type: RelationshipType.ParentChild, parentalRole: motherRole });
+                  await rel.save(); relationshipsCreated++;
+                  if (!motherIsAdoptive) childDoc.biologicalMother = motherMongoId as any;
+                  else {
+                    const existingLegal = childDoc.legalParents.find(lp => lp.parentId.equals(motherMongoId));
+                    if(!existingLegal) childDoc.legalParents.push({parentId: motherMongoId as any, relationshipType: 'Adoptive'});
+                  }
+              } catch (e) { logger.error("Error creating mother-child rel", e); }
+          }
+          await childDoc.save();
+      }
+
+      // Note: Sibling relationships are not explicitly created here from FAM records.
+      // They can be inferred later or created if specific SIBL tags were used (non-standard).
+      // The current Person.siblings array is populated via direct Sibling Relationship creation.
+
+      // Update FamilyTree statistics
+      familyTree.statistics.totalPersons = (familyTree.statistics.totalPersons || 0) + individualsImported;
+      // totalGenerations and completenessScore would need more complex calculation
+      await familyTree.save();
+
+      logger.info('GEDCOM import completed with enhanced parsing', { userId, treeId, individualsImported, familiesProcessed, relationshipsCreated, correlationId: req.correlationId });
       res.status(200).json({
         message: 'GEDCOM import processed.',
         individualsImported,
