@@ -207,13 +207,12 @@ RelationshipSchema.statics.findSiblings = async function (personId: Types.Object
   const directSiblingIds = directSiblings.map(r => r.person1Id.equals(personId) ? r.person2Id : r.person1Id);
 
   // Combine and unique
-  const allSiblingIds = Array.from(new Set([...siblingsRel.map(id => id.toString()), ...directSiblingIds.map(id => id.toString())]));
+  const allSiblingIds = Array.from(new Set([...siblingsRel, ...directSiblingIds]));
 
   // Populate sibling details
-  // This part needs to be careful if Person model is not directly accessible here or to avoid circular dependencies.
-  // Typically, you'd return IDs and let the service layer populate.
-  // For now, returning IDs. The calling function can populate.
-  return allSiblingIds; // Returns array of sibling ObjectIds
+  const populatedSiblings = await this.populate(allSiblingIds, { path: 'person2Id', select: 'name age gender' });
+
+  return populatedSiblings; // Returns array of populated sibling documents
 };
 
 
