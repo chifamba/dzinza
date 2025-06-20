@@ -1,7 +1,10 @@
 // src/types/genealogy.ts
 export interface FamilyMember {
   id: string;
-  name: string;
+  name: string; // Computed full name (first + middle + last)
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
   birthDate?: string;
   deathDate?: string;
   gender?: 'male' | 'female' | 'other' | 'unknown';

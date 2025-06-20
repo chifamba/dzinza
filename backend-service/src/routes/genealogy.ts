@@ -47,7 +47,10 @@ router.get("/test", async (req: Request, res: Response) => {
 // Interfaces for genealogy data
 interface FamilyMember {
   id: string;
-  name: string;
+  name: string; // Computed full name
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
   gender?: string;
   birthDate?: string;
   deathDate?: string;
@@ -165,6 +168,9 @@ router.get("/family-tree", async (req: Request, res: Response) => {
       members: membersResult.rows.map((row) => ({
         id: row.id,
         name: row.name,
+        firstName: row.first_name,
+        middleName: row.middle_name,
+        lastName: row.last_name,
         gender: row.gender,
         birthDate: row.birth_date,
         deathDate: row.death_date,
@@ -242,9 +248,25 @@ router.post(
   "/members",
   [
     body("name")
+      .optional()
       .trim()
-      .isLength({ min: 1, max: 100 })
-      .withMessage("Name is required and must be less than 100 characters"),
+      .isLength({ max: 255 })
+      .withMessage("Name must be less than 255 characters"),
+    body("firstName")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("First name must be less than 100 characters"),
+    body("middleName")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Middle name must be less than 100 characters"),
+    body("lastName")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Last name must be less than 100 characters"),
     body("gender")
       .optional()
       .isIn(["male", "female", "other", "unknown"])
@@ -297,8 +319,33 @@ router.post(
 
       const userId = decoded.userId;
 
-      const { name, gender, birthDate, deathDate, profileImageUrl, parentIds } =
-        req.body;
+      const { 
+        name, 
+        firstName, 
+        middleName, 
+        lastName, 
+        gender, 
+        birthDate, 
+        deathDate, 
+        profileImageUrl, 
+        parentIds 
+      } = req.body;
+
+      // If separate name fields provided, compute full name
+      let computedName = name;
+      if (!computedName && (firstName || lastName)) {
+        computedName = [firstName, middleName, lastName]
+          .filter(n => n && n.trim())
+          .join(' ');
+      }
+
+      // Validate that we have some form of name
+      if (!computedName || !computedName.trim()) {
+        return res.status(400).json({
+          error: "Validation Error",
+          message: "Either name or firstName/lastName must be provided",
+        });
+      }
 
       // Get or create default family tree
       const treeResult = await database.query(
@@ -321,12 +368,15 @@ router.post(
       const memberId = uuidv4();
       const result = await database.query(
         `INSERT INTO family_members 
-         (id, name, gender, birth_date, death_date, profile_image_url, parent_ids, child_ids, spouse_ids, tree_id, user_id) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+         (id, name, first_name, middle_name, last_name, gender, birth_date, death_date, profile_image_url, parent_ids, child_ids, spouse_ids, tree_id, user_id) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
          RETURNING *`,
         [
           memberId,
-          name,
+          computedName,
+          firstName?.trim() || null,
+          middleName?.trim() || null,
+          lastName?.trim() || null,
           gender || "unknown",
           birthDate || null,
           deathDate || null,

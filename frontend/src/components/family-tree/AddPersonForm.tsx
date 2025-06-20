@@ -26,7 +26,9 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({
   error,
   context,
 }) => {
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [middleName, setMiddleName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [deathDate, setDeathDate] = useState("");
   const [gender, setGender] = useState<"male" | "female" | "other" | "unknown">(
@@ -36,12 +38,21 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const personData = { 
-      name, 
-      birthDate: birthDate || undefined, 
-      deathDate: deathDate || undefined, 
-      gender, 
-      profileImageUrl: profileImageUrl || undefined 
+    
+    // Generate full name from components
+    const fullName = [firstName, middleName, lastName]
+      .filter(name => name.trim())
+      .join(' ');
+    
+    const personData = {
+      name: fullName,
+      firstName: firstName.trim() || undefined,
+      middleName: middleName.trim() || undefined,
+      lastName: lastName.trim() || undefined,
+      birthDate: birthDate || undefined,
+      deathDate: deathDate || undefined,
+      gender,
+      profileImageUrl: profileImageUrl || undefined,
     };
     await onSubmit(personData);
   };
@@ -55,18 +66,53 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({
           </p>
         </div>
       )}
-      
-      <Input
-        label="Full Name"
-        name="name"
-        type="text"
-        required
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="John Doe"
-        disabled={isSubmitting}
-      />
-      
+
+      {/* Name Fields */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium text-gray-900">Name Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Input
+            label="First Name"
+            name="firstName"
+            type="text"
+            required
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="John"
+            disabled={isSubmitting}
+          />
+          <Input
+            label="Middle Name (Optional)"
+            name="middleName"
+            type="text"
+            value={middleName}
+            onChange={(e) => setMiddleName(e.target.value)}
+            placeholder="Michael"
+            disabled={isSubmitting}
+          />
+          <Input
+            label="Last Name"
+            name="lastName"
+            type="text"
+            required
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Doe"
+            disabled={isSubmitting}
+          />
+        </div>
+        
+        {/* Show preview of full name */}
+        {(firstName.trim() || lastName.trim()) && (
+          <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+            <span className="font-medium">Full Name Preview: </span>
+            {[firstName, middleName, lastName]
+              .filter(name => name.trim())
+              .join(' ') || 'Enter at least first or last name'}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           label="Birth Date"
@@ -85,14 +131,16 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({
           disabled={isSubmitting}
         />
       </div>
-      
+
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
           Gender
         </label>
         <select
           value={gender}
-          onChange={(e) => setGender(e.target.value as "male" | "female" | "other" | "unknown")}
+          onChange={(e) =>
+            setGender(e.target.value as "male" | "female" | "other" | "unknown")
+          }
           disabled={isSubmitting}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
@@ -102,7 +150,7 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({
           <option value="other">Other</option>
         </select>
       </div>
-      
+
       <Input
         label="Profile Image URL (Optional)"
         name="profileImageUrl"
@@ -131,7 +179,7 @@ const AddPersonForm: React.FC<AddPersonFormProps> = ({
         <Button
           type="submit"
           variant="primary"
-          disabled={isSubmitting || !name.trim()}
+          disabled={isSubmitting || (!firstName.trim() && !lastName.trim())}
         >
           {isSubmitting ? "Adding..." : "Add Family Member"}
         </Button>

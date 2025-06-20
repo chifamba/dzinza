@@ -36,7 +36,7 @@ const Navbar: React.FC<NavbarProps> = ({ logo, navItems, className = "" }) => {
 
   const handleLogoutClick = () => {
     dispatch(logout());
-    navigate('/'); // Redirect to home page after logout
+    navigate("/"); // Redirect to home page after logout
   };
   return (
     <nav

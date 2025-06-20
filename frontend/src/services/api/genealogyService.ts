@@ -251,7 +251,10 @@ class GenealogyService {
 
   // New Backend API Methods - Compatible with our genealogy endpoints
   async addFamilyMember(personData: {
-    name: string;
+    name?: string;
+    firstName?: string;
+    middleName?: string;
+    lastName?: string;
     gender?: string;
     birthDate?: string;
     deathDate?: string;
