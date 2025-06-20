@@ -1,7 +1,7 @@
 // src/pages/FamilyTreePage.tsx
-import React from 'react';
-import { Header, Footer } from '../components/layout'; // Adjust path as needed
-import { EditableFamilyTreeDisplay } from '../components/family-tree'; // Use the editable canvas component
+import React from "react";
+import { Header, Footer } from "../components/layout"; // Adjust path as needed
+import { EditableFamilyTreeDisplay } from "../components/family-tree"; // Use the editable canvas component
 
 const FamilyTreePage: React.FC = () => {
   return (
