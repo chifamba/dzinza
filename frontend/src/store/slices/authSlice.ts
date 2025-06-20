@@ -47,28 +47,39 @@ interface AuthState {
   tempMfaData: { emailForMfa: string } | null; // Store email or other temp data needed for MFA step
 }
 
-const initialState: AuthState = {
-  isAuthenticated: false,
-  user: null,
-  accessToken: null,
-  refreshToken: null,
-  status: 'idle',
-  error: null,
+// Initialize state from localStorage if available
+const getInitialAuthState = (): AuthState => {
+  const tokenKey = import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token';
+  const refreshTokenKey = import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token';
+  
+  const accessToken = localStorage.getItem(tokenKey);
+  const refreshToken = localStorage.getItem(refreshTokenKey);
+  
+  return {
+    isAuthenticated: !!accessToken, // If token exists, consider authenticated
+    user: null, // Will be fetched on app start if authenticated
+    accessToken,
+    refreshToken,
+    status: 'idle',
+    error: null,
 
-  forgotPasswordStatus: 'idle',
-  forgotPasswordError: null,
-  forgotPasswordMessage: null,
+    forgotPasswordStatus: 'idle',
+    forgotPasswordError: null,
+    forgotPasswordMessage: null,
 
-  resetPasswordStatus: 'idle',
-  resetPasswordError: null,
-  resetPasswordMessage: null,
+    resetPasswordStatus: 'idle',
+    resetPasswordError: null,
+    resetPasswordMessage: null,
 
-  profileStatus: 'idle',
-  profileError: null,
+    profileStatus: 'idle',
+    profileError: null,
 
-  mfaRequired: false,
-  tempMfaData: null,
+    mfaRequired: false,
+    tempMfaData: null,
+  };
 };
+
+const initialState: AuthState = getInitialAuthState();
 
 const authSlice = createSlice({
   name: 'auth',
@@ -91,6 +102,15 @@ const authSlice = createSlice({
       state.profileStatus = 'succeeded'; // Profile is implicitly fetched on login
       state.mfaRequired = false; // Clear MFA flag on successful login
       state.tempMfaData = null;
+      
+      // Store tokens in localStorage for API client
+      const tokenKey = import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token';
+      const refreshTokenKey = import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token';
+      
+      localStorage.setItem(tokenKey, action.payload.tokens.accessToken);
+      if (action.payload.tokens.refreshToken) {
+        localStorage.setItem(refreshTokenKey, action.payload.tokens.refreshToken);
+      }
     },
     loginMfaRequired(state, action: PayloadAction<{ emailForMfa: string }>) {
       state.status = 'succeeded'; // Or a new status like 'mfaPending'
@@ -118,16 +138,23 @@ const authSlice = createSlice({
       state.refreshToken = null;
       state.status = 'idle';
       state.error = null;
+      
+      // Clear tokens from localStorage
+      const tokenKey = import.meta.env.VITE_JWT_STORAGE_KEY || 'dzinza_access_token';
+      const refreshTokenKey = import.meta.env.VITE_REFRESH_TOKEN_KEY || 'dzinza_refresh_token';
+      
+      localStorage.removeItem(tokenKey);
+      localStorage.removeItem(refreshTokenKey);
+      
+      // Reset other auth-related state
       state.forgotPasswordStatus = 'idle';
       state.forgotPasswordError = null;
       state.forgotPasswordMessage = null;
       state.resetPasswordStatus = 'idle';
       state.resetPasswordError = null;
       state.resetPasswordMessage = null;
-      // Reset profile status on logout
       state.profileStatus = 'idle';
       state.profileError = null;
-      // Reset MFA state on logout
       state.mfaRequired = false;
       state.tempMfaData = null;
     },

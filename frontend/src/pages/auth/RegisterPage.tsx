@@ -20,7 +20,7 @@ const RegisterPage: React.FC = () => {
  useEffect(() => {
     // If registration implies immediate login and isAuthenticated becomes true
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate('/family-tree');
     }
   }, [isAuthenticated, navigate]);
 

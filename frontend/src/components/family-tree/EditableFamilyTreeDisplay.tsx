@@ -294,6 +294,33 @@ const EditableFamilyTreeDisplay: React.FC = () => {
     }
   };
 
+  const handleSubmitAddPerson = async (personData: any) => {
+    try {
+      setIsSubmittingAdd(true);
+      setSubmitAddError(null);
+
+      const newMember = await genealogyService.addFamilyMember({
+        name: personData.name,
+        gender: personData.gender,
+        birthDate: personData.birthDate,
+        deathDate: personData.deathDate,
+        profileImageUrl: personData.profileImageUrl,
+      });
+
+      // Reload the family tree to show the new member
+      await loadFamilyTree();
+      
+      // Close the modal
+      setIsAddModalOpen(false);
+      setAddPersonContext(null);
+    } catch (err: any) {
+      console.error("Error adding family member:", err);
+      setSubmitAddError(err.message || "Failed to add family member");
+    } finally {
+      setIsSubmittingAdd(false);
+    }
+  };
+
   const handleEditPerson = (person: FamilyMember) => {
     if (!isAuthenticated) return;
     setEditingPerson(person);
@@ -392,6 +419,94 @@ const EditableFamilyTreeDisplay: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-red-600">{error}</div>
+      </div>
+    );
+  }
+
+  // Empty state - no family tree exists yet
+  if (!tree || !tree.members || tree.members.length === 0) {
+    return (
+      <div className="relative w-full h-screen bg-gray-50">
+        {/* Family Tree Toolbar - always show for consistency */}
+        <FamilyTreeToolbar
+          isAuthenticated={isAuthenticated}
+          isEditMode={true} // Auto-enable edit mode for empty state
+          isRelationshipCreationMode={isRelationshipCreationMode}
+          selectedPersonForRelationship={selectedPersonForRelationship}
+          onToggleEditMode={handleToggleEditMode}
+          onToggleRelationshipMode={handleToggleRelationshipMode}
+          onCancelRelationshipCreation={handleCancelRelationshipCreation}
+          onAddPerson={() => handleAddPerson()}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetView={handleResetView}
+        />
+
+        {/* Welcome/Empty State */}
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center max-w-md px-6">
+            <div className="mb-6">
+              <svg 
+                className="mx-auto h-24 w-24 text-gray-400" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={1.5} 
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" 
+                />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Start Your Family Tree
+            </h2>
+            <p className="text-gray-600 mb-8">
+              Welcome to your family tree canvas! Begin by adding your first family member. 
+              You can add parents, children, and spouses as you build your family history.
+            </p>
+            <div className="space-y-4">
+              <button
+                onClick={() => handleAddPerson()}
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+              >
+                <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add First Family Member
+              </button>
+              <div className="text-sm text-gray-500">
+                <p>💡 Tip: Start with yourself or a central family member</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Modals for adding first person - include Add Person Modal */}
+        <Modal
+          isOpen={isAddModalOpen}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setAddPersonContext(null);
+            setSubmitAddError(null);
+          }}
+          title="Add Family Member"
+          size="lg"
+        >
+          <AddPersonForm
+            onSubmit={handleSubmitAddPerson}
+            onCancel={() => {
+              setIsAddModalOpen(false);
+              setAddPersonContext(null);
+              setSubmitAddError(null);
+            }}
+            isSubmitting={isSubmittingAdd}
+            error={submitAddError}
+            context={addPersonContext}
+          />
+        </Modal>
       </div>
     );
   }

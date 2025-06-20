@@ -17,7 +17,7 @@ const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard'); // Redirect if already authenticated
+      navigate('/family-tree'); // Redirect to family tree canvas after login
     }
   }, [isAuthenticated, navigate]);
 
@@ -27,7 +27,7 @@ const LoginPage: React.FC = () => {
     try {
       const response = await authService.login({ email, password });
       dispatch(loginSuccess(response));
-      navigate('/dashboard');
+      navigate('/family-tree'); // Redirect to family tree canvas after successful login
     } catch (err: unknown) {
       let message = 'Failed to login'; // Default
       if (typeof err === 'object' && err !== null && 'response' in err) {

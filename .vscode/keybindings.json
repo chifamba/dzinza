@@ -1,7 +1,7 @@
 [
   // Optimized keyboard shortcuts for Dzinza project
   // Press Ctrl+Shift+P (Cmd+Shift+P on Mac) and type "Tasks: Run Task" to access these
-  
+
   // Development Environment
   {
     "key": "ctrl+shift+d",
@@ -13,7 +13,7 @@
     "command": "workbench.action.tasks.runTask",
     "args": "🛑 Stop Development Environment"
   },
-  
+
   // Individual Services
   {
     "key": "ctrl+shift+b",
@@ -25,7 +25,7 @@
     "command": "workbench.action.tasks.runTask",
     "args": "🎨 Start Frontend Only"
   },
-  
+
   // Testing
   {
     "key": "ctrl+shift+t",
@@ -37,14 +37,14 @@
     "command": "workbench.action.tasks.runTask",
     "args": "🧪 Frontend Tests (Watch)"
   },
-  
+
   // Building
   {
     "key": "ctrl+shift+alt+b",
     "command": "workbench.action.tasks.runTask",
     "args": "🏗️ Build All Services"
   },
-  
+
   // Code Quality
   {
     "key": "ctrl+shift+l",
@@ -56,7 +56,7 @@
     "command": "workbench.action.tasks.runTask",
     "args": "🔍 Type Check All"
   },
-  
+
   // Database
   {
     "key": "ctrl+shift+alt+d",
@@ -68,7 +68,7 @@
     "command": "workbench.action.tasks.runTask",
     "args": "🗄️ Reset Database"
   },
-  
+
   // Git Operations
   {
     "key": "ctrl+shift+g",

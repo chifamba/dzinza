@@ -27,8 +27,11 @@ function App() {
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/family-tree" element={<FamilyTreePage />} /> {/* Add this route */}
+          {/* Default protected route redirects to family tree canvas */}
+          <Route path="/dashboard" element={<Navigate to="/family-tree" replace />} />
+          <Route path="/family-tree" element={<FamilyTreePage />} />
+          {/* Add a root protected route that also redirects to family-tree */}
+          <Route path="/app" element={<Navigate to="/family-tree" replace />} />
           {/* Add other protected routes here */}
         </Route>
 
