@@ -1,14 +1,18 @@
 // src/components/family-tree/RelationshipCreationDialog.tsx
-import React, { useState } from 'react';
-import { FamilyMember } from '../../types/genealogy';
-import { Button, Modal } from '../ui';
+import React, { useState } from "react";
+import { FamilyMember } from "../../types/genealogy";
+import { Button, Modal } from "../ui";
 
 interface RelationshipCreationDialogProps {
   isOpen: boolean;
   onClose: () => void;
   person1: FamilyMember;
   person2: FamilyMember;
-  onCreateRelationship: (person1Id: string, person2Id: string, relationshipType: string) => void;
+  onCreateRelationship: (
+    person1Id: string,
+    person2Id: string,
+    relationshipType: string
+  ) => void;
   isSubmitting: boolean;
   error: string | null;
 }
@@ -22,48 +26,48 @@ const RelationshipCreationDialog: React.FC<RelationshipCreationDialogProps> = ({
   isSubmitting,
   error,
 }) => {
-  const [relationshipType, setRelationshipType] = useState<string>('');
+  const [relationshipType, setRelationshipType] = useState<string>("");
 
   const relationshipOptions = [
-    { 
-      value: 'SPOUSE', 
-      label: 'Spouse/Partner',
+    {
+      value: "SPOUSE",
+      label: "Spouse/Partner",
       description: `${person1.name} and ${person2.name} are married or partners`,
-      icon: '💕'
+      icon: "💕",
     },
-    { 
-      value: 'PARENT_CHILD_P1_PARENT', 
+    {
+      value: "PARENT_CHILD_P1_PARENT",
       label: `${person1.name} is parent of ${person2.name}`,
       description: `${person1.name} is the parent and ${person2.name} is the child`,
-      icon: '👥'
+      icon: "👥",
     },
-    { 
-      value: 'PARENT_CHILD_P2_PARENT', 
+    {
+      value: "PARENT_CHILD_P2_PARENT",
       label: `${person2.name} is parent of ${person1.name}`,
       description: `${person2.name} is the parent and ${person1.name} is the child`,
-      icon: '👥'
+      icon: "👥",
     },
-    { 
-      value: 'SIBLING', 
-      label: 'Siblings',
+    {
+      value: "SIBLING",
+      label: "Siblings",
       description: `${person1.name} and ${person2.name} are siblings`,
-      icon: '🤝'
+      icon: "🤝",
     },
   ];
 
   const handleSubmit = () => {
     if (!relationshipType) return;
-    
+
     let finalType = relationshipType;
     let finalPerson1Id = person1.id;
     let finalPerson2Id = person2.id;
 
     // Handle the parent-child relationships with proper perspective
-    if (relationshipType === 'PARENT_CHILD_P1_PARENT') {
-      finalType = 'PARENT_CHILD';
+    if (relationshipType === "PARENT_CHILD_P1_PARENT") {
+      finalType = "PARENT_CHILD";
       // person1 is parent, person2 is child - keep as is
-    } else if (relationshipType === 'PARENT_CHILD_P2_PARENT') {
-      finalType = 'PARENT_CHILD';
+    } else if (relationshipType === "PARENT_CHILD_P2_PARENT") {
+      finalType = "PARENT_CHILD";
       // person2 is parent, person1 is child - swap them
       finalPerson1Id = person2.id;
       finalPerson2Id = person1.id;
@@ -73,7 +77,7 @@ const RelationshipCreationDialog: React.FC<RelationshipCreationDialogProps> = ({
   };
 
   const handleClose = () => {
-    setRelationshipType('');
+    setRelationshipType("");
     onClose();
   };
 
@@ -90,17 +94,23 @@ const RelationshipCreationDialog: React.FC<RelationshipCreationDialogProps> = ({
             <div className="text-center">
               <div className="font-medium text-blue-600">{person1.name}</div>
               <div className="text-sm text-gray-500">
-                {person1.gender && `${person1.gender.charAt(0).toUpperCase() + person1.gender.slice(1)}`}
+                {person1.gender &&
+                  `${
+                    person1.gender.charAt(0).toUpperCase() +
+                    person1.gender.slice(1)
+                  }`}
                 {person1.birthDate && ` • Born ${person1.birthDate}`}
               </div>
             </div>
-            <div className="px-4">
-              🔗
-            </div>
+            <div className="px-4">🔗</div>
             <div className="text-center">
               <div className="font-medium text-green-600">{person2.name}</div>
               <div className="text-sm text-gray-500">
-                {person2.gender && `${person2.gender.charAt(0).toUpperCase() + person2.gender.slice(1)}`}
+                {person2.gender &&
+                  `${
+                    person2.gender.charAt(0).toUpperCase() +
+                    person2.gender.slice(1)
+                  }`}
                 {person2.birthDate && ` • Born ${person2.birthDate}`}
               </div>
             </div>
@@ -113,7 +123,10 @@ const RelationshipCreationDialog: React.FC<RelationshipCreationDialogProps> = ({
           </label>
           <div className="space-y-2">
             {relationshipOptions.map((option) => (
-              <label key={option.value} className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+              <label
+                key={option.value}
+                className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+              >
                 <input
                   type="radio"
                   name="relationshipType"
@@ -127,7 +140,9 @@ const RelationshipCreationDialog: React.FC<RelationshipCreationDialogProps> = ({
                     {option.icon}
                     <span className="font-medium">{option.label}</span>
                   </div>
-                  <div className="text-sm text-gray-600 mt-1">{option.description}</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {option.description}
+                  </div>
                 </div>
               </label>
             ))}
@@ -155,7 +170,7 @@ const RelationshipCreationDialog: React.FC<RelationshipCreationDialogProps> = ({
             className="flex-1"
             disabled={!relationshipType || isSubmitting}
           >
-            {isSubmitting ? 'Creating...' : 'Create Relationship'}
+            {isSubmitting ? "Creating..." : "Create Relationship"}
           </Button>
         </div>
       </div>

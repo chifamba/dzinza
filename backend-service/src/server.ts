@@ -25,6 +25,7 @@ import { errorHandler } from "./shared/middleware/errorHandler";
 import { metricsMiddleware } from "./shared/middleware/metrics";
 import { healthRoutes } from "./routes/health";
 import { authRoutes } from "./routes/auth";
+import { genealogyRoutes } from "./routes/genealogy";
 import { notificationRoutes } from "./routes/notifications";
 import { swaggerOptions } from "./config/swagger";
 import { database } from "./config/database";
@@ -127,6 +128,9 @@ app.use("/health", healthRoutes);
 
 // Authentication routes (handled by gateway)
 app.use("/api/auth", authRoutes);
+
+// Genealogy routes
+app.use("/api/genealogy", genealogyRoutes);
 
 // Notification routes
 app.use("/api/notifications", notificationRoutes);

@@ -9,29 +9,34 @@ import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 // promClient removed, will use registry from our metrics utility
 // import promClient from "prom-client";
-import metricsRegistry, { httpRequestCounter, httpRequestDurationMicroseconds } from './utils/metrics'; // Import our metrics setup
-import { initTracer } from './utils/tracing'; // Import OpenTelemetry tracer initialization
+import metricsRegistry, {
+  httpRequestCounter,
+  httpRequestDurationMicroseconds,
+} from "./utils/metrics"; // Import our metrics setup
+import { initTracer } from "./utils/tracing"; // Import OpenTelemetry tracer initialization
 
 // Import routes
 import familyTreeRoutes from "./routes/familyTree.js";
-import personRoutes from "./routes/person.js";
-import relationshipRoutes from "./routes/relationship.js";
-import mediaRoutes from "./routes/media.js";
-import eventsRouter from "./routes/events.js";
+import personRoutes from "./routes/personRoutes.js";
+import relationshipRoutes from "./routes/relationshipRoutes.js";
+// TODO: Create these route files
+// import mediaRoutes from "./routes/media.js";
+// import eventsRouter from "./routes/events.js";
 
 // Import middleware
-import { errorHandler } from "../../../src/shared/middleware/errorHandler.js";
-import { authMiddleware } from "../../../src/shared/middleware/auth.js";
-import { logger } from "../../../src/shared/utils/logger.js";
+import { errorHandler } from "../../src/shared/middleware/errorHandler.js";
+import { authMiddleware } from "../../src/shared/middleware/auth.js";
+import { logger } from "../../src/shared/utils/logger.js";
 
 dotenv.config();
 
 // Initialize OpenTelemetry Tracer
-const OTEL_SERVICE_NAME = process.env.OTEL_SERVICE_NAME || 'genealogy-service';
-const JAEGER_ENDPOINT = process.env.JAEGER_ENDPOINT || 'http://localhost:4318/v1/traces';
-const NODE_ENV = process.env.NODE_ENV || 'development';
+const OTEL_SERVICE_NAME = process.env.OTEL_SERVICE_NAME || "genealogy-service";
+const JAEGER_ENDPOINT =
+  process.env.JAEGER_ENDPOINT || "http://localhost:4318/v1/traces";
+const NODE_ENV = process.env.NODE_ENV || "development";
 
-if (process.env.ENABLE_TRACING === 'true') {
+if (process.env.ENABLE_TRACING === "true") {
   initTracer(OTEL_SERVICE_NAME, JAEGER_ENDPOINT, NODE_ENV);
 }
 
@@ -86,18 +91,16 @@ app.use(limiter);
 // Metrics middleware (using imported metrics)
 app.use((req, res, next) => {
   const start = Date.now();
-  res.on('finish', () => {
+  res.on("finish", () => {
     const durationSeconds = (Date.now() - start) / 1000; // Convert to seconds
-    const route = req.route?.path || req.path || 'unknown_route';
+    const route = req.route?.path || req.path || "unknown_route";
     const statusCode = res.statusCode.toString();
 
     httpRequestDurationMicroseconds
       .labels(req.method, route, statusCode) // Use 'code' as label name if that's what histogram expects, or change histogram
       .observe(durationSeconds);
 
-    httpRequestCounter
-      .labels(req.method, route, statusCode)
-      .inc();
+    httpRequestCounter.labels(req.method, route, statusCode).inc();
   });
   next();
 });
@@ -155,7 +158,10 @@ app.get("/metrics", async (req, res) => {
     res.end(await metricsRegistry.metrics());
   } catch (err) {
     const error = err as Error;
-    logger.error('Failed to serve metrics:', { error: error.message, stack: error.stack });
+    logger.error("Failed to serve metrics:", {
+      error: error.message,
+      stack: error.stack,
+    });
     res.status(500).send(error.message);
   }
 });
@@ -167,8 +173,9 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 app.use("/api/family-trees", authMiddleware, familyTreeRoutes);
 app.use("/api/persons", authMiddleware, personRoutes);
 app.use("/api/relationships", authMiddleware, relationshipRoutes);
-app.use("/api/media", authMiddleware, mediaRoutes);
-app.use("/api/events", authMiddleware, eventsRouter);
+// TODO: Implement these routes
+// app.use("/api/media", authMiddleware, mediaRoutes);
+// app.use("/api/events", authMiddleware, eventsRouter);
 
 // Error handling
 app.use(errorHandler);

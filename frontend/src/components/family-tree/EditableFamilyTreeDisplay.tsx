@@ -1,6 +1,6 @@
 // src/components/family-tree/EditableFamilyTreeDisplay.tsx
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { useSelector } from 'react-redux';
+import { useSelector } from "react-redux";
 import { FamilyTree, FamilyMember, Relationship } from "../../types/genealogy";
 import { genealogyService } from "../../services/api/genealogyService";
 import Tree, { RawNodeDatum, RenderCustomNodeElementFn } from "react-d3-tree";
@@ -11,7 +11,7 @@ import AddRelationshipForm from "./AddRelationshipForm";
 import EditableTreePersonNode from "./EditableTreePersonNode";
 import FamilyTreeToolbar from "./FamilyTreeToolbar";
 import RelationshipCreationDialog from "./RelationshipCreationDialog";
-import { RootState } from '../../store';
+import { RootState } from "../../store";
 
 const EditableFamilyTreeDisplay: React.FC = () => {
   const [tree, setTree] = useState<FamilyTree | null>(null);
@@ -19,13 +19,18 @@ const EditableFamilyTreeDisplay: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Auth state
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, user } = useSelector(
+    (state: RootState) => state.auth
+  );
 
   // Edit mode state
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isRelationshipCreationMode, setIsRelationshipCreationMode] = useState(false);
-  const [selectedPersonForRelationship, setSelectedPersonForRelationship] = useState<FamilyMember | null>(null);
-  const [pendingRelationshipPerson, setPendingRelationshipPerson] = useState<FamilyMember | null>(null);
+  const [isRelationshipCreationMode, setIsRelationshipCreationMode] =
+    useState(false);
+  const [selectedPersonForRelationship, setSelectedPersonForRelationship] =
+    useState<FamilyMember | null>(null);
+  const [pendingRelationshipPerson, setPendingRelationshipPerson] =
+    useState<FamilyMember | null>(null);
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -33,7 +38,7 @@ const EditableFamilyTreeDisplay: React.FC = () => {
   const [submitAddError, setSubmitAddError] = useState<string | null>(null);
   const [addPersonContext, setAddPersonContext] = useState<{
     relativeToId: string;
-    relationType: 'parent' | 'child' | 'spouse';
+    relationType: "parent" | "child" | "spouse";
   } | null>(null);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -42,30 +47,45 @@ const EditableFamilyTreeDisplay: React.FC = () => {
   const [submitEditError, setSubmitEditError] = useState<string | null>(null);
 
   const [isRelationshipModalOpen, setIsRelationshipModalOpen] = useState(false);
-  const [sourcePersonForRelationship, setSourcePersonForRelationship] = useState<FamilyMember | null>(null);
-  const [isSubmittingRelationship, setIsSubmittingRelationship] = useState(false);
-  const [submitRelationshipError, setSubmitRelationshipError] = useState<string | null>(null);
+  const [sourcePersonForRelationship, setSourcePersonForRelationship] =
+    useState<FamilyMember | null>(null);
+  const [isSubmittingRelationship, setIsSubmittingRelationship] =
+    useState(false);
+  const [submitRelationshipError, setSubmitRelationshipError] = useState<
+    string | null
+  >(null);
 
   // Enhanced relationship creation modal
   const [isEnhancedRelModalOpen, setIsEnhancedRelModalOpen] = useState(false);
-  const [enhancedRelPerson1, setEnhancedRelPerson1] = useState<FamilyMember | null>(null);
-  const [enhancedRelPerson2, setEnhancedRelPerson2] = useState<FamilyMember | null>(null);
+  const [enhancedRelPerson1, setEnhancedRelPerson1] =
+    useState<FamilyMember | null>(null);
+  const [enhancedRelPerson2, setEnhancedRelPerson2] =
+    useState<FamilyMember | null>(null);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deletingPerson, setDeletingPerson] = useState<FamilyMember | null>(null);
+  const [deletingPerson, setDeletingPerson] = useState<FamilyMember | null>(
+    null
+  );
   const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
-  const [submitDeleteError, setSubmitDeleteError] = useState<string | null>(null);
+  const [submitDeleteError, setSubmitDeleteError] = useState<string | null>(
+    null
+  );
 
   const [isDeleteRelModalOpen, setIsDeleteRelModalOpen] = useState(false);
   const [deletingRelDetails, setDeletingRelDetails] = useState<{
     person1Id: string;
     person2Id: string;
-    type: "SPOUSE" | "PARENT_CHILD_PARENT_PERSPECTIVE" | "PARENT_CHILD_CHILD_PERSPECTIVE";
+    type:
+      | "SPOUSE"
+      | "PARENT_CHILD_PARENT_PERSPECTIVE"
+      | "PARENT_CHILD_CHILD_PERSPECTIVE";
     person1Name?: string;
     person2Name?: string;
   } | null>(null);
   const [isSubmittingDeleteRel, setIsSubmittingDeleteRel] = useState(false);
-  const [submitDeleteRelError, setSubmitDeleteRelError] = useState<string | null>(null);
+  const [submitDeleteRelError, setSubmitDeleteRelError] = useState<
+    string | null
+  >(null);
 
   // Tree visualization state
   const [d3TreeData, setD3TreeData] = useState<RawNodeDatum | null>(null);
@@ -124,7 +144,11 @@ const EditableFamilyTreeDisplay: React.FC = () => {
   };
 
   const handleStartRelationshipCreation = (person: FamilyMember) => {
-    if (isRelationshipCreationMode && selectedPersonForRelationship && selectedPersonForRelationship.id !== person.id) {
+    if (
+      isRelationshipCreationMode &&
+      selectedPersonForRelationship &&
+      selectedPersonForRelationship.id !== person.id
+    ) {
       // Complete the relationship - open the enhanced dialog
       setEnhancedRelPerson1(selectedPersonForRelationship);
       setEnhancedRelPerson2(person);
@@ -138,7 +162,10 @@ const EditableFamilyTreeDisplay: React.FC = () => {
     }
   };
 
-  const handleAddPerson = (relativeToId?: string, relationType?: 'parent' | 'child' | 'spouse') => {
+  const handleAddPerson = (
+    relativeToId?: string,
+    relationType?: "parent" | "child" | "spouse"
+  ) => {
     if (relativeToId && relationType) {
       setAddPersonContext({ relativeToId, relationType });
     } else {
@@ -184,7 +211,10 @@ const EditableFamilyTreeDisplay: React.FC = () => {
       });
     });
 
-    const buildHierarchy = (personId: string, visited: Set<string>): RawNodeDatum | null => {
+    const buildHierarchy = (
+      personId: string,
+      visited: Set<string>
+    ): RawNodeDatum | null => {
       if (visited.has(personId)) return null;
       visited.add(personId);
 
@@ -193,14 +223,14 @@ const EditableFamilyTreeDisplay: React.FC = () => {
 
       const childIds = childrenMap.get(personId) || [];
       node.children = childIds
-        .map(childId => buildHierarchy(childId, new Set(visited)))
-        .filter(child => child !== null) as RawNodeDatum[];
+        .map((childId) => buildHierarchy(childId, new Set(visited)))
+        .filter((child) => child !== null) as RawNodeDatum[];
 
       return node;
     };
 
-    const roots = members.filter(member => 
-      !member.parentIds || member.parentIds.length === 0
+    const roots = members.filter(
+      (member) => !member.parentIds || member.parentIds.length === 0
     );
 
     if (roots.length === 0 && members.length > 0) {
@@ -213,12 +243,16 @@ const EditableFamilyTreeDisplay: React.FC = () => {
 
     return {
       name: "Family Trees",
-      children: roots.map(root => buildHierarchy(root.id, new Set())).filter(Boolean) as RawNodeDatum[]
+      children: roots
+        .map((root) => buildHierarchy(root.id, new Set()))
+        .filter(Boolean) as RawNodeDatum[],
     };
   };
 
   // Custom node renderer
-  const renderCustomNodeElement: RenderCustomNodeElementFn = ({ nodeDatum }) => (
+  const renderCustomNodeElement: RenderCustomNodeElementFn = ({
+    nodeDatum,
+  }) => (
     <EditableTreePersonNode
       nodeDatum={nodeDatum}
       toggleNode={() => {}}
@@ -244,14 +278,17 @@ const EditableFamilyTreeDisplay: React.FC = () => {
       setError(null);
       const fetchedTree = await genealogyService.getFamilyTree();
       setTree(fetchedTree);
-      
+
       if (fetchedTree && fetchedTree.members) {
-        const treeData = buildTreeData(fetchedTree.members, fetchedTree.relationships || []);
+        const treeData = buildTreeData(
+          fetchedTree.members,
+          fetchedTree.relationships || []
+        );
         setD3TreeData(treeData);
       }
     } catch (err) {
-      console.error('Error loading family tree:', err);
-      setError('Failed to load family tree. Please try again.');
+      console.error("Error loading family tree:", err);
+      setError("Failed to load family tree. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -265,7 +302,11 @@ const EditableFamilyTreeDisplay: React.FC = () => {
 
   const handleConnectRelationship = (person: FamilyMember) => {
     if (!isAuthenticated) return;
-    if (isRelationshipCreationMode && selectedPersonForRelationship && selectedPersonForRelationship.id !== person.id) {
+    if (
+      isRelationshipCreationMode &&
+      selectedPersonForRelationship &&
+      selectedPersonForRelationship.id !== person.id
+    ) {
       handleStartRelationshipCreation(person);
     } else {
       setSourcePersonForRelationship(person);
@@ -279,37 +320,56 @@ const EditableFamilyTreeDisplay: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const handleDeleteRelationship = (person1Id: string, person2Id: string, type: "SPOUSE" | "PARENT_CHILD_PARENT_PERSPECTIVE" | "PARENT_CHILD_CHILD_PERSPECTIVE") => {
+  const handleDeleteRelationship = (
+    person1Id: string,
+    person2Id: string,
+    type:
+      | "SPOUSE"
+      | "PARENT_CHILD_PARENT_PERSPECTIVE"
+      | "PARENT_CHILD_CHILD_PERSPECTIVE"
+  ) => {
     if (!isAuthenticated) return;
-    const person1Name = tree?.members?.find(m => m.id === person1Id)?.name;
-    const person2Name = tree?.members?.find(m => m.id === person2Id)?.name;
-    setDeletingRelDetails({ person1Id, person2Id, type, person1Name, person2Name });
+    const person1Name = tree?.members?.find((m) => m.id === person1Id)?.name;
+    const person2Name = tree?.members?.find((m) => m.id === person2Id)?.name;
+    setDeletingRelDetails({
+      person1Id,
+      person2Id,
+      type,
+      person1Name,
+      person2Name,
+    });
     setIsDeleteRelModalOpen(true);
   };
 
   const handleViewProfile = (person: FamilyMember) => {
     // Implementation for viewing profile
-    console.log('View profile for:', person);
+    console.log("View profile for:", person);
   };
 
   // Enhanced relationship creation handler
-  const handleCreateEnhancedRelationship = async (person1Id: string, person2Id: string, relationshipType: string) => {
+  const handleCreateEnhancedRelationship = async (
+    person1Id: string,
+    person2Id: string,
+    relationshipType: string
+  ) => {
     try {
       setIsSubmittingRelationship(true);
       setSubmitRelationshipError(null);
-      
+
       await genealogyService.createRelationship({
         person1Id,
         person2Id,
-        type: relationshipType as any
+        type: relationshipType as any,
       });
-      
+
       await loadFamilyTree();
       setIsEnhancedRelModalOpen(false);
       setEnhancedRelPerson1(null);
       setEnhancedRelPerson2(null);
     } catch (err: any) {
-      setSubmitRelationshipError(err.message || 'Failed to create relationship');
+      setSubmitRelationshipError(
+        err.message || "Failed to create relationship"
+      );
     } finally {
       setIsSubmittingRelationship(false);
     }

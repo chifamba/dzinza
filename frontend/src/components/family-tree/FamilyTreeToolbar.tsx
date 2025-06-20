@@ -1,17 +1,17 @@
 // src/components/family-tree/FamilyTreeToolbar.tsx
-import React from 'react';
-import { Button } from '../ui';
-import { 
-  Edit3, 
-  Eye, 
-  Plus, 
-  Link, 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCcw, 
+import React from "react";
+import { Button } from "../ui";
+import {
+  Edit3,
+  Eye,
+  Plus,
+  Link,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
   Save,
-  X
-} from 'lucide-react';
+  X,
+} from "lucide-react";
 
 interface FamilyTreeToolbarProps {
   isAuthenticated: boolean;
@@ -111,10 +111,9 @@ const FamilyTreeToolbar: React.FC<FamilyTreeToolbarProps> = ({
                   {isRelationshipCreationMode ? (
                     <div className="flex flex-col gap-1 w-full">
                       <div className="text-xs text-orange-600 font-medium">
-                        {selectedPersonForRelationship 
-                          ? `Selected: ${selectedPersonForRelationship.name}` 
-                          : "Creating Relationship..."
-                        }
+                        {selectedPersonForRelationship
+                          ? `Selected: ${selectedPersonForRelationship.name}`
+                          : "Creating Relationship..."}
                       </div>
                       <div className="text-xs text-gray-500">
                         Click another person to connect
