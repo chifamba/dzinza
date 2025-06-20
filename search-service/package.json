@@ -12,8 +12,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --watchAll=false",
-    "lint": "eslint . --fix",
-    "lint:check": "eslint .",
+    "lint": "eslint . --config ../eslint.config.js --fix",
+    "lint:check": "eslint . --config ../eslint.config.js",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },

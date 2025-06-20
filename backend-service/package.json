@@ -11,8 +11,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint . --fix",
-    "lint:check": "eslint .",
+    "lint": "eslint . --config ../eslint.config.js --fix",
+    "lint:check": "eslint . --config ../eslint.config.js",
     "typecheck": "tsc --noEmit",
     "docker:build": "docker build -t dzinza/backend .",
     "docker:run": "docker run -p 3001:3001 dzinza/backend"
