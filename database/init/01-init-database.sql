@@ -1,62 +1,53 @@
 -- Dzinza Database Initialization Script
+-- This script creates seed data for the Dzinza application
 
--- Create extensions
+-- Enable necessary extensions (if not already enabled)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Create users table
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    preferred_language VARCHAR(2) DEFAULT 'en',
-    email_verified BOOLEAN DEFAULT FALSE,
-    mfa_enabled BOOLEAN DEFAULT FALSE,
-    mfa_secret VARCHAR(255),
-    failed_login_attempts INTEGER DEFAULT 0,
-    locked_until TIMESTAMP,
-    last_login TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create refresh tokens table
-CREATE TABLE refresh_tokens (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    token_hash VARCHAR(255) NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    revoked BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create audit logs table
-CREATE TABLE audit_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    action VARCHAR(100) NOT NULL,
-    details JSONB,
-    ip_address INET,
-    user_agent TEXT,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create indexes
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
-CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
-CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX idx_audit_logs_timestamp ON audit_logs(timestamp);
-
 -- Insert default admin user (password: AdminPassword123!)
-INSERT INTO users (email, password_hash, first_name, last_name, email_verified)
+-- This user is created for initial setup and should have password changed in production
+-- Password hash generated with: bcrypt.hashSync('AdminPassword123!', 12)
+INSERT INTO users (
+    email, 
+    username, 
+    password_hash, 
+    first_name, 
+    last_name, 
+    email_verified, 
+    is_admin,
+    is_active
+) 
 VALUES (
-    'admin@dzinza.com',
-    crypt('AdminPassword123!', gen_salt('bf', 12)),
+    'admin@dzinza.org',
+    'admin',
+    '$2a$12$RjWxsKktGGD9crf7VQwrzegIB4bFLx5t.sGCfYalaHa/4uUy15TVu',
     'Admin',
     'User',
+    true,
+    true,
     true
-);
+) ON CONFLICT (email) DO NOTHING; -- Don't overwrite if user already exists
+
+-- Insert a test user for development (password: TestPassword123!)
+-- Password hash generated with: bcrypt.hashSync('TestPassword123!', 12)
+INSERT INTO users (
+    email, 
+    username, 
+    password_hash, 
+    first_name, 
+    last_name, 
+    email_verified, 
+    is_admin,
+    is_active
+) 
+VALUES (
+    'test@dzinza.com',
+    'testuser',
+    '$2a$12$c573zjncgdSPlXDn1CJtmuFQeHEGDAujGAvoQPx.KN7biTf5GGh2q',
+    'Test',
+    'User',
+    true,
+    false,
+    true
+) ON CONFLICT (email) DO NOTHING;

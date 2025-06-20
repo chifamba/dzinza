@@ -15,54 +15,55 @@
 
 ### Security
 
-* ✅ Validate inputs (Zod)
-* ✅ Hash passwords (bcrypt)
-* ✅ Use secure headers (helmet, cors)
-* ❌ Don’t log sensitive data
+- ✅ Validate inputs (Zod)
+- ✅ Hash passwords (bcrypt)
+- ✅ Use secure headers (helmet, cors)
+- ❌ Don’t log sensitive data
 
 ### React Components
 
-* ✅ Use TypeScript interfaces
-* ✅ React Query for data
-* ✅ Error boundaries + loading states
+- ✅ Use TypeScript interfaces
+- ✅ React Query for data
+- ✅ Error boundaries + loading states
 
 ### API Design
 
-* ✅ RESTful routes with middleware
-* ✅ Input validation, auth, clear responses
+- ✅ RESTful routes with middleware
+- ✅ Input validation, auth, clear responses
 
 ### Patterns to Follow
 
-* ✅ Tailwind over inline styles
-* ✅ `unknown` instead of `any`
-* ✅ React state, avoid direct DOM manipulation
+- ✅ Tailwind over inline styles
+- ✅ `unknown` instead of `any`
+- ✅ React state, avoid direct DOM manipulation
 
 ## Performance & Testing
 
-* ✅ Lazy load large components
-* ✅ Use `React.memo` for static renders
-* ✅ Paginate large queries
-* ✅ Write RTL/component & API tests
+- ✅ Lazy load large components
+- ✅ Use `React.memo` for static renders
+- ✅ Paginate large queries
+- ✅ Write RTL/component & API tests
 
 ## Accessibility
 
-* ✅ Use ARIA labels, semantic HTML
-* ✅ Label inputs, support keyboard navigation
-
+- ✅ Use ARIA labels, semantic HTML
+- ✅ Label inputs, support keyboard navigation
 
 ## Quick Decision Flow
 
-* **Security-related?** Validate, auth, sanitize inputs
-* **User-facing?** Use accessible, performant patterns
-* **Style/structure?** Follow project conventions
+- **Security-related?** Validate, auth, sanitize inputs
+- **User-facing?** Use accessible, performant patterns
+- **Style/structure?** Follow project conventions
 
 ## Need Help?
 
-* Security → escalate immediately
-* Architecture → `docs/SYSTEM_ARCHITECTURE.md`
-* Code Standards → `docs/CODE_STANDARDS.md`
+- Security → escalate immediately
+- Architecture → `docs/SYSTEM_ARCHITECTURE.md`
+- Code Standards → `docs/CODE_STANDARDS.md`
 
 ---
 
 ✅ Default to secure, maintainable, accessible code
 ❌ Never expose secrets, skip validation, or break conventions
+
+- After each task, ensure that the build passes and all tests are green. Fix any issues before proceeding to the next task.\_
