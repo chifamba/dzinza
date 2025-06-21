@@ -321,14 +321,11 @@ const FamilyTreeDisplay: React.FC = () => {
         setD3TreeData(transformedData);
       } else if (tree.members.length > 0) {
         // Case: No relationships, but members exist. Display them as a list under a synthetic root.
-        // Or, if buildTreeData is modified to always return a single root/array, this might simplify.
         const firstPersonNode: RawNodeDatum = {
           name: tree.members[0].name,
           originalId: tree.members[0].id,
           attributes: { ...tree.members[0] }, // Spread attributes like gender, birthDate
         };
-        // If buildTreeData can return a single node for a single person, use that.
-        // For now, let's assume it might return null or an empty array for such cases.
         if (tree.members.length === 1) {
           setD3TreeData(firstPersonNode);
         } else {
@@ -451,67 +448,114 @@ const FamilyTreeDisplay: React.FC = () => {
 
   const currentMembers = tree?.members || []; // Keep this for handler access
 
-  const renderNode: RenderCustomNodeElementFn = ({ nodeDatum, toggleNode }) => {
-    // Ensure tree and tree.members are available
-    if (!tree || !tree.members) {
-      return null; // Or some placeholder/loading for the node
-    }
+  const renderNode: RenderCustomNodeElementFn = ({ nodeDatum, toggleNode: _toggleNode }) => {
     // Find the original FamilyMember data
-    // nodeDatum.originalId should be set by buildTreeData
-    const member = tree.members.find((m) => m.id === nodeDatum.originalId);
-
-    // It's crucial that nodeDatum.attributes is correctly populated by buildTreeData
-    // or that we pass the full 'member' if TreePersonNode expects that.
-    // TreePersonNode is currently designed to get most from nodeDatum.attributes or nodeDatum.name
+    const member = tree?.members.find((m) => m.id === nodeDatum.originalId);
+    
+    if (!member) {
+      // Fallback for nodes without member data
+      return (
+        <g>
+          <rect x="-60" y="-30" width="120" height="60" fill="#EF4444" stroke="#DC2626" strokeWidth="2" rx="8" />
+          <text x="0" y="0" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="12">
+            {nodeDatum.name}
+          </text>
+        </g>
+      );
+    }
 
     return (
       <g>
-        {/* Adjust x, y, width, height for foreignObject as needed */}
-        {/* These values might need to be dynamic based on node content or fixed if nodes are uniform size */}
-        {/* The x,y for foreignObject are relative to the <g> which react-d3-tree positions */}
-        {/* Reduced size for better responsiveness, adjust x,y to keep it centered */}
-        <foreignObject x="-110" y="-80" width="220" height="170">
-          <TreePersonNode
-            nodeDatum={nodeDatum}
-            toggleNode={toggleNode}
-            // Removed the first, redundant onEdit here.
-            // The onEdit and onViewProfile props below correctly map to the buttons in TreePersonNode.
-            onConnectRelationship={() => {
-              if (member) openRelationshipModal(member);
-              else
-                console.warn(
-                  "Original member not found for connect",
-                  nodeDatum.originalId
-                );
+        <foreignObject x="-120" y="-85" width="240" height="170">
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              padding: '8px',
+              backgroundColor: 'white',
+              border: '2px solid #3B82F6',
+              borderRadius: '8px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              fontSize: '12px',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              cursor: 'pointer',
+              overflow: 'hidden'
             }}
-            onViewProfile={() => {
-              if (member) openEditPersonModal(member, "view");
-              else
-                console.warn(
-                  "Original member not found for view profile",
-                  nodeDatum.originalId
-                );
+            onClick={() => {
+              console.log("Node clicked:", member.name);
+              openEditPersonModal(member, "view");
             }}
-            onEdit={() => {
-              // This is the onEdit prop for the "Edit" button on the TreePersonNode.
-              if (member) openEditPersonModal(member, "edit");
-              else
-                console.warn(
-                  "Original member not found for edit",
-                  nodeDatum.originalId
-                );
-            }}
-            onDelete={() => {
-              if (member) openDeletePersonModal(member);
-              else
-                console.warn(
-                  "Original member not found for delete",
-                  nodeDatum.originalId
-                );
-            }}
-            onDeleteRelationship={openDeleteRelationshipModal}
-            allMembers={tree.members}
-          />
+          >
+            <div style={{ textAlign: 'center', fontWeight: 'bold', color: '#1E40AF', marginBottom: '4px' }}>
+              {member.name}
+            </div>
+            
+            {member.gender && (
+              <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '2px' }}>
+                <strong>Gender:</strong> {member.gender}
+              </div>
+            )}
+            
+            {member.birthDate && (
+              <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '2px' }}>
+                <strong>Born:</strong> {new Date(member.birthDate).getFullYear()}
+              </div>
+            )}
+            
+            {member.occupation && (
+              <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '2px' }}>
+                <strong>Occupation:</strong> {member.occupation}
+              </div>
+            )}
+            
+            {member.placeOfBirth && (
+              <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '4px' }}>
+                <strong>Place:</strong> {member.placeOfBirth}
+              </div>
+            )}
+            
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-around', 
+              marginTop: '8px',
+              gap: '4px'
+            }}>
+              <button
+                style={{
+                  fontSize: '8px',
+                  padding: '2px 6px',
+                  backgroundColor: '#3B82F6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openEditPersonModal(member, "edit");
+                }}
+              >
+                Edit
+              </button>
+              <button
+                style={{
+                  fontSize: '8px',
+                  padding: '2px 6px',
+                  backgroundColor: '#10B981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openRelationshipModal(member);
+                }}
+              >
+                Connect
+              </button>
+            </div>
+          </div>
         </foreignObject>
       </g>
     );
