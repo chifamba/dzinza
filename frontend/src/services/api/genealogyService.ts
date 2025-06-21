@@ -258,8 +258,16 @@ class GenealogyService {
     gender?: string;
     birthDate?: string;
     deathDate?: string;
+    placeOfBirth?: string;
+    placeOfDeath?: string;
+    occupation?: string;
+    biography?: string;
+    notes?: string;
     profileImageUrl?: string;
     parentIds?: string[];
+    phoneNumbers?: any[];
+    emailAddresses?: any[];
+    addresses?: any[];
   }): Promise<FamilyMember> {
     const response: AxiosResponse<FamilyMember> = await apiClient.post(
       "/api/genealogy/members",
