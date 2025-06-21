@@ -366,20 +366,20 @@ router.post(
 
       const userId = decoded.userId;
 
-      const { 
-        name, 
-        firstName, 
-        middleName, 
-        lastName, 
-        gender, 
-        birthDate, 
+      const {
+        name,
+        firstName,
+        middleName,
+        lastName,
+        gender,
+        birthDate,
         deathDate,
         placeOfBirth,
         placeOfDeath,
         occupation,
         biography,
         notes,
-        profileImageUrl, 
+        profileImageUrl,
         parentIds,
         phoneNumbers,
         emailAddresses,
@@ -390,8 +390,8 @@ router.post(
       let computedName = name;
       if (!computedName && (firstName || lastName)) {
         computedName = [firstName, middleName, lastName]
-          .filter(n => n && n.trim())
-          .join(' ');
+          .filter((n) => n && n.trim())
+          .join(" ");
       }
 
       // Validate that we have some form of name
@@ -485,9 +485,21 @@ router.post(
         biography: newMember.biography,
         notes: newMember.notes,
         profileImageUrl: newMember.profile_image_url,
-        parentIds: newMember.parent_ids ? (Array.isArray(newMember.parent_ids) ? newMember.parent_ids : JSON.parse(newMember.parent_ids)) : [],
-        childIds: newMember.child_ids ? (Array.isArray(newMember.child_ids) ? newMember.child_ids : JSON.parse(newMember.child_ids)) : [],
-        spouseIds: newMember.spouse_ids ? (Array.isArray(newMember.spouse_ids) ? newMember.spouse_ids : JSON.parse(newMember.spouse_ids)) : [],
+        parentIds: newMember.parent_ids
+          ? Array.isArray(newMember.parent_ids)
+            ? newMember.parent_ids
+            : JSON.parse(newMember.parent_ids)
+          : [],
+        childIds: newMember.child_ids
+          ? Array.isArray(newMember.child_ids)
+            ? newMember.child_ids
+            : JSON.parse(newMember.child_ids)
+          : [],
+        spouseIds: newMember.spouse_ids
+          ? Array.isArray(newMember.spouse_ids)
+            ? newMember.spouse_ids
+            : JSON.parse(newMember.spouse_ids)
+          : [],
         treeId: newMember.tree_id,
         userId: newMember.user_id,
         createdAt: newMember.created_at,

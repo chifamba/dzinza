@@ -7,21 +7,21 @@ export interface FamilyMember {
   lastName?: string;
   birthDate?: string;
   deathDate?: string;
-  gender?: 'male' | 'female' | 'other' | 'unknown';
+  gender?: "male" | "female" | "other" | "unknown";
   profileImageUrl?: string;
-  
+
   // Optional contact information (for enhanced forms)
   phoneNumbers?: PhoneNumber[];
   emailAddresses?: EmailAddress[];
   addresses?: Address[];
-  
+
   // Optional extended information
   occupation?: string;
   placeOfBirth?: string;
   placeOfDeath?: string;
   biography?: string;
   notes?: string;
-  
+
   // Relationships
   parentIds?: string[];
   spouseIds?: string[];
@@ -32,7 +32,7 @@ export interface Relationship {
   id: string;
   person1Id: string; // e.g., Parent or Spouse1
   person2Id: string; // e.g., Child or Spouse2
-  type: 'PARENT_CHILD' | 'SPOUSE';
+  type: "PARENT_CHILD" | "SPOUSE";
   // Optional: Add startDate, endDate for relationships like marriage
 }
 
@@ -48,7 +48,7 @@ export interface FamilyTree {
 export interface PhoneNumber {
   id?: string;
   phoneNumber: string;
-  phoneType: 'mobile' | 'home' | 'work' | 'fax' | 'emergency' | 'other';
+  phoneType: "mobile" | "home" | "work" | "fax" | "emergency" | "other";
   countryCode?: string;
   extension?: string;
   isPrimary: boolean;
@@ -59,7 +59,7 @@ export interface PhoneNumber {
 export interface EmailAddress {
   id?: string;
   emailAddress: string;
-  emailType: 'personal' | 'work' | 'school' | 'business' | 'other';
+  emailType: "personal" | "work" | "school" | "business" | "other";
   isPrimary: boolean;
   isActive: boolean;
   isVerified: boolean;
@@ -81,7 +81,7 @@ export interface Address {
   traditionalAddress?: string;
   latitude?: number;
   longitude?: number;
-  addressType: 'home' | 'work' | 'school' | 'historical' | 'birth' | 'other';
+  addressType: "home" | "work" | "school" | "historical" | "birth" | "other";
   isPrimary: boolean;
   isCurrent: boolean;
   livedFrom?: string;
@@ -95,7 +95,7 @@ export interface CreatePersonFormData {
   // Required fields
   firstName: string;
   lastName: string;
-  
+
   // Optional basic info
   middleName?: string;
   gender?: string;
@@ -106,11 +106,11 @@ export interface CreatePersonFormData {
   occupation?: string;
   biography?: string;
   notes?: string;
-  
+
   // Optional contact information
-  phoneNumbers?: Omit<PhoneNumber, 'id'>[];
-  emailAddresses?: Omit<EmailAddress, 'id'>[];
-  addresses?: Omit<Address, 'id'>[];
+  phoneNumbers?: Omit<PhoneNumber, "id">[];
+  emailAddresses?: Omit<EmailAddress, "id">[];
+  addresses?: Omit<Address, "id">[];
 }
 
 // Simple form for current UI (backward compatible)
