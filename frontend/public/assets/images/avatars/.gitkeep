@@ -1,0 +1,7 @@
+# This file is used to ensure the directory is tracked by Git.
+# You can replace the SVG placeholder files in this directory with your actual avatar images.
+# Naming convention: avatar_AGE_SEX_SKIN.svg
+# AGE: child, teen, adult, senior
+# SEX: male, female, neutral
+# SKIN: light, medium-light, medium, medium-dark, dark
+# Example: avatar_adult_female_medium.svg
