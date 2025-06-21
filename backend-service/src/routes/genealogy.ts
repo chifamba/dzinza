@@ -54,6 +54,11 @@ interface FamilyMember {
   gender?: string;
   birthDate?: string;
   deathDate?: string;
+  placeOfBirth?: string;
+  placeOfDeath?: string;
+  occupation?: string;
+  biography?: string;
+  notes?: string;
   profileImageUrl?: string;
   parentIds?: string[];
   childIds?: string[];
@@ -174,6 +179,11 @@ router.get("/family-tree", async (req: Request, res: Response) => {
         gender: row.gender,
         birthDate: row.birth_date,
         deathDate: row.death_date,
+        placeOfBirth: row.place_of_birth,
+        placeOfDeath: row.place_of_death,
+        occupation: row.occupation,
+        biography: row.biography,
+        notes: row.notes,
         profileImageUrl: row.profile_image_url,
         parentIds: row.parent_ids || [],
         childIds: row.child_ids || [],
@@ -279,6 +289,31 @@ router.post(
       .optional()
       .isISO8601()
       .withMessage("Invalid death date format"),
+    body("placeOfBirth")
+      .optional()
+      .trim()
+      .isLength({ max: 255 })
+      .withMessage("Place of birth must be less than 255 characters"),
+    body("placeOfDeath")
+      .optional()
+      .trim()
+      .isLength({ max: 255 })
+      .withMessage("Place of death must be less than 255 characters"),
+    body("occupation")
+      .optional()
+      .trim()
+      .isLength({ max: 255 })
+      .withMessage("Occupation must be less than 255 characters"),
+    body("biography")
+      .optional()
+      .trim()
+      .isLength({ max: 5000 })
+      .withMessage("Biography must be less than 5000 characters"),
+    body("notes")
+      .optional()
+      .trim()
+      .isLength({ max: 5000 })
+      .withMessage("Notes must be less than 5000 characters"),
     body("profileImageUrl")
       .optional()
       .isURL()
@@ -287,6 +322,18 @@ router.post(
       .optional()
       .isArray()
       .withMessage("Parent IDs must be an array"),
+    body("phoneNumbers")
+      .optional()
+      .isArray()
+      .withMessage("Phone numbers must be an array"),
+    body("emailAddresses")
+      .optional()
+      .isArray()
+      .withMessage("Email addresses must be an array"),
+    body("addresses")
+      .optional()
+      .isArray()
+      .withMessage("Addresses must be an array"),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -326,9 +373,17 @@ router.post(
         lastName, 
         gender, 
         birthDate, 
-        deathDate, 
+        deathDate,
+        placeOfBirth,
+        placeOfDeath,
+        occupation,
+        biography,
+        notes,
         profileImageUrl, 
-        parentIds 
+        parentIds,
+        phoneNumbers,
+        emailAddresses,
+        addresses,
       } = req.body;
 
       // If separate name fields provided, compute full name
@@ -368,8 +423,10 @@ router.post(
       const memberId = uuidv4();
       const result = await database.query(
         `INSERT INTO family_members 
-         (id, name, first_name, middle_name, last_name, gender, birth_date, death_date, profile_image_url, parent_ids, child_ids, spouse_ids, tree_id, user_id) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+         (id, name, first_name, middle_name, last_name, gender, birth_date, death_date, 
+          place_of_birth, place_of_death, occupation, biography, notes,
+          profile_image_url, parent_ids, child_ids, spouse_ids, tree_id, user_id) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) 
          RETURNING *`,
         [
           memberId,
@@ -380,6 +437,11 @@ router.post(
           gender || "unknown",
           birthDate || null,
           deathDate || null,
+          placeOfBirth?.trim() || null,
+          placeOfDeath?.trim() || null,
+          occupation?.trim() || null,
+          biography?.trim() || null,
+          notes?.trim() || null,
           profileImageUrl || null,
           JSON.stringify(parentIds || []),
           JSON.stringify([]),
@@ -417,6 +479,11 @@ router.post(
         gender: newMember.gender,
         birthDate: newMember.birth_date,
         deathDate: newMember.death_date,
+        placeOfBirth: newMember.place_of_birth,
+        placeOfDeath: newMember.place_of_death,
+        occupation: newMember.occupation,
+        biography: newMember.biography,
+        notes: newMember.notes,
         profileImageUrl: newMember.profile_image_url,
         parentIds: newMember.parent_ids ? (Array.isArray(newMember.parent_ids) ? newMember.parent_ids : JSON.parse(newMember.parent_ids)) : [],
         childIds: newMember.child_ids ? (Array.isArray(newMember.child_ids) ? newMember.child_ids : JSON.parse(newMember.child_ids)) : [],

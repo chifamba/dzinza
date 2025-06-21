@@ -1,4 +1,4 @@
-// src/types/genealogy.ts
+// Enhanced FamilyMember interface
 export interface FamilyMember {
   id: string;
   name: string; // Computed full name (first + middle + last)
@@ -9,9 +9,20 @@ export interface FamilyMember {
   deathDate?: string;
   gender?: 'male' | 'female' | 'other' | 'unknown';
   profileImageUrl?: string;
-  // Relationships are often derived or stored separately,
-  // but direct links can be useful for simpler models.
-  // For a more robust model, relationships would be their own entities.
+  
+  // Optional contact information (for enhanced forms)
+  phoneNumbers?: PhoneNumber[];
+  emailAddresses?: EmailAddress[];
+  addresses?: Address[];
+  
+  // Optional extended information
+  occupation?: string;
+  placeOfBirth?: string;
+  placeOfDeath?: string;
+  biography?: string;
+  notes?: string;
+  
+  // Relationships
   parentIds?: string[];
   spouseIds?: string[];
   childIds?: string[];
@@ -31,4 +42,84 @@ export interface FamilyTree {
   ownerId: string; // ID of the user who owns/manages this tree
   members: FamilyMember[];
   relationships: Relationship[];
+}
+
+// Contact Information Interfaces
+export interface PhoneNumber {
+  id?: string;
+  phoneNumber: string;
+  phoneType: 'mobile' | 'home' | 'work' | 'fax' | 'emergency' | 'other';
+  countryCode?: string;
+  extension?: string;
+  isPrimary: boolean;
+  isActive: boolean;
+  notes?: string;
+}
+
+export interface EmailAddress {
+  id?: string;
+  emailAddress: string;
+  emailType: 'personal' | 'work' | 'school' | 'business' | 'other';
+  isPrimary: boolean;
+  isActive: boolean;
+  isVerified: boolean;
+  notes?: string;
+}
+
+export interface Address {
+  id?: string;
+  streetAddress1?: string;
+  streetAddress2?: string;
+  city?: string;
+  stateProvince?: string;
+  postalCode?: string;
+  country: string;
+  district?: string;
+  ward?: string;
+  region?: string;
+  landmark?: string;
+  traditionalAddress?: string;
+  latitude?: number;
+  longitude?: number;
+  addressType: 'home' | 'work' | 'school' | 'historical' | 'birth' | 'other';
+  isPrimary: boolean;
+  isCurrent: boolean;
+  livedFrom?: string;
+  livedTo?: string;
+  description?: string;
+  notes?: string;
+}
+
+// Form interfaces for person creation with optional contact details
+export interface CreatePersonFormData {
+  // Required fields
+  firstName: string;
+  lastName: string;
+  
+  // Optional basic info
+  middleName?: string;
+  gender?: string;
+  birthDate?: string;
+  deathDate?: string;
+  placeOfBirth?: string;
+  placeOfDeath?: string;
+  occupation?: string;
+  biography?: string;
+  notes?: string;
+  
+  // Optional contact information
+  phoneNumbers?: Omit<PhoneNumber, 'id'>[];
+  emailAddresses?: Omit<EmailAddress, 'id'>[];
+  addresses?: Omit<Address, 'id'>[];
+}
+
+// Simple form for current UI (backward compatible)
+export interface BasicPersonFormData {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  gender?: string;
+  birthDate?: string;
+  deathDate?: string;
+  profileImageUrl?: string;
 }
