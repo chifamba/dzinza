@@ -2,6 +2,7 @@
 import React from "react";
 import { FamilyMember } from "../../types/genealogy";
 import { Button } from "../ui";
+import { ProfileAvatar } from "../ProfileAvatar";
 
 interface PersonCardProps {
   person: FamilyMember;
@@ -18,15 +19,6 @@ const PersonCard: React.FC<PersonCardProps> = ({
   compact = false,
   showMarriageIndicator: _showMarriageIndicator = true,
 }) => {
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
     try {
@@ -53,25 +45,14 @@ const PersonCard: React.FC<PersonCardProps> = ({
         <div className="flex items-center space-x-4">
           {/* Avatar */}
           <div className="flex-shrink-0">
-            {person.profileImageUrl ? (
-              <img
-                src={person.profileImageUrl}
-                alt={person.name}
-                className="w-12 h-12 rounded-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = "none";
-                  target.nextElementSibling?.classList.remove("hidden");
-                }}
-              />
-            ) : null}
-            <div
-              className={`w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-lg ${
-                person.profileImageUrl ? "hidden" : ""
-              }`}
-            >
-              {getInitials(person.name)}
-            </div>
+            <ProfileAvatar
+              imageUrl={person.profileImageUrl}
+              name={person.name}
+              age={getAge()}
+              sex={person.gender}
+              size="md"
+              className="cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
+            />
           </div>
 
           {/* Info */}
@@ -116,25 +97,14 @@ const PersonCard: React.FC<PersonCardProps> = ({
         <div className="flex items-start space-x-4">
           {/* Avatar */}
           <div className="flex-shrink-0">
-            {person.profileImageUrl ? (
-              <img
-                src={person.profileImageUrl}
-                alt={person.name}
-                className="w-16 h-16 rounded-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = "none";
-                  target.nextElementSibling?.classList.remove("hidden");
-                }}
-              />
-            ) : null}
-            <div
-              className={`w-16 h-16 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold text-xl ${
-                person.profileImageUrl ? "hidden" : ""
-              }`}
-            >
-              {getInitials(person.name)}
-            </div>
+            <ProfileAvatar
+              imageUrl={person.profileImageUrl}
+              name={person.name}
+              age={getAge()}
+              sex={person.gender}
+              size="lg"
+              className="cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all"
+            />
           </div>
 
           {/* Basic Info */}
@@ -305,7 +275,10 @@ const PersonCard: React.FC<PersonCardProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onAddRelative("parent")}
+              onClick={() => {
+                console.log("Parent button clicked for:", person.name);
+                onAddRelative("parent");
+              }}
               className="text-gray-600 hover:text-gray-900"
             >
               <svg
@@ -326,7 +299,10 @@ const PersonCard: React.FC<PersonCardProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onAddRelative("child")}
+              onClick={() => {
+                console.log("Child button clicked for:", person.name);
+                onAddRelative("child");
+              }}
               className="text-gray-600 hover:text-gray-900"
             >
               <svg
@@ -347,7 +323,10 @@ const PersonCard: React.FC<PersonCardProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onAddRelative("spouse")}
+              onClick={() => {
+                console.log("Spouse button clicked for:", person.name);
+                onAddRelative("spouse");
+              }}
               className="text-gray-600 hover:text-gray-900"
             >
               <svg

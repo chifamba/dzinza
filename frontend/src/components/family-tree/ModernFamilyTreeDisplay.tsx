@@ -40,7 +40,9 @@ const ModernFamilyTreeDisplay: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      console.log("Loading family tree...");
       const familyTree = await genealogyService.getFamilyTree();
+      console.log("Family tree loaded:", familyTree);
       setTree(familyTree);
     } catch (err) {
       console.error("Failed to load family tree:", err);
@@ -63,10 +65,61 @@ const ModernFamilyTreeDisplay: React.FC = () => {
       setIsSubmittingAdd(true);
       setSubmitAddError(null);
 
-      await genealogyService.addFamilyMember(personData);
-      await loadFamilyTree(); // Refresh the tree
+      console.log("Adding person with data:", personData);
+      console.log("Add person context:", addPersonContext);
+
+      // Create the new person
+      const newPerson = await genealogyService.addFamilyMember(personData);
+      console.log("New person created:", newPerson);
+
+      // Create relationship if context exists
+      if (addPersonContext) {
+        const { relativeToId, relationType } = addPersonContext;
+
+        let relationshipData: {
+          person1Id: string;
+          person2Id: string;
+          type: "SPOUSE" | "PARENT_CHILD" | "SIBLING";
+        };
+
+        if (relationType === "parent") {
+          // New person is parent of existing person
+          relationshipData = {
+            person1Id: newPerson.id,
+            person2Id: relativeToId,
+            type: "PARENT_CHILD",
+          };
+        } else if (relationType === "child") {
+          // New person is child of existing person
+          relationshipData = {
+            person1Id: relativeToId,
+            person2Id: newPerson.id,
+            type: "PARENT_CHILD",
+          };
+        } else if (relationType === "spouse") {
+          // New person is spouse of existing person
+          relationshipData = {
+            person1Id: relativeToId,
+            person2Id: newPerson.id,
+            type: "SPOUSE",
+          };
+        } else {
+          throw new Error(`Unknown relationship type: ${relationType}`);
+        }
+
+        console.log("Creating relationship:", relationshipData);
+        const relationship = await genealogyService.createRelationship(
+          relationshipData
+        );
+        console.log("Relationship created:", relationship);
+      }
+
+      // Refresh the tree to show the new person and relationship
+      await loadFamilyTree();
       setIsAddModalOpen(false);
       setAddPersonContext(null);
+
+      console.log("Person and relationship added successfully");
     } catch (err) {
       console.error("Failed to add person:", err);
       setSubmitAddError(
@@ -104,11 +157,16 @@ const ModernFamilyTreeDisplay: React.FC = () => {
     relativeTo: FamilyMember,
     relationType: "parent" | "child" | "spouse"
   ) => {
+    console.log("handleAddWithRelationship called with:", {
+      relativeTo: relativeTo.name,
+      relationType,
+    });
     setAddPersonContext({
       relativeToId: relativeTo.id,
       relationType,
     });
     setIsAddModalOpen(true);
+    console.log("Modal state set to open");
   };
 
   // Handle editing a person
@@ -133,6 +191,7 @@ const ModernFamilyTreeDisplay: React.FC = () => {
   // Group members by family relationships for better organization
   const organizedData = React.useMemo(() => {
     if (!tree?.members || !tree?.relationships) {
+      console.log("No tree data or relationships available", { tree });
       return { familyUnits: [], individuals: filteredMembers };
     }
 
@@ -141,6 +200,11 @@ const ModernFamilyTreeDisplay: React.FC = () => {
       tree.relationships
     );
 
+    console.log("Organized family data:", {
+      familyUnits,
+      individuals,
+      filteredMembers,
+    });
     return { familyUnits, individuals };
   }, [filteredMembers, tree]);
 
@@ -393,7 +457,10 @@ const ModernFamilyTreeDisplay: React.FC = () => {
               member.
             </p>
             <Button
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={() => {
+                console.log("Add first family member button clicked");
+                setIsAddModalOpen(true);
+              }}
               className="bg-blue-600 hover:bg-blue-700"
             >
               <svg

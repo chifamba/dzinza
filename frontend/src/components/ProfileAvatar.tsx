@@ -42,13 +42,47 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
     imageUrl: imgError ? undefined : imageUrl, // If user image fails, use generated one
   });
 
+  console.log("ProfileAvatar generated URL:", avatarUrl, {
+    name,
+    age,
+    sex,
+    imageUrl,
+  });
+
   const handleImageLoad = () => {
     setIsLoading(false);
   };
 
   const handleImageError = () => {
+    console.log("Avatar image failed to load:", avatarUrl);
     setImgError(true);
     setIsLoading(false);
+  };
+
+  // Fallback to initials if all else fails
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Generate a local fallback avatar path if needed
+  const getLocalFallback = () => {
+    const ageGroup =
+      age && age < 13
+        ? "child"
+        : age && age >= 60
+        ? "senior"
+        : age && age < 20
+        ? "teen"
+        : "adult";
+    const gender =
+      sex === "male" ? "male" : sex === "female" ? "female" : "neutral";
+    const skinTone = "medium"; // Default skin tone
+    return `/avatars/${ageGroup}_${gender}_${skinTone}.svg`;
   };
 
   return (
@@ -64,18 +98,40 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
           <div className="text-gray-400 text-xs">...</div>
         </div>
       )}
-      <img
-        src={avatarUrl}
-        alt={`${name}'s profile`}
-        className={`${
-          sizeClasses[size]
-        } rounded-full object-cover border border-gray-200 shadow-sm transition-opacity duration-200 ${
-          isLoading ? "opacity-0" : "opacity-100"
-        }`}
-        onLoad={handleImageLoad}
-        onError={handleImageError}
-        loading="lazy"
-      />
+
+      {!imgError ? (
+        <img
+          src={avatarUrl}
+          alt={`${name}'s profile`}
+          className={`${
+            sizeClasses[size]
+          } rounded-full object-cover border border-gray-200 shadow-sm transition-opacity duration-200 ${
+            isLoading ? "opacity-0" : "opacity-100"
+          }`}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+          loading="lazy"
+        />
+      ) : (
+        // Fallback to colored background with initials
+        <div
+          className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold border border-gray-200 shadow-sm`}
+        >
+          <span
+            className={`${
+              size === "sm"
+                ? "text-xs"
+                : size === "md"
+                ? "text-sm"
+                : size === "lg"
+                ? "text-lg"
+                : "text-xl"
+            }`}
+          >
+            {getInitials(name)}
+          </span>
+        </div>
+      )}
     </div>
   );
 };
