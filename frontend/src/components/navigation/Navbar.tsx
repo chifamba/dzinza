@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom"; // Assuming react-router-dom is used for navigation
-import { useSelector } from "react-redux";
+import { Link, useNavigate } from "react-router-dom"; // Add useNavigate for logout redirect
+import { useSelector, useDispatch } from "react-redux"; // Add useDispatch for logout action
 import NotificationIndicator from "../notifications/NotificationIndicator";
 import GlobalSearchBar from "../search/GlobalSearchBar"; // Import GlobalSearchBar
 import LoginModal from "../auth/LoginModal";
 import { Button } from "../ui";
-import { RootState } from "../../store/store";
+import { RootState, AppDispatch } from "../../store/store"; // Add AppDispatch type
+import { logout } from "../../store/slices/authSlice"; // Import logout action
 
 interface NavItem {
   label: string;
@@ -22,6 +23,8 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ logo, navItems, className = "" }) => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const dispatch: AppDispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleLoginClick = () => {
     setIsLoginModalOpen(true);
@@ -29,6 +32,11 @@ const Navbar: React.FC<NavbarProps> = ({ logo, navItems, className = "" }) => {
 
   const handleCloseLoginModal = () => {
     setIsLoginModalOpen(false);
+  };
+
+  const handleLogoutClick = () => {
+    dispatch(logout());
+    navigate("/"); // Redirect to home page after logout
   };
   return (
     <nav
@@ -83,6 +91,17 @@ const Navbar: React.FC<NavbarProps> = ({ logo, navItems, className = "" }) => {
                 Login
               </Button>
             )}
+            {/* Logout Button - only show if authenticated */}
+            {isAuthenticated && (
+              <Button
+                variant="destructive" // Use destructive variant for red color
+                size="sm"
+                onClick={handleLogoutClick}
+                className="px-4 py-2"
+              >
+                Logout
+              </Button>
+            )}
             {/* Placeholder for User Menu when authenticated */}
             {/* {isAuthenticated && <UserMenu />} */}
           </div>
@@ -102,6 +121,17 @@ const Navbar: React.FC<NavbarProps> = ({ logo, navItems, className = "" }) => {
                 className="px-3 py-1 text-xs"
               >
                 Login
+              </Button>
+            )}
+            {/* Mobile Logout Button */}
+            {isAuthenticated && (
+              <Button
+                variant="destructive" // Use destructive variant for red color
+                size="sm"
+                onClick={handleLogoutClick}
+                className="px-3 py-1 text-xs"
+              >
+                Logout
               </Button>
             )}
           </div>

@@ -12,7 +12,7 @@ export interface AuthenticatedRequest extends Request {
 }
 
 interface JwtDecodedPayload extends jwt.JwtPayload {
-  id: string;
+  userId: string; // Changed from 'id' to 'userId'
   email: string;
   role?: string;
   permissions?: string[];
@@ -48,7 +48,7 @@ export const authMiddleware = async (
     const decoded = jwt.verify(token, jwtSecret) as JwtDecodedPayload;
 
     // Validate token structure
-    if (!decoded.id || !decoded.email) {
+    if (!decoded.userId || !decoded.email) {
       return res.status(401).json({
         error: "Unauthorized",
         message: "Invalid token structure",
@@ -57,7 +57,7 @@ export const authMiddleware = async (
 
     // Add user info to request
     req.user = {
-      id: decoded.id,
+      id: decoded.userId, // Map userId to id for consistency
       email: decoded.email,
       role: decoded.role || "user",
       permissions: decoded.permissions || [],

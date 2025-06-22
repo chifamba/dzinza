@@ -1,23 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button, Card, Input } from '../../components/ui';
-import { Header, Footer } from '../../components/layout';
-import { useDispatch, useSelector } from 'react-redux';
-import { loginStart, loginSuccess, loginFailure } from '../../store/slices/authSlice';
-import { authService } from '../../services/api/authService';
-import { AppDispatch, RootState } from '../../store/store';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button, Card, Input } from "../../components/ui";
+import { Header, Footer } from "../../components/layout";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  loginStart,
+  loginSuccess,
+  loginFailure,
+} from "../../store/slices/authSlice";
+import { authService } from "../../services/api/authService";
+import { AppDispatch, RootState } from "../../store/store";
 
 const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const dispatch: AppDispatch = useDispatch();
 
-  const { status, error, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { status, error, isAuthenticated } = useSelector(
+    (state: RootState) => state.auth
+  );
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard'); // Redirect if already authenticated
+      navigate("/family-tree"); // Redirect to family tree canvas after login
     }
   }, [isAuthenticated, navigate]);
 
@@ -27,11 +33,13 @@ const LoginPage: React.FC = () => {
     try {
       const response = await authService.login({ email, password });
       dispatch(loginSuccess(response));
-      navigate('/dashboard');
+      navigate("/family-tree"); // Redirect to family tree canvas after successful login
     } catch (err: unknown) {
-      let message = 'Failed to login'; // Default
-      if (typeof err === 'object' && err !== null && 'response' in err) {
-        const axiosError = err as { response?: { data?: { message?: string } } };
+      let message = "Failed to login"; // Default
+      if (typeof err === "object" && err !== null && "response" in err) {
+        const axiosError = err as {
+          response?: { data?: { message?: string } };
+        };
         if (axiosError.response?.data?.message) {
           message = axiosError.response.data.message;
         }
@@ -58,7 +66,7 @@ const LoginPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="test@example.com" // Mock user
-                disabled={status === 'loading'}
+                disabled={status === "loading"}
               />
               <Input
                 label="Password"
@@ -69,23 +77,34 @@ const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="password" // Mock password
-                disabled={status === 'loading'}
+                disabled={status === "loading"}
               />
-              {error && status === 'failed' && (
+              {error && status === "failed" && (
                 <p className="text-xs text-red-600">{error}</p>
               )}
               <div className="flex items-center justify-between text-sm">
-                <Link to="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
+                <Link
+                  to="/forgot-password"
+                  className="font-medium text-blue-600 hover:text-blue-500"
+                >
                   Forgot your password?
                 </Link>
               </div>
-              <Button type="submit" className="w-full" variant="primary" disabled={status === 'loading'}>
-                {status === 'loading' ? 'Signing in...' : 'Sign in'}
+              <Button
+                type="submit"
+                className="w-full"
+                variant="primary"
+                disabled={status === "loading"}
+              >
+                {status === "loading" ? "Signing in..." : "Sign in"}
               </Button>
             </form>
             <p className="mt-6 text-center text-sm text-gray-600">
-              Not a member?{' '}
-              <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
+              Not a member?{" "}
+              <Link
+                to="/register"
+                className="font-medium text-blue-600 hover:text-blue-500"
+              >
                 Sign up
               </Link>
             </p>

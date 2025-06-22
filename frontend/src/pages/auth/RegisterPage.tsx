@@ -1,26 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button, Card, Input } from '../../components/ui';
-import { Header, Footer } from '../../components/layout';
-import { useDispatch, useSelector } from 'react-redux';
-import { registerStart, registerSuccess, registerFailure } from '../../store/slices/authSlice';
-import { authService } from '../../services/api/authService';
-import { AppDispatch, RootState } from '../../store/store';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button, Card, Input } from "../../components/ui";
+import { Header, Footer } from "../../components/layout";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  registerStart,
+  registerSuccess,
+  registerFailure,
+} from "../../store/slices/authSlice";
+import { authService } from "../../services/api/authService";
+import { AppDispatch, RootState } from "../../store/store";
 
 const RegisterPage: React.FC = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const navigate = useNavigate();
   const dispatch: AppDispatch = useDispatch();
 
-  const { status, error, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { status, error, isAuthenticated } = useSelector(
+    (state: RootState) => state.auth
+  );
 
- useEffect(() => {
+  useEffect(() => {
     // If registration implies immediate login and isAuthenticated becomes true
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate("/family-tree");
     }
   }, [isAuthenticated, navigate]);
 
@@ -35,12 +41,14 @@ const RegisterPage: React.FC = () => {
       const response = await authService.register({ name, email, password });
       dispatch(registerSuccess(response));
       // Decide navigation: to login for email verification, or dashboard if auto-login
-      navigate('/login');
+      navigate("/login");
       // alert('Registration successful! Please check your email to verify your account.'); // Or navigate to dashboard if auto-login
     } catch (err: unknown) {
-      let message = 'Failed to register'; // Default
-      if (typeof err === 'object' && err !== null && 'response' in err) {
-        const axiosError = err as { response?: { data?: { message?: string } } };
+      let message = "Failed to register"; // Default
+      if (typeof err === "object" && err !== null && "response" in err) {
+        const axiosError = err as {
+          response?: { data?: { message?: string } };
+        };
         if (axiosError.response?.data?.message) {
           message = axiosError.response.data.message;
         }
@@ -66,7 +74,7 @@ const RegisterPage: React.FC = () => {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="John Doe"
-                disabled={status === 'loading'}
+                disabled={status === "loading"}
               />
               <Input
                 label="Email address"
@@ -77,7 +85,7 @@ const RegisterPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                disabled={status === 'loading'}
+                disabled={status === "loading"}
               />
               <Input
                 label="Password"
@@ -87,7 +95,7 @@ const RegisterPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                disabled={status === 'loading'}
+                disabled={status === "loading"}
               />
               <Input
                 label="Confirm Password"
@@ -97,18 +105,26 @@ const RegisterPage: React.FC = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                disabled={status === 'loading'}
+                disabled={status === "loading"}
               />
-              {error && status === 'failed' && (
+              {error && status === "failed" && (
                 <p className="text-xs text-red-600">{error}</p>
               )}
-              <Button type="submit" className="w-full" variant="primary" disabled={status === 'loading'}>
-                {status === 'loading' ? 'Signing up...' : 'Sign up'}
+              <Button
+                type="submit"
+                className="w-full"
+                variant="primary"
+                disabled={status === "loading"}
+              >
+                {status === "loading" ? "Signing up..." : "Sign up"}
               </Button>
             </form>
             <p className="mt-6 text-center text-sm text-gray-600">
-              Already a member?{' '}
-              <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+              Already a member?{" "}
+              <Link
+                to="/login"
+                className="font-medium text-blue-600 hover:text-blue-500"
+              >
                 Sign in
               </Link>
             </p>

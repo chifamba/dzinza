@@ -2,32 +2,93 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Frontend",
+      "name": "🎨 Debug Frontend (Vite)",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/node_modules/.bin/vite",
       "args": ["dev"],
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Debug Backend",
-      "type": "node",
-      "request": "launch",
-      "program": "${workspaceFolder}/backend/src/server.ts",
-      "cwd": "${workspaceFolder}/backend",
-      "envFile": "${workspaceFolder}/.env",
+      "cwd": "${workspaceFolder}/frontend",
       "console": "integratedTerminal",
-      "runtimeArgs": ["--loader", "ts-node/esm"]
+      "env": {
+        "NODE_ENV": "development"
+      }
     },
     {
-      "name": "Debug Tests",
+      "name": "🔧 Debug Backend Service",
       "type": "node",
       "request": "launch",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": ["--runInBand", "--no-cache"],
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal"
+      "program": "${workspaceFolder}/backend-service/src/server.ts",
+      "cwd": "${workspaceFolder}/backend-service",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tsx"],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/backend-service/dist/**/*.js"]
+    },
+    {
+      "name": "🧬 Debug Genealogy Service",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/genealogy-service/src/server.ts",
+      "cwd": "${workspaceFolder}/genealogy-service",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tsx"],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/genealogy-service/dist/**/*.js"]
+    },
+    {
+      "name": "🧪 Debug Frontend Tests",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "test", "--", "--inspect-brk"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "🧪 Debug Backend Tests",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/backend-service",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "test", "--", "--inspect-brk"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "name": "🔗 Debug Full Stack",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend-service/src/server.ts",
+      "cwd": "${workspaceFolder}/backend-service",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["tsx"],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "console": "integratedTerminal",
+      "restart": true,
+      "preLaunchTask": "🗄️ Start Database Services"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "🚀 Debug All Services",
+      "configurations": [
+        "🔧 Debug Backend Service",
+        "🧬 Debug Genealogy Service"
+      ],
+      "stopAll": true
     }
   ]
 }

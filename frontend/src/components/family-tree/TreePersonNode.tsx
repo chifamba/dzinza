@@ -3,6 +3,7 @@ import React from 'react';
 import { FamilyMember } from '../../types/genealogy';
 import { Button, Card } from '../ui';
 import { RawNodeDatum } from 'react-d3-tree';
+import ProfileAvatar from '../ProfileAvatar';
 
 interface TreePersonNodeProps {
   nodeDatum: RawNodeDatum;
@@ -25,14 +26,20 @@ const TreePersonNode: React.FC<TreePersonNodeProps> = ({
   allMembers,
   onViewProfile,
 }) => {
-  const personAttributes = nodeDatum.attributes as FamilyMember & { Birthdate?: string; 'Death Date'?: string; Gender?: string };
+  const personAttributes = nodeDatum.attributes as unknown as FamilyMember & { 
+    Birthdate?: string; 
+    'Death Date'?: string; 
+    Gender?: string;
+    race?: string;
+    skinTone?: string;
+  };
   const personName = nodeDatum.name;
-  const currentPersonId = nodeDatum.originalId!;
+  const currentPersonId = personAttributes?.id || nodeDatum.name || 'unknown';
 
   const memberForHandlers: FamilyMember = {
     id: currentPersonId,
     name: personName,
-    gender: personAttributes?.gender || personAttributes?.Gender || 'unknown',
+    gender: (personAttributes?.gender || personAttributes?.Gender || 'unknown') as "male" | "female" | "other" | "unknown",
     birthDate: personAttributes?.birthDate || personAttributes?.Birthdate,
     deathDate: personAttributes?.deathDate || personAttributes?.['Death Date'],
     profileImageUrl: personAttributes?.profileImageUrl,
@@ -41,6 +48,15 @@ const TreePersonNode: React.FC<TreePersonNodeProps> = ({
     spouseIds: personAttributes?.spouseIds || [],
   };
 
+  // Helper to estimate age from birthDate (YYYY or YYYY-MM-DD)
+  function estimateAge(birthDate?: string): number | undefined {
+    if (!birthDate) return undefined;
+    const year = parseInt(birthDate.slice(0, 4), 10);
+    if (isNaN(year)) return undefined;
+    const now = new Date().getFullYear();
+    return Math.max(0, now - year);
+  }
+
   const getNameById = (id: string) => allMembers.find(m => m.id === id)?.name || 'Unknown';
 
   return (
@@ -48,13 +64,16 @@ const TreePersonNode: React.FC<TreePersonNodeProps> = ({
     <Card className="m-0.5 w-full max-w-[14rem] sm:max-w-xs md:max-w-[14rem] shadow-md" onClick={toggleNode} style={{ cursor: 'pointer' }}>
       <div className="p-1.5 sm:p-2 md:p-3">
         <h3 className="text-sm sm:text-base font-semibold text-blue-700 text-center truncate">{personName}</h3>
-        {memberForHandlers.profileImageUrl && (
-          <img
-            src={memberForHandlers.profileImageUrl}
-            alt={personName}
-            className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-full mx-auto my-1 object-cover border"
-          />
-        )}
+        <ProfileAvatar
+          imageUrl={memberForHandlers.profileImageUrl}
+          name={personName}
+          age={estimateAge(memberForHandlers.birthDate)}
+          sex={memberForHandlers.gender}
+          race={personAttributes?.race}
+          skinTone={personAttributes?.skinTone}
+          size="lg"
+          className="mx-auto my-1"
+        />
         <div className="text-[0.6rem] sm:text-[0.65rem] md:text-xs text-gray-600 mb-1 text-center">
             {personAttributes?.Birthdate && <span className="block sm:inline">Born: {personAttributes.Birthdate}</span>}
             {personAttributes?.['Death Date'] && <span className="block sm:inline ml-0 sm:ml-1">Died: {personAttributes['Death Date']}</span>}
@@ -63,10 +82,10 @@ const TreePersonNode: React.FC<TreePersonNodeProps> = ({
 
         {/* Responsive button container: flex-wrap and adjust spacing/size */}
         <div className="mt-1.5 text-center space-x-0.5 sm:space-x-1 flex flex-wrap justify-center gap-0.5 sm:gap-1">
-          <Button onClick={(e) => { e.stopPropagation(); onViewProfile(memberForHandlers); }} variant="info" className="text-[0.6rem] px-1 py-0.5 sm:text-xs sm:px-1.5 sm:py-1 md:px-2 md:py-1">View</Button>
-          <Button onClick={(e) => { e.stopPropagation(); onEdit(memberForHandlers); }} variant="secondary" className="text-[0.6rem] px-1 py-0.5 sm:text-xs sm:px-1.5 sm:py-1 md:px-2 md:py-1">Edit</Button>
-          <Button onClick={(e) => { e.stopPropagation(); onConnectRelationship(memberForHandlers); }} variant="ghost" className="text-[0.6rem] px-1 py-0.5 sm:text-xs sm:px-1.5 sm:py-1 md:px-2 md:py-1">Connect</Button>
-          <Button onClick={(e) => { e.stopPropagation(); onDelete(memberForHandlers); }} variant="danger" className="text-[0.6rem] px-1 py-0.5 sm:text-xs sm:px-1.5 sm:py-1 md:px-2 md:py-1">Delete</Button>
+          <Button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onViewProfile(memberForHandlers); }} variant="primary" className="text-[0.6rem] px-1 py-0.5 sm:text-xs sm:px-1.5 sm:py-1 md:px-2 md:py-1">View</Button>
+          <Button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onEdit(memberForHandlers); }} variant="secondary" className="text-[0.6rem] px-1 py-0.5 sm:text-xs sm:px-1.5 sm:py-1 md:px-2 md:py-1">Edit</Button>
+          <Button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onConnectRelationship(memberForHandlers); }} variant="ghost" className="text-[0.6rem] px-1 py-0.5 sm:text-xs sm:px-1.5 sm:py-1 md:px-2 md:py-1">Connect</Button>
+          <Button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(memberForHandlers); }} variant="destructive" className="text-[0.6rem] px-1 py-0.5 sm:text-xs sm:px-1.5 sm:py-1 md:px-2 md:py-1">Delete</Button>
         </div>
 
         {/* Relationships Display - make text smaller and buttons smaller */}
@@ -79,8 +98,8 @@ const TreePersonNode: React.FC<TreePersonNodeProps> = ({
                 <div key={parentId} className="flex justify-between items-center text-[0.6rem] sm:text-[0.65rem] md:text-xs">
                   <span className="truncate" title={getNameById(parentId)}>{getNameById(parentId)}</span>
                   <Button
-                    variant="outlineDanger" className="text-[0.5rem] px-0.5 sm:text-[0.55rem] sm:px-1 md:text-xs"
-                    onClick={(e) => { e.stopPropagation(); onDeleteRelationship(currentPersonId, parentId, 'PARENT_CHILD_CHILD_PERSPECTIVE'); }}
+                    variant="destructive" className="text-[0.5rem] px-0.5 sm:text-[0.55rem] sm:px-1 md:text-xs"
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDeleteRelationship(currentPersonId, parentId, 'PARENT_CHILD_CHILD_PERSPECTIVE'); }}
                   >X</Button>
                 </div>
               ))}
@@ -95,8 +114,8 @@ const TreePersonNode: React.FC<TreePersonNodeProps> = ({
                 <div key={spouseId} className="flex justify-between items-center text-[0.6rem] sm:text-[0.65rem] md:text-xs">
                   <span className="truncate" title={getNameById(spouseId)}>{getNameById(spouseId)}</span>
                   <Button
-                    variant="outlineDanger" className="text-[0.5rem] px-0.5 sm:text-[0.55rem] sm:px-1 md:text-xs"
-                    onClick={(e) => { e.stopPropagation(); onDeleteRelationship(currentPersonId, spouseId, 'SPOUSE'); }}
+                    variant="destructive" className="text-[0.5rem] px-0.5 sm:text-[0.55rem] sm:px-1 md:text-xs"
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDeleteRelationship(currentPersonId, spouseId, 'SPOUSE'); }}
                   >X</Button>
                 </div>
               ))}

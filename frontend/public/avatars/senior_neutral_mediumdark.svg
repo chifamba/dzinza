@@ -1,0 +1,20 @@
+<!--
+Minimal, modern, non-binary/gender-neutral senior avatar, medium-dark skin tone, neutral background.
+-->
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="180" fill="url(#bg)"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F3F4F6"/>
+      <stop offset="1" stop-color="#E5E7EB"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="512" cy="600" rx="210" ry="250" fill="#8D6748"/>
+  <ellipse cx="512" cy="420" rx="160" ry="130" fill="#8D6748"/>
+  <ellipse cx="512" cy="420" rx="110" ry="90" fill="#8D6748"/>
+  <ellipse cx="470" cy="420" rx="16" ry="11" fill="#5C3B1A"/>
+  <ellipse cx="554" cy="420" rx="16" ry="11" fill="#5C3B1A"/>
+  <rect x="470" y="470" width="85" height="15" rx="7.5" fill="#5C3B1A" fill-opacity="0.15"/>
+  <ellipse cx="512" cy="320" rx="80" ry="50" fill="#CFCFCF"/>
+  <ellipse cx="512" cy="310" rx="60" ry="20" fill="#E2E2E2" fill-opacity="0.5"/>
+</svg>
