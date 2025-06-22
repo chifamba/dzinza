@@ -15,6 +15,7 @@ import {
   FamilyTreePage, // Import FamilyTreePage
   OAuthCallbackPage, // Import OAuthCallbackPage
 } from "./pages";
+import AvatarTestPage from "./pages/AvatarTestPage"; // Import avatar test page
 import { ProtectedRoute } from "./components/auth"; // Adjust path as needed
 import { RootRoute } from "./components/routing"; // Import smart root route
 
@@ -31,6 +32,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+        <Route path="/avatar-test-public" element={<AvatarTestPage />} />
         <Route
           path="/auth/oauth/callback/:provider"
           element={<OAuthCallbackPage />}
@@ -45,6 +47,8 @@ function App() {
           />
           {/* Main family tree canvas */}
           <Route path="/family-tree" element={<FamilyTreePage />} />
+          {/* Avatar test page */}
+          <Route path="/avatar-test" element={<AvatarTestPage />} />
           {/* App route also redirects to family-tree for consistency */}
           <Route path="/app" element={<Navigate to="/family-tree" replace />} />
           {/* Add other protected routes here */}
