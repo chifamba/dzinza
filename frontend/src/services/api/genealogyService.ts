@@ -136,10 +136,10 @@ class GenealogyService {
       "id" | "parentIds" | "childIds" | "spouseIds"
     >
   ): Promise<FamilyMember> {
-    // Endpoint might be /api/family-trees/:familyTreeId/persons or just /api/persons with familyTreeId in payload
+    // Use the genealogy members endpoint
     const response: AxiosResponse<FamilyMember> = await apiClient.post(
-      `${this.personBaseURL}`,
-      { ...personData, familyTreeId }
+      `/api/genealogy/members`,
+      personData
     );
     return response.data;
   }
@@ -148,9 +148,9 @@ class GenealogyService {
     personId: string,
     personData: Partial<FamilyMember>
   ): Promise<FamilyMember> {
-    // familyTreeId might be in personData or not needed if personId is globally unique
+    // Use the genealogy members endpoint instead of the persons endpoint
     const response: AxiosResponse<FamilyMember> = await apiClient.put(
-      `${this.personBaseURL}/${personId}`,
+      `/api/genealogy/members/${personId}`,
       personData
     );
     return response.data;

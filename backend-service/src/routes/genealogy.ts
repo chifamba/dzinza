@@ -51,6 +51,7 @@ interface FamilyMember {
   firstName?: string;
   middleName?: string;
   lastName?: string;
+  nickname?: string;
   gender?: string;
   birthDate?: string;
   deathDate?: string;
@@ -176,6 +177,7 @@ router.get("/family-tree", async (req: Request, res: Response) => {
         firstName: row.first_name,
         middleName: row.middle_name,
         lastName: row.last_name,
+        nickname: row.nickname,
         gender: row.gender,
         birthDate: row.birth_date,
         deathDate: row.death_date,
@@ -277,6 +279,11 @@ router.post(
       .trim()
       .isLength({ max: 100 })
       .withMessage("Last name must be less than 100 characters"),
+    body("nickname")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Nickname must be less than 100 characters"),
     body("gender")
       .optional()
       .isIn(["male", "female", "other", "unknown"])
@@ -371,6 +378,7 @@ router.post(
         firstName,
         middleName,
         lastName,
+        nickname,
         gender,
         birthDate,
         deathDate,
@@ -394,11 +402,17 @@ router.post(
           .join(" ");
       }
 
+      // If still no formal name, use nickname
+      if (!computedName && nickname && nickname.trim()) {
+        computedName = nickname.trim();
+      }
+
       // Validate that we have some form of name
       if (!computedName || !computedName.trim()) {
         return res.status(400).json({
           error: "Validation Error",
-          message: "Either name or firstName/lastName must be provided",
+          message:
+            "Either name, firstName/lastName, or nickname must be provided",
         });
       }
 
@@ -423,10 +437,10 @@ router.post(
       const memberId = uuidv4();
       const result = await database.query(
         `INSERT INTO family_members 
-         (id, name, first_name, middle_name, last_name, gender, birth_date, death_date, 
+         (id, name, first_name, middle_name, last_name, nickname, gender, birth_date, death_date, 
           place_of_birth, place_of_death, occupation, biography, notes,
           profile_image_url, parent_ids, child_ids, spouse_ids, tree_id, user_id) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) 
          RETURNING *`,
         [
           memberId,
@@ -434,6 +448,7 @@ router.post(
           firstName?.trim() || null,
           middleName?.trim() || null,
           lastName?.trim() || null,
+          nickname?.trim() || null,
           gender || "unknown",
           birthDate || null,
           deathDate || null,
@@ -476,6 +491,7 @@ router.post(
         firstName: newMember.first_name,
         middleName: newMember.middle_name,
         lastName: newMember.last_name,
+        nickname: newMember.nickname,
         gender: newMember.gender,
         birthDate: newMember.birth_date,
         deathDate: newMember.death_date,
@@ -653,6 +669,343 @@ router.post(
     } catch (error) {
       logger.error("Error creating relationship:", error);
       res.status(500).json({ error: "Failed to create relationship" });
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /api/genealogy/members/{id}:
+ *   put:
+ *     summary: Update a family member
+ *     tags: [Genealogy]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Family member ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               firstName:
+ *                 type: string
+ *               middleName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               nickname:
+ *                 type: string
+ *               gender:
+ *                 type: string
+ *                 enum: [male, female, other, unknown]
+ *               birthDate:
+ *                 type: string
+ *               deathDate:
+ *                 type: string
+ *               placeOfBirth:
+ *                 type: string
+ *               placeOfDeath:
+ *                 type: string
+ *               occupation:
+ *                 type: string
+ *               biography:
+ *                 type: string
+ *               notes:
+ *                 type: string
+ *               profileImageUrl:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Family member updated
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Family member not found
+ */
+router.put(
+  "/members/:id",
+  [
+    body("name")
+      .optional()
+      .trim()
+      .isLength({ max: 255 })
+      .withMessage("Name must be less than 255 characters"),
+    body("firstName")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("First name must be less than 100 characters"),
+    body("middleName")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Middle name must be less than 100 characters"),
+    body("lastName")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Last name must be less than 100 characters"),
+    body("nickname")
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage("Nickname must be less than 100 characters"),
+    body("gender")
+      .optional()
+      .isIn(["male", "female", "other", "unknown"])
+      .withMessage("Invalid gender value"),
+    body("birthDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Invalid birth date format"),
+    body("deathDate")
+      .optional()
+      .isISO8601()
+      .withMessage("Invalid death date format"),
+    body("placeOfBirth")
+      .optional()
+      .trim()
+      .isLength({ max: 255 })
+      .withMessage("Place of birth must be less than 255 characters"),
+    body("placeOfDeath")
+      .optional()
+      .trim()
+      .isLength({ max: 255 })
+      .withMessage("Place of death must be less than 255 characters"),
+    body("occupation")
+      .optional()
+      .trim()
+      .isLength({ max: 255 })
+      .withMessage("Occupation must be less than 255 characters"),
+    body("biography")
+      .optional()
+      .trim()
+      .isLength({ max: 5000 })
+      .withMessage("Biography must be less than 5000 characters"),
+    body("notes")
+      .optional()
+      .trim()
+      .isLength({ max: 5000 })
+      .withMessage("Notes must be less than 5000 characters"),
+    body("profileImageUrl")
+      .optional()
+      .isURL()
+      .withMessage("Invalid profile image URL"),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          error: "Validation Error",
+          details: errors.array(),
+        });
+      }
+
+      // Auth check
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({
+          error: "Authentication Failed",
+          message: "Authorization header is required",
+        });
+      }
+
+      const token = authHeader.substring(7);
+      const decoded = jwt.verify(token, JWT_SECRET as string) as JWTPayload;
+
+      if (!decoded.userId) {
+        return res.status(401).json({
+          error: "Authentication Failed",
+          message: "Invalid token",
+        });
+      }
+
+      const userId = decoded.userId;
+      const memberId = req.params.id;
+
+      // Verify the family member exists and belongs to the user
+      const existingMemberResult = await database.query(
+        "SELECT * FROM family_members WHERE id = $1 AND user_id = $2",
+        [memberId, userId]
+      );
+
+      if (existingMemberResult.rows.length === 0) {
+        return res.status(404).json({
+          error: "Not Found",
+          message: "Family member not found",
+        });
+      }
+
+      const {
+        name,
+        firstName,
+        middleName,
+        lastName,
+        nickname,
+        gender,
+        birthDate,
+        deathDate,
+        placeOfBirth,
+        placeOfDeath,
+        occupation,
+        biography,
+        notes,
+        profileImageUrl,
+      } = req.body;
+
+      // Build update fields dynamically
+      const updateFields: string[] = [];
+      const updateValues: any[] = [];
+      let paramCounter = 1;
+
+      // Handle name computation
+      let computedName = name;
+      if (!computedName && (firstName || lastName)) {
+        computedName = [firstName, middleName, lastName]
+          .filter((n) => n && n.trim())
+          .join(" ");
+      }
+      if (!computedName && nickname && nickname.trim()) {
+        computedName = nickname.trim();
+      }
+
+      // Add fields to update
+      if (computedName !== undefined) {
+        updateFields.push(`name = $${paramCounter++}`);
+        updateValues.push(computedName);
+      }
+      if (firstName !== undefined) {
+        updateFields.push(`first_name = $${paramCounter++}`);
+        updateValues.push(firstName?.trim() || null);
+      }
+      if (middleName !== undefined) {
+        updateFields.push(`middle_name = $${paramCounter++}`);
+        updateValues.push(middleName?.trim() || null);
+      }
+      if (lastName !== undefined) {
+        updateFields.push(`last_name = $${paramCounter++}`);
+        updateValues.push(lastName?.trim() || null);
+      }
+      if (nickname !== undefined) {
+        updateFields.push(`nickname = $${paramCounter++}`);
+        updateValues.push(nickname?.trim() || null);
+      }
+      if (gender !== undefined) {
+        updateFields.push(`gender = $${paramCounter++}`);
+        updateValues.push(gender);
+      }
+      if (birthDate !== undefined) {
+        updateFields.push(`birth_date = $${paramCounter++}`);
+        updateValues.push(birthDate || null);
+      }
+      if (deathDate !== undefined) {
+        updateFields.push(`death_date = $${paramCounter++}`);
+        updateValues.push(deathDate || null);
+      }
+      if (placeOfBirth !== undefined) {
+        updateFields.push(`place_of_birth = $${paramCounter++}`);
+        updateValues.push(placeOfBirth?.trim() || null);
+      }
+      if (placeOfDeath !== undefined) {
+        updateFields.push(`place_of_death = $${paramCounter++}`);
+        updateValues.push(placeOfDeath?.trim() || null);
+      }
+      if (occupation !== undefined) {
+        updateFields.push(`occupation = $${paramCounter++}`);
+        updateValues.push(occupation?.trim() || null);
+      }
+      if (biography !== undefined) {
+        updateFields.push(`biography = $${paramCounter++}`);
+        updateValues.push(biography?.trim() || null);
+      }
+      if (notes !== undefined) {
+        updateFields.push(`notes = $${paramCounter++}`);
+        updateValues.push(notes?.trim() || null);
+      }
+      if (profileImageUrl !== undefined) {
+        updateFields.push(`profile_image_url = $${paramCounter++}`);
+        updateValues.push(profileImageUrl || null);
+      }
+
+      // Always update the updated_at timestamp
+      updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+
+      // Add WHERE clause parameters
+      updateValues.push(memberId);
+      const whereClause = `WHERE id = $${paramCounter}`;
+
+      if (updateFields.length === 1) {
+        // Only timestamp update, no actual changes
+        return res.status(400).json({
+          error: "Validation Error",
+          message: "No fields to update",
+        });
+      }
+
+      const updateQuery = `
+        UPDATE family_members 
+        SET ${updateFields.join(", ")}
+        ${whereClause}
+        RETURNING *
+      `;
+
+      const result = await database.query(updateQuery, updateValues);
+      const updatedMember = result.rows[0];
+
+      const familyMember: FamilyMember = {
+        id: updatedMember.id,
+        name: updatedMember.name,
+        firstName: updatedMember.first_name,
+        middleName: updatedMember.middle_name,
+        lastName: updatedMember.last_name,
+        nickname: updatedMember.nickname,
+        gender: updatedMember.gender,
+        birthDate: updatedMember.birth_date,
+        deathDate: updatedMember.death_date,
+        placeOfBirth: updatedMember.place_of_birth,
+        placeOfDeath: updatedMember.place_of_death,
+        occupation: updatedMember.occupation,
+        biography: updatedMember.biography,
+        notes: updatedMember.notes,
+        profileImageUrl: updatedMember.profile_image_url,
+        parentIds: updatedMember.parent_ids
+          ? Array.isArray(updatedMember.parent_ids)
+            ? updatedMember.parent_ids
+            : JSON.parse(updatedMember.parent_ids)
+          : [],
+        childIds: updatedMember.child_ids
+          ? Array.isArray(updatedMember.child_ids)
+            ? updatedMember.child_ids
+            : JSON.parse(updatedMember.child_ids)
+          : [],
+        spouseIds: updatedMember.spouse_ids
+          ? Array.isArray(updatedMember.spouse_ids)
+            ? updatedMember.spouse_ids
+            : JSON.parse(updatedMember.spouse_ids)
+          : [],
+        treeId: updatedMember.tree_id,
+        userId: updatedMember.user_id,
+        createdAt: updatedMember.created_at,
+        updatedAt: updatedMember.updated_at,
+      };
+
+      res.json(familyMember);
+    } catch (error) {
+      logger.error("Error updating family member:", error);
+      res.status(500).json({ error: "Failed to update family member" });
     }
   }
 );

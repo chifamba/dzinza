@@ -67,16 +67,16 @@ const FamilyUnit: React.FC<FamilyUnitProps> = ({
   }, [children.length, compact]);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 max-w-7xl mx-auto">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm dark:shadow-gray-700 border border-gray-200 dark:border-gray-700 p-6 max-w-7xl mx-auto transition-colors duration-200">
       {/* Parents Section */}
       <div className="mb-8">
         {isMarriedCouple ? (
           <>
             {/* Marriage Header */}
             <div className="flex items-center justify-center mb-6">
-              <div className="flex items-center space-x-2 text-sm font-medium text-gray-600 bg-pink-50 px-3 py-1 rounded-full">
+              <div className="flex items-center space-x-2 text-sm font-medium text-gray-600 dark:text-gray-300 bg-pink-50 dark:bg-pink-900/20 px-3 py-1 rounded-full transition-colors duration-200">
                 <svg
-                  className="w-4 h-4 text-pink-500"
+                  className="w-4 h-4 text-pink-500 dark:text-pink-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -120,9 +120,9 @@ const FamilyUnit: React.FC<FamilyUnitProps> = ({
           /* Single Parent */
           <div className="max-w-sm mx-auto">
             <div className="flex items-center justify-center mb-4">
-              <div className="flex items-center space-x-2 text-sm font-medium text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
+              <div className="flex items-center space-x-2 text-sm font-medium text-gray-600 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 transition-colors duration-200 px-3 py-1 rounded-full">
                 <svg
-                  className="w-4 h-4 text-blue-500"
+                  className="w-4 h-4 text-blue-500 dark:text-blue-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -158,9 +158,9 @@ const FamilyUnit: React.FC<FamilyUnitProps> = ({
         <div className="mt-8 pt-6 border-t border-gray-100">
           {/* Children Header */}
           <div className="flex items-center justify-center mb-6">
-            <div className="flex items-center space-x-2 text-sm font-medium text-gray-600 bg-green-50 px-3 py-1 rounded-full">
+            <div className="flex items-center space-x-2 text-sm font-medium text-gray-600 dark:text-gray-300 bg-green-50 dark:bg-green-900/20 transition-colors duration-200 px-3 py-1 rounded-full">
               <svg
-                className="w-4 h-4 text-green-500"
+                className="w-4 h-4 text-green-500 dark:text-green-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

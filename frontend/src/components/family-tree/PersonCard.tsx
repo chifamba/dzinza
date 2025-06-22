@@ -41,7 +41,7 @@ const PersonCard: React.FC<PersonCardProps> = ({
 
   if (compact) {
     return (
-      <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md dark:hover:shadow-gray-700 transition-all duration-200">
         <div className="flex items-center space-x-4">
           {/* Avatar */}
           <div className="flex-shrink-0">
@@ -57,10 +57,10 @@ const PersonCard: React.FC<PersonCardProps> = ({
 
           {/* Info */}
           <div className="min-w-0 flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 truncate">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate transition-colors duration-200">
               {person.name}
             </h3>
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
+            <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300 transition-colors duration-200">
               {person.birthDate && (
                 <span>Born {formatDate(person.birthDate)}</span>
               )}
@@ -81,7 +81,7 @@ const PersonCard: React.FC<PersonCardProps> = ({
             variant="ghost"
             size="sm"
             onClick={onEdit}
-            className="text-gray-600 hover:text-gray-900"
+            className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
           >
             Edit
           </Button>
@@ -91,7 +91,7 @@ const PersonCard: React.FC<PersonCardProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm dark:shadow-gray-700 border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md dark:hover:shadow-gray-600 transition-all duration-200">
       {/* Header with Avatar and Basic Info */}
       <div className="p-6">
         <div className="flex items-start space-x-4">
@@ -109,16 +109,16 @@ const PersonCard: React.FC<PersonCardProps> = ({
 
           {/* Basic Info */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-xl font-semibold text-gray-900 mb-1">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1 transition-colors duration-200">
               {person.name}
             </h3>
 
             {/* Birth/Death Info */}
-            <div className="space-y-1 text-sm text-gray-600">
+            <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300 transition-colors duration-200">
               {person.birthDate && (
                 <div className="flex items-center">
                   <svg
-                    className="w-4 h-4 mr-2 text-green-500"
+                    className="w-4 h-4 mr-2 text-green-500 dark:text-green-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -137,7 +137,7 @@ const PersonCard: React.FC<PersonCardProps> = ({
               {person.deathDate && (
                 <div className="flex items-center">
                   <svg
-                    className="w-4 h-4 mr-2 text-gray-400"
+                    className="w-4 h-4 mr-2 text-gray-400 dark:text-gray-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

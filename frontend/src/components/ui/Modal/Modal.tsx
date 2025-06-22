@@ -21,19 +21,21 @@ const Modal: React.FC<ModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 transition-opacity duration-300"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-auto overflow-hidden transform transition-all duration-300 ease-out"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl dark:shadow-gray-900 w-full max-w-2xl mx-auto overflow-hidden transform transition-all duration-300 ease-out"
         onClick={(e) => e.stopPropagation()} // Prevent click inside modal from closing it
       >
         {title && (
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center transition-colors duration-200">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-white transition-colors duration-200">
+              {title}
+            </h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 focus:outline-none"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none transition-colors duration-200"
               aria-label="Close modal"
             >
               {/* Heroicon name: x */}
@@ -54,9 +56,11 @@ const Modal: React.FC<ModalProps> = ({
             </button>
           </div>
         )}
-        <div className="p-6">{children}</div>
+        <div className="p-6 bg-white dark:bg-gray-800 transition-colors duration-200">
+          {children}
+        </div>
         {footer && (
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 text-right">
+          <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 text-right transition-colors duration-200">
             {footer}
           </div>
         )}
