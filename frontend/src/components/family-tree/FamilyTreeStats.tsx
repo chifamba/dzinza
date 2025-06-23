@@ -51,8 +51,8 @@ const FamilyTreeStats: React.FC<FamilyTreeStatsProps> = ({ tree }) => {
           />
         </svg>
       ),
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-50 dark:bg-blue-900/20",
     },
     {
       label: "Living",
@@ -72,8 +72,8 @@ const FamilyTreeStats: React.FC<FamilyTreeStatsProps> = ({ tree }) => {
           />
         </svg>
       ),
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: "text-green-600 dark:text-green-400",
+      bgColor: "bg-green-50 dark:bg-green-900/20",
     },
     {
       label: "Marriages",
@@ -93,8 +93,8 @@ const FamilyTreeStats: React.FC<FamilyTreeStatsProps> = ({ tree }) => {
           />
         </svg>
       ),
-      color: "text-pink-600",
-      bgColor: "bg-pink-50",
+      color: "text-pink-600 dark:text-pink-400",
+      bgColor: "bg-pink-50 dark:bg-pink-900/20",
     },
     {
       label: "Generations",
@@ -114,8 +114,8 @@ const FamilyTreeStats: React.FC<FamilyTreeStatsProps> = ({ tree }) => {
           />
         </svg>
       ),
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-50 dark:bg-purple-900/20",
     },
   ];
 
@@ -126,15 +126,17 @@ const FamilyTreeStats: React.FC<FamilyTreeStatsProps> = ({ tree }) => {
           <div className="p-6">
             <div className="flex items-center">
               <div
-                className={`p-3 rounded-lg ${stat.bgColor} ${stat.color} mr-4`}
+                className={`p-3 rounded-lg ${stat.bgColor} ${stat.color} mr-4 transition-colors duration-200`}
               >
                 {stat.icon}
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300 transition-colors duration-200">
                   {stat.label}
                 </p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white transition-colors duration-200">
+                  {stat.value}
+                </p>
               </div>
             </div>
           </div>

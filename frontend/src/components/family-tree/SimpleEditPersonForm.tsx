@@ -21,6 +21,7 @@ const SimpleEditPersonForm: React.FC<SimpleEditPersonFormProps> = ({
   const [firstName, setFirstName] = useState(person.firstName || "");
   const [middleName, setMiddleName] = useState(person.middleName || "");
   const [lastName, setLastName] = useState(person.lastName || "");
+  const [nickname, setNickname] = useState(person.nickname || "");
   const [birthDate, setBirthDate] = useState(person.birthDate || "");
   const [deathDate, setDeathDate] = useState(person.deathDate || "");
   const [gender, setGender] = useState<"male" | "female" | "other" | "unknown">(
@@ -30,19 +31,31 @@ const SimpleEditPersonForm: React.FC<SimpleEditPersonFormProps> = ({
     person.profileImageUrl || ""
   );
 
+  // Validation: at least one name field must be filled
+  const hasValidName = firstName.trim() || lastName.trim() || nickname.trim();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Generate full name from components
-    const fullName = [firstName, middleName, lastName]
+    // Validation: ensure at least one name field is provided
+    if (!hasValidName) {
+      alert("Please provide at least a first name, last name, or nickname.");
+      return;
+    }
+
+    // Generate full name from components, prefer formal names over nickname
+    const formalName = [firstName, middleName, lastName]
       .filter((name) => name.trim())
       .join(" ");
 
+    const displayName = formalName || nickname.trim();
+
     const personData = {
-      name: fullName,
+      name: displayName,
       firstName: firstName.trim() || undefined,
       middleName: middleName.trim() || undefined,
       lastName: lastName.trim() || undefined,
+      nickname: nickname.trim() || undefined,
       birthDate: birthDate || undefined,
       deathDate: deathDate || undefined,
       gender,
@@ -55,18 +68,34 @@ const SimpleEditPersonForm: React.FC<SimpleEditPersonFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Name Fields */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">Name Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white transition-colors duration-200">
+          Name Information
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-200">
+          At least one name field is required (first name, last name, or
+          nickname)
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             label="First Name"
             name="firstName"
             type="text"
-            required
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             placeholder="John"
             disabled={isSubmitting}
           />
+          <Input
+            label="Last Name"
+            name="lastName"
+            type="text"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Doe"
+            disabled={isSubmitting}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             label="Middle Name (Optional)"
             name="middleName"
@@ -77,24 +106,32 @@ const SimpleEditPersonForm: React.FC<SimpleEditPersonFormProps> = ({
             disabled={isSubmitting}
           />
           <Input
-            label="Last Name"
-            name="lastName"
+            label="Nickname"
+            name="nickname"
             type="text"
-            required
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder="Doe"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            placeholder="Grandpa Joe, Big Jim, etc."
             disabled={isSubmitting}
           />
         </div>
 
         {/* Show preview of full name */}
-        {(firstName.trim() || lastName.trim()) && (
-          <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-            <span className="font-medium">Full Name Preview: </span>
+        {hasValidName && (
+          <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 p-2 rounded transition-colors duration-200">
+            <span className="font-medium">Name Preview: </span>
             {[firstName, middleName, lastName]
               .filter((name) => name.trim())
-              .join(" ") || "Enter at least first or last name"}
+              .join(" ") ||
+              nickname.trim() ||
+              "Enter at least one name field"}
+          </div>
+        )}
+
+        {/* Validation warning */}
+        {!hasValidName && (firstName || lastName || nickname) && (
+          <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded transition-colors duration-200">
+            Please provide at least a first name, last name, or nickname.
           </div>
         )}
       </div>
@@ -165,7 +202,7 @@ const SimpleEditPersonForm: React.FC<SimpleEditPersonFormProps> = ({
         <Button
           type="submit"
           variant="primary"
-          disabled={isSubmitting || (!firstName.trim() && !lastName.trim())}
+          disabled={isSubmitting || !hasValidName}
         >
           {isSubmitting ? "Saving..." : "Save Changes"}
         </Button>
