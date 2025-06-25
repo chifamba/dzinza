@@ -26,7 +26,7 @@ import { metricsMiddleware } from "./shared/middleware/metrics";
 import { healthRoutes } from "./routes/health";
 import { authRoutes } from "./routes/auth";
 import { genealogyRoutes } from "./routes/genealogy";
-import { notificationRoutes } from "./routes/notifications";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { swaggerOptions } from "./config/swagger";
 import { database } from "./config/database";
 import { getMetrics } from "./shared/middleware/metrics";
@@ -133,7 +133,23 @@ app.use("/api/auth", authRoutes);
 app.use("/api/genealogy", genealogyRoutes);
 
 // Notification routes
-app.use("/api/notifications", notificationRoutes);
+app.use(
+  "/api/notifications",
+  createProxyMiddleware({
+    target:
+      process.env.NODE_ENV === "production"
+        ? "http://genealogy-service:3004"
+        : "http://localhost:3004",
+    changeOrigin: true,
+    pathRewrite: { "^/api/notifications": "/notifications" },
+    onError: (err, req, res) => {
+      logger.error("Genealogy notification service proxy error:", err);
+      res
+        .status(503)
+        .json({ error: "Genealogy notification service unavailable" });
+    },
+  })
+);
 
 // Metrics endpoint
 app.get("/metrics", getMetrics);

@@ -3,6 +3,7 @@ import { logger } from "../utils/logger";
 
 const redisClient = createClient({
   url: process.env.REDIS_URL || "redis://localhost:6379",
+  password: process.env.REDIS_PASSWORD || "cmVkaXNfc2VjdXJlX3Bhc3N3b3JkXzc4OQo",
 });
 
 redisClient.on("error", (err) => {

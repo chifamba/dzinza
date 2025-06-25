@@ -1,64 +1,68 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
-import { 
-  Menu, 
-  X, 
-  TreePine, 
-  Home, 
-  Search, 
+import { useState, useEffect, useRef } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
+import {
+  Menu,
+  X,
+  TreePine,
+  Home,
+  Search,
   Camera,
   Dna,
   LogOut,
-  User
-} from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import LanguageSelector from './LanguageSelector';
+  User,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import LanguageSelector from "./LanguageSelector";
+import NotificationBell from "./NotificationBell";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
   const { user, isAuthenticated, logout } = useAuth();
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
         setShowUserMenu(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
   const navItems = [
-    { path: '/dashboard', label: t('navigation.dashboard'), icon: Home },
-    { path: '/family-tree', label: t('navigation.familyTree'), icon: TreePine },
-    { path: '/dna-matching', label: t('navigation.dnaMatching'), icon: Dna },
-    { path: '/records', label: t('navigation.records'), icon: Search },
-    { path: '/photos', label: t('navigation.photos'), icon: Camera },
+    { path: "/dashboard", label: t("navigation.dashboard"), icon: Home },
+    { path: "/family-tree", label: t("navigation.familyTree"), icon: TreePine },
+    { path: "/dna-matching", label: t("navigation.dnaMatching"), icon: Dna },
+    { path: "/records", label: t("navigation.records"), icon: Search },
+    { path: "/photos", label: t("navigation.photos"), icon: Camera },
   ];
 
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/');
+      navigate("/");
       setShowUserMenu(false);
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error("Logout failed:", error);
     }
   };
 
   const handleLogin = () => {
-    navigate('/login');
+    navigate("/login");
   };
 
   return (
@@ -82,29 +86,30 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {isAuthenticated && navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
-                    isActive
-                      ? 'text-dzinza-600 bg-dzinza-50'
-                      : 'text-gray-600 hover:text-dzinza-600 hover:bg-dzinza-50'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-            
-            <div className="flex items-center space-x-4">
+            {isAuthenticated &&
+              navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
+                      isActive
+                        ? "text-dzinza-600 bg-dzinza-50"
+                        : "text-gray-600 hover:text-dzinza-600 hover:bg-dzinza-50"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+
+            <div className="flex items-center gap-2">
               <LanguageSelector />
-              
+              <NotificationBell />
               {isAuthenticated ? (
                 <div className="relative" ref={userMenuRef}>
                   <button
@@ -116,7 +121,7 @@ const Navbar = () => {
                       {user?.firstName || user?.email}
                     </span>
                   </button>
-                  
+
                   {showUserMenu && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
@@ -130,14 +135,14 @@ const Navbar = () => {
                         onClick={() => setShowUserMenu(false)}
                       >
                         <User className="h-4 w-4 mr-2" />
-                        {t('navigation.profile')}
+                        {t("navigation.profile")}
                       </Link>
                       <button
                         onClick={handleLogout}
                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         <LogOut className="h-4 w-4 mr-2" />
-                        {t('navigation.signOut')}
+                        {t("navigation.signOut")}
                       </button>
                     </motion.div>
                   )}
@@ -148,13 +153,13 @@ const Navbar = () => {
                     onClick={handleLogin}
                     className="text-gray-600 hover:text-dzinza-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
                   >
-                    {t('navigation.signIn')}
+                    {t("navigation.signIn")}
                   </button>
                   <Link
                     to="/register"
                     className="bg-dzinza-600 text-white px-4 py-2 rounded-md hover:bg-dzinza-700 transition-colors duration-300 text-sm font-medium"
                   >
-                    {t('navigation.signUp')}
+                    {t("navigation.signUp")}
                   </Link>
                 </div>
               )}
@@ -167,7 +172,11 @@ const Navbar = () => {
               onClick={() => setIsOpen(!isOpen)}
               className="text-gray-600 hover:text-dzinza-600 transition-colors duration-300"
             >
-              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
             </button>
           </div>
         </div>
@@ -176,40 +185,41 @@ const Navbar = () => {
       {/* Mobile Navigation */}
       <motion.div
         initial={{ opacity: 0, height: 0 }}
-        animate={{ 
-          opacity: isOpen ? 1 : 0, 
-          height: isOpen ? 'auto' : 0 
+        animate={{
+          opacity: isOpen ? 1 : 0,
+          height: isOpen ? "auto" : 0,
         }}
         transition={{ duration: 0.3 }}
         className="md:hidden bg-white border-t border-gray-200 overflow-hidden"
       >
         <div className="px-2 pt-2 pb-3 space-y-1">
-          {isAuthenticated && navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors duration-300 ${
-                  isActive
-                    ? 'text-dzinza-600 bg-dzinza-50'
-                    : 'text-gray-600 hover:text-dzinza-600 hover:bg-dzinza-50'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-          
+          {isAuthenticated &&
+            navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors duration-300 ${
+                    isActive
+                      ? "text-dzinza-600 bg-dzinza-50"
+                      : "text-gray-600 hover:text-dzinza-600 hover:bg-dzinza-50"
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+
           <div className="pt-4 border-t border-gray-200">
             <div className="mb-3">
               <LanguageSelector className="w-full" />
             </div>
-            
+
             {isAuthenticated ? (
               <div className="space-y-2">
                 {user && (
@@ -223,7 +233,7 @@ const Navbar = () => {
                   className="flex items-center w-full px-3 py-2 rounded-md text-gray-600 hover:text-dzinza-600 hover:bg-dzinza-50 transition-colors duration-300"
                 >
                   <User className="h-5 w-5 mr-2" />
-                  {t('navigation.profile')}
+                  {t("navigation.profile")}
                 </Link>
                 <button
                   onClick={() => {
@@ -233,7 +243,7 @@ const Navbar = () => {
                   className="flex items-center w-full px-3 py-2 rounded-md text-gray-600 hover:text-dzinza-600 hover:bg-dzinza-50 transition-colors duration-300"
                 >
                   <LogOut className="h-5 w-5 mr-2" />
-                  {t('navigation.signOut')}
+                  {t("navigation.signOut")}
                 </button>
               </div>
             ) : (
@@ -245,14 +255,14 @@ const Navbar = () => {
                   }}
                   className="w-full text-left px-3 py-2 rounded-md text-gray-600 hover:text-dzinza-600 hover:bg-dzinza-50 transition-colors duration-300"
                 >
-                  {t('navigation.signIn')}
+                  {t("navigation.signIn")}
                 </button>
                 <Link
                   to="/register"
                   onClick={() => setIsOpen(false)}
                   className="block w-full bg-dzinza-600 text-white px-4 py-2 rounded-md hover:bg-dzinza-700 transition-colors duration-300 text-center"
                 >
-                  {t('navigation.signUp')}
+                  {t("navigation.signUp")}
                 </Link>
               </div>
             )}
