@@ -2,7 +2,18 @@
 
 An open-source, interactive genealogy platform for building family trees, discovering relatives, and exploring ancestral history. This platform provides tools for media management, storytelling, collaboration, and robust search capabilities.
 
-**Current Project Focus: Backend Re-implementation with Python/FastAPI** Dzinza is undergoing a significant upgrade, migrating its backend services from Node.js to Python 3.11 and FastAPI. This strategic move aims to enhance performance, scalability, and maintainability. The existing React/Tailwind CSS frontend will be preserved and adapted. For details, please see our [Backend Migration Roadmap](ROADMAP.md).
+**Documentation Structure:**
+
+- **/docs**: High-level project documentation (environment, overview, API)
+- **/docs/markdown**: All markdown documentation, organized by topic:
+  - **legacy/**: Historical and feature-specific docs
+  - **frontend/**: Frontend implementation and migration docs
+  - **product_plans/**: Product planning and ownership docs
+  - **vscode/**: VS Code workspace and tasks docs
+
+For a full table of contents, see `docs/docs.md`.
+
+**Current Project Focus: Backend Re-implementation with Python/FastAPI** Dzinza is undergoing a significant upgrade, migrating its backend services from Node.js to Python 3.11 and FastAPI. This strategic move aims to enhance performance, scalability, and maintainability. The existing React/Tailwind CSS frontend will be preserved and adapted. For details, please see our [Backend Migration Roadmap](docs/markdown/legacy/ROADMAP.md).
 
 ## 🌟 Features
 
@@ -54,7 +65,7 @@ All project documentation is centralized in [**docs/docs.md**](docs/docs.md). Th
 
 Key documents and sections to highlight:
 
-- [**Backend Migration Roadmap (ROADMAP.md)**](ROADMAP.md) - **Essential reading for understanding the current development phase and future direction.**
+- [**Backend Migration Roadmap (ROADMAP.md)**](docs/markdown/legacy/ROADMAP.md) - **Essential reading for understanding the current development phase and future direction.**
 - [Project Documentation Hub (docs/docs.md)](docs/docs.md)
   - [API Documentation (docs/docs.md#api-documentation)](docs/docs.md#api-documentation) - _Note: API is evolving with Python backend migration._
   - [Development Guidelines (docs/docs.md#development-guidelines)](docs/docs.md#development-guidelines)
@@ -77,15 +88,15 @@ This project is **actively undergoing a significant backend migration from Node.
 
 ### Current Focus
 
-- **Backend Migration**: Re-implementing backend services in Python 3.11 with FastAPI, as detailed in the [**Backend Migration Roadmap (ROADMAP.md)**](ROADMAP.md). This is the primary area for new development and contributions.
+- **Backend Migration**: Re-implementing backend services in Python 3.11 with FastAPI, as detailed in the [**Backend Migration Roadmap (ROADMAP.md)**](docs/markdown/legacy/ROADMAP.md). This is the primary area for new development and contributions.
 - **Frontend Adaptation**: Ensuring the React frontend integrates seamlessly with the new Python backend APIs.
 - **Documentation Update**: Aligning all documentation (`docs/docs.md`, `README.md`) with the new Python-centric architecture and roadmap.
 
-Refer to the [**Backend Migration Roadmap (ROADMAP.md)**](ROADMAP.md) for detailed progress and the phased approach.
+Refer to the [**Backend Migration Roadmap (ROADMAP.md)**](docs/markdown/legacy/ROADMAP.md) for detailed progress and the phased approach.
 
 ## 🤝 Contributing
 
-We warmly welcome contributions from the community! Given the ongoing backend migration, contributions aligning with the [**Backend Migration Roadmap (ROADMAP.md)**](ROADMAP.md) and the new Python stack are particularly valuable.
+We warmly welcome contributions from the community! Given the ongoing backend migration, contributions aligning with the [**Backend Migration Roadmap (ROADMAP.md)**](docs/markdown/legacy/ROADMAP.md) and the new Python stack are particularly valuable.
 
 Please read our [Contributing Guide (within docs/docs.md#contributing-guide)](docs/docs.md#contributing-guide) and [Code of Conduct (within docs/docs.md#code-of-conduct)](docs/docs.md#code-of-conduct) before getting started.
 
@@ -126,7 +137,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **Documentation**: Check our comprehensive [documentation](docs/) and the [Backend Migration Roadmap](ROADMAP.md).
+- **Documentation**: Check our comprehensive [documentation](docs/) and the [Backend Migration Roadmap](docs/markdown/legacy/ROADMAP.md).
 - **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/dzinza/dzinza/issues)
 - **Community**: Join our discussions in [GitHub Discussions](https://github.com/dzinza/dzinza/discussions)
 - **Email**: Contact us at support@dzinza.com (Please note response times may vary)
