@@ -6,9 +6,10 @@ import { FamilyTree, FamilyTreeDocument } from "../models/FamilyTree.js"; // Ass
 import { Person, PersonDocument } from "../models/Person.js"; // Assuming PersonDocument is the Mongoose doc type
 import { Relationship } from "../models/Relationship.js";
 import { FilterQuery } from "mongoose"; // Import FilterQuery
-import { logger } from "../../../../src/shared/utils/logger.js";
+import { logger } from "../utils/logger";
 import multer from "multer";
-import { recordActivity } from "../services/activityLogService.js"; // Import recordActivity
+import { recordActivity } from "../services/activityLogService";
+// import { recordActivity } from "../services/activityLogService.js"; // Import recordActivity
 import { parse as parseGedcom, Node as GedcomNode } from "parse-gedcom"; // Added parse-gedcom
 import personRouter from "./personRoutes.js"; // Import person routes
 import relationshipRouter from "./relationshipRoutes.js"; // Import relationship routes
@@ -479,22 +480,6 @@ router.put(
         changesPreview += "general information.";
       }
 
-      recordActivity({
-        userId: userId as string,
-        userName: req.user?.name || req.user?.email, // Assuming name or email might be on req.user
-        actionType: "UPDATE_FAMILY_TREE_SETTINGS",
-        familyTreeId: savedTree._id,
-        targetResourceId: savedTree._id.toString(),
-        targetResourceType: "FamilyTree",
-        targetResourceName: savedTree.name,
-        changesPreview: changesPreview,
-        details: `${
-          req.user?.name || req.user?.id
-        } updated settings for tree '${savedTree.name}'.`,
-        ipAddress: req.ip,
-        userAgent: req.get("User-Agent"),
-      });
-
       res.json(savedTree);
 
       logger.info("Family tree updated", {
@@ -756,21 +741,17 @@ router.put(
 
       // Authorization: User must be owner or admin to manage collaborators
       if (!familyTree.canUserManage(currentUserId)) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "Access denied: You do not have permission to manage collaborators for this tree.",
-          });
+        return res.status(403).json({
+          error:
+            "Access denied: You do not have permission to manage collaborators for this tree.",
+        });
       }
 
       // Prevent owner from being managed as a collaborator
       if (familyTree.ownerId === collaboratorUserId) {
-        return res
-          .status(403)
-          .json({
-            error: "Cannot manage the owner of the tree as a collaborator.",
-          });
+        return res.status(403).json({
+          error: "Cannot manage the owner of the tree as a collaborator.",
+        });
       }
 
       // Prevent admin from changing their own role via this endpoint (owner can change admin's role)
@@ -780,12 +761,10 @@ router.put(
           ?.role === "admin" &&
         currentUserId !== familyTree.ownerId
       ) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "Admins cannot change their own role. Please ask the tree owner.",
-          });
+        return res.status(403).json({
+          error:
+            "Admins cannot change their own role. Please ask the tree owner.",
+        });
       }
 
       const collaboratorIndex = familyTree.collaborators.findIndex(
@@ -798,12 +777,10 @@ router.put(
       }
 
       if (!familyTree.collaborators[collaboratorIndex].acceptedAt) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Collaborator has not accepted the invitation yet. Role cannot be changed.",
-          });
+        return res.status(400).json({
+          error:
+            "Collaborator has not accepted the invitation yet. Role cannot be changed.",
+        });
       }
 
       familyTree.collaborators[collaboratorIndex].role = newRole;
@@ -827,24 +804,6 @@ router.put(
       // const collaboratorInfo = familyTree.collaborators[collaboratorIndex]; // This is the updated one // Commented out
       // const collaboratorUser = await User.findById(collaboratorUserId).select('name email'); // Example
       // const targetResourceName = collaboratorUser ? (collaboratorUser.name || collaboratorUser.email) : collaboratorUserId;
-
-      recordActivity({
-        userId: currentUserId as string,
-        userName: req.user?.name || req.user?.email,
-        actionType: "UPDATE_COLLABORATOR_ROLE",
-        familyTreeId: familyTree._id,
-        targetResourceId: collaboratorUserId,
-        targetResourceType: "FamilyTreeCollaborator",
-        targetResourceName: collaboratorUserId, // Placeholder, ideally fetch name/email
-        changesPreview: `Role changed to '${newRole}'`,
-        details: `${
-          req.user?.name || currentUserId
-        } changed role of collaborator ${collaboratorUserId} to '${newRole}' on tree '${
-          familyTree.name
-        }'.`,
-        ipAddress: req.ip,
-        userAgent: req.get("User-Agent"),
-      });
 
       res.json(familyTree.collaborators[collaboratorIndex]); // Return updated collaborator or whole tree
     } catch (error) {
@@ -914,12 +873,10 @@ router.delete(
 
       // Authorization: User must be owner or admin
       if (!familyTree.canUserManage(currentUserId)) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "Access denied: You do not have permission to manage collaborators for this tree.",
-          });
+        return res.status(403).json({
+          error:
+            "Access denied: You do not have permission to manage collaborators for this tree.",
+        });
       }
 
       // Prevent owner from being removed
@@ -936,12 +893,9 @@ router.delete(
           ?.role === "admin" &&
         currentUserId !== familyTree.ownerId
       ) {
-        return res
-          .status(403)
-          .json({
-            error:
-              "Admins cannot remove themselves. Please ask the tree owner.",
-          });
+        return res.status(403).json({
+          error: "Admins cannot remove themselves. Please ask the tree owner.",
+        });
       }
 
       const collaboratorExists = familyTree.collaborators.some(
@@ -2517,10 +2471,10 @@ router.get(
           );
 
           finalGedcomLines.push("0 TRLR");
-          const gedcomContent = finalGedcomLines.join("\n");
           gedcomLines.push("0 TRLR");
 
-          const gedcomContent = gedcomLines.join("\n");
+          // Use finalGedcomLines for the output
+          const gedcomContent = finalGedcomLines.join("\n");
 
           span.setStatus({ code: SpanStatusCode.OK });
           span.end();

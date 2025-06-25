@@ -2,6 +2,7 @@ import { Worker, Job } from "bullmq";
 import { Person } from "../models/Person";
 import { MergeSuggestion } from "../models/MergeSuggestion";
 import mongoose from "mongoose";
+import { createNotification } from "../services/notificationService";
 
 // Dummy fuzzy match function (replace with real logic)
 function fuzzyMatch(newPerson: any, existingPerson: any): number {
@@ -55,10 +56,23 @@ export const duplicateDetectionWorker = new Worker(
           existingPersonId: candidate._id,
           confidence,
           createdBy,
-          notifiedUsers: [createdBy, candidate.createdBy].filter(Boolean),
+          notifiedUsers: [createdBy].filter(Boolean), // Only notify creator for now
           previewTree,
         });
-        // TODO: Notify admins, creator, and candidate.createdBy
+        // Notify users (in-app notification framework)
+        const notifiedUsers = [createdBy].filter(Boolean); // Only notify creator for now
+        for (const userId of notifiedUsers) {
+          await createNotification({
+            userId: userId.toString(),
+            type: "merge_suggestion",
+            message: `Possible duplicate detected for person ${newPersonId}`,
+            data: {
+              newPersonId,
+              existingPersonId: candidate._id,
+              confidence,
+            },
+          });
+        }
       }
     }
   }

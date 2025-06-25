@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import { MergeSuggestion } from "../models/MergeSuggestion";
 import { Person } from "../models/Person";
 import { PersonHistory } from "../models/PersonHistory";
-import mongoose from "mongoose";
+import { FamilyTree } from "../models/FamilyTree";
 
 const router = express.Router();
 
@@ -150,6 +150,42 @@ router.post(
       changedBy: req.user?._id || req.user?.id || req.user,
       changeType: "merge",
     });
+
+    // If the persons are from different trees, merge the trees
+    if (
+      newPerson.familyTreeId.toString() !==
+      existingPerson.familyTreeId.toString()
+    ) {
+      const sourceTreeId = newPerson.familyTreeId;
+      const targetTreeId = existingPerson.familyTreeId;
+      // Move all persons from sourceTreeId to targetTreeId
+      await Person.updateMany(
+        { familyTreeId: sourceTreeId },
+        { $set: { familyTreeId: targetTreeId } }
+      );
+      // Optionally, merge collaborators, stats, etc.
+      const sourceTree = await FamilyTree.findById(sourceTreeId);
+      const targetTree = await FamilyTree.findById(targetTreeId);
+      if (sourceTree && targetTree) {
+        // Merge collaborators (avoid duplicates)
+        const existingUserIds = new Set(
+          targetTree.collaborators.map((c) => c.userId)
+        );
+        for (const collab of sourceTree.collaborators) {
+          if (!existingUserIds.has(collab.userId)) {
+            targetTree.collaborators.push(collab);
+          }
+        }
+        // Merge stats
+        targetTree.statistics.totalPersons +=
+          sourceTree.statistics.totalPersons;
+        // Optionally, merge other fields as needed
+        await targetTree.save();
+        // Remove the source tree
+        await sourceTree.deleteOne();
+      }
+    }
+
     res.json({ success: true });
   }
 );

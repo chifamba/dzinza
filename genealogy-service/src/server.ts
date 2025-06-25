@@ -7,26 +7,25 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
-// promClient removed, will use registry from our metrics utility
-// import promClient from "prom-client";
 import metricsRegistry, {
   httpRequestCounter,
   httpRequestDurationMicroseconds,
 } from "./utils/metrics"; // Import our metrics setup
 import { initTracer } from "./utils/tracing"; // Import OpenTelemetry tracer initialization
+import { logger } from "./utils/logger"; // Use local logger
 
 // Import routes
-import familyTreeRoutes from "./routes/familyTree.js";
-import personRoutes from "./routes/personRoutes.js";
-import relationshipRoutes from "./routes/relationshipRoutes.js";
+import familyTreeRoutes from "./routes/familyTree";
+import personRoutes from "./routes/personRoutes";
+import relationshipRoutes from "./routes/relationshipRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
 // TODO: Create these route files
-// import mediaRoutes from "./routes/media.js";
-// import eventsRouter from "./routes/events.js";
+// import mediaRoutes from "./routes/media";
+// import eventsRouter from "./routes/events";
 
 // Import middleware
-import { errorHandler } from "../../src/shared/middleware/errorHandler.js";
-import { authMiddleware } from "../../src/shared/middleware/auth.js";
-import { logger } from "../../src/shared/utils/logger.js";
+import { errorHandler } from "./middleware/errorHandler";
+import { authMiddleware } from "./middleware/auth";
 
 dotenv.config();
 
@@ -173,6 +172,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 app.use("/api/family-trees", authMiddleware, familyTreeRoutes);
 app.use("/api/persons", authMiddleware, personRoutes);
 app.use("/api/relationships", authMiddleware, relationshipRoutes);
+app.use("/notifications", authMiddleware, notificationRoutes);
 // TODO: Implement these routes
 // app.use("/api/media", authMiddleware, mediaRoutes);
 // app.use("/api/events", authMiddleware, eventsRouter);
@@ -202,15 +202,19 @@ const connectDB = async () => {
 };
 
 // Graceful shutdown
-const gracefulShutdown = (signal: string) => {
+const gracefulShutdown = async (signal: string) => {
   logger.info(`Received ${signal}. Graceful shutdown...`, {
     service: "genealogy",
   });
 
-  mongoose.connection.close(() => {
+  try {
+    await mongoose.connection.close();
     logger.info("MongoDB connection closed", { service: "genealogy" });
     process.exit(0);
-  });
+  } catch (err) {
+    logger.error("Error closing MongoDB connection", { error: err });
+    process.exit(1);
+  }
 };
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
