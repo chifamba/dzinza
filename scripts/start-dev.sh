@@ -33,8 +33,8 @@ MONGODB_SEARCH_DB=dzinza_search
 REDIS_URL=redis://localhost:6379
 REDIS_HOST=localhost
 REDIS_PORT=6379
-#REDIS_PASSWORD=cmVkaXNfc2VjdXJlX3Bhc3N3b3JkXzc4OQo
-REDIS_PASSWORD=redis_secure_password_789
+REDIS_PASSWORD='cmVkaXNfc2VjdXJlX3Bhc3N3b3JkXzc4OQo'
+#REDIS_PASSWORD=redis_secure_password_789
 REDIS_DB=0
 
 # Elasticsearch - Advanced search capabilities
@@ -222,6 +222,8 @@ echo "Starting Dzinza development environment (from $PWD)..."
 
 # Start backend services
 # docker-compose.yml is expected in the current directory (project root)
+echo "Starting Docker services..."
+echo $REDIS_PASSWORD
 docker-compose up -d postgres redis mongodb elasticsearch
 
 # Wait for services
