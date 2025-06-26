@@ -1,0 +1,30 @@
+fastapi
+uvicorn[standard]
+
+# Elasticsearch (official async client)
+elasticsearch[async]
+
+# MongoDB (if used for analytics or other metadata)
+motor # Async MongoDB driver
+
+pydantic
+pydantic-settings
+python-dotenv
+python-jose[cryptography] # For validating JWTs
+passlib[bcrypt]
+
+# Observability
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-elasticsearch # For Elasticsearch client
+opentelemetry-instrumentation-motor # If MongoDB is used
+opentelemetry-instrumentation-httpx
+httpx
+
+# Metrics
+prometheus_client
+
+# Other utilities
+email-validator # If handling emails in any models/schemas directly

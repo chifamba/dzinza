@@ -1,0 +1,25 @@
+fastapi
+uvicorn[standard]
+httpx # For making HTTP requests to downstream services (proxying)
+pydantic
+pydantic-settings
+python-dotenv
+python-jose[cryptography] # For JWT validation if done at gateway level
+passlib[bcrypt]
+
+# Observability
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-httpx # Crucial for tracing proxied requests
+
+# Metrics
+prometheus_client
+
+# Swagger/OpenAPI UI (if gateway serves a consolidated API doc)
+# fastapi[all] includes uvicorn, pydantic, jinja2, python-multipart, etc.
+# swagger-ui-dist (if self-hosting Swagger UI static files, usually not needed with FastAPI's built-in /docs)
+
+# Other utilities
+email-validator # If any direct models/schemas use it. Likely not needed for pure gateway.

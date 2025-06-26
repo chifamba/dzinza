@@ -1,0 +1,2 @@
+# This directory stores Alembic migration scripts.
+# Add .gitkeep to ensure the directory is tracked by Git even when empty.

@@ -1,0 +1,26 @@
+fastapi
+uvicorn[standard]
+sqlalchemy[asyncio]
+asyncpg
+redis[hiredis]
+python-jose[cryptography]
+passlib[bcrypt]
+pydantic
+pydantic-settings
+python-dotenv
+alembic
+psycopg2-binary # For Alembic sync operations initially, or if needed by other tools
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-sqlalchemy
+opentelemetry-instrumentation-redis
+opentelemetry-instrumentation-httpx # If calling other services
+httpx # For social auth validation calls if needed
+greenlet # Required by SQLAlchemy async
+email-validator # For email validation in pydantic models
+# For social auth (will add specific ones like google-auth if directly used,
+# but often it's direct HTTP calls to provider's token info endpoints)
+pyotp # For MFA
+qrcode # For generating QR codes for OTP setup (optional, can be done frontend)
