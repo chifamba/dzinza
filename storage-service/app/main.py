@@ -3,6 +3,8 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uuid # For auth dependency type hint
+from datetime import datetime # for health check timestamp
+from typing import Optional # for cleanup_service_instance type hint
 
 from app.core.config import settings
 from app.api.v1 import api_v1_router
@@ -118,9 +120,3 @@ async def health_check_storage():
         },
         "version": "1.0.0"
     }
-
-# Routers need to be updated to use the actual auth dependency from app.middleware.auth_middleware
-# This will be done next.
-
-from datetime import datetime # for health check timestamp
-from typing import Optional # for cleanup_service_instance type hint

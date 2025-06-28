@@ -1,6 +1,6 @@
 from prometheus_client import Counter, Histogram, CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST
 from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseCallNext
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 import time
 
 from app.core.config import settings
@@ -42,7 +42,7 @@ USER_LOGINS_TOTAL = Counter(
 
 # Middleware for collecting standard HTTP metrics
 class PrometheusMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: RequestResponseCallNext) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         method = request.method
         path = request.url.path # Consider template path for FastAPI for better cardinality
 

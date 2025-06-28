@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uuid # For auth dependency
 from elasticsearch import AsyncElasticsearch # For type hint
+from datetime import datetime # for health check timestamp
+from typing import Optional # for lifespan type hint (scheduler)
 
 from app.core.config import settings
 from app.api.v1 import api_v1_router
@@ -129,8 +131,3 @@ async def health_check_search(es_client: AsyncElasticsearch = Depends(get_es_cli
 
 # Update routers to use actual auth dependencies
 # This has been done by importing directly in the router files.
-
-from datetime import datetime # for health check timestamp
-from typing import Optional # for lifespan type hint (scheduler)
-# from apscheduler.schedulers.asyncio import AsyncIOScheduler # If using APScheduler
-# from apscheduler.triggers.cron import CronTrigger # If using APScheduler

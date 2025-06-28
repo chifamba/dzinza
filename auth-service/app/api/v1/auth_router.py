@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm # For standard /token end
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import timedelta, datetime, timezone
 import uuid
+from typing import Optional
 
 from app.core.config import settings
 from app.core import security
@@ -11,8 +12,8 @@ from app.db.database import get_db_session
 from app.db.models.user_model import User
 from app.schemas import user_schema, token_schema
 from app.services.email_service import send_verification_email_task # Placeholder for email sending
-# from app.utils.limiter import get_login_limiter # Placeholder for rate limiter
-from app.main import get_current_active_user_dependency # Use the actual dependency
+from app.dependencies.auth import get_current_active_user_dependency # Use the actual dependency
+from app.middleware.rate_limiter import get_login_limiter, get_guest_limiter # Import limiter
 
 router = APIRouter()
 
@@ -42,8 +43,6 @@ async def register_user(
 
     return new_user
 
-
-from app.middleware.rate_limiter import get_login_limiter, get_guest_limiter # Import limiter
 
 @router.post("/login", response_model=token_schema.Token, dependencies=[get_login_limiter()])
 async def login_for_access_token(

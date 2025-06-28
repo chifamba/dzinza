@@ -9,7 +9,7 @@ from app.db.database import get_db_session
 from app.db.models.user_model import User
 from app.schemas import user_schema
 from app.services.email_service import send_password_reset_email_task # Placeholder
-from app.main import get_current_active_user_dependency # Use the actual dependency
+from app.dependencies.auth import get_current_active_user_dependency # Use the actual dependency
 
 router = APIRouter()
 

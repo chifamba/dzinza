@@ -120,13 +120,13 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_REFRESH_SECRET_KEY: ${JWT_REFRESH_SECRET_KEY}
       # Add other env vars from auth-service/.env.example (CORS, Email, Social, OTel)
-      CORS_ORIGINS: "${CORS_ORIGINS_AUTH_PY:-http://localhost:3000,http://localhost:5173}"
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:5173"]'
       ENABLE_TRACING: "${ENABLE_TRACING:-false}"
       JAEGER_ENDPOINT: "${JAEGER_ENDPOINT:-http://jaeger:4318/v1/traces}" # Assuming jaeger service name
       OTEL_SERVICE_NAME: "auth-service"
     networks:
       - dzinza-network
-    restart: unless-stopped
+    restart: no # Not unless-stopped
     # command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3002"] # Already in Dockerfile CMD
 
   genealogy-service:
@@ -155,7 +155,7 @@ services:
       REDIS_DB_CELERY: 1 # Separate DB for Celery
       AUTH_SERVICE_JWT_SECRET_KEY: ${JWT_SECRET_KEY} # For validating tokens locally
       ALGORITHM: "HS256"
-      CORS_ORIGINS: "${CORS_ORIGINS_GENEALOGY_PY:-http://localhost:3000,http://localhost:5173}"
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:5173"]'
       ENABLE_TRACING: "${ENABLE_TRACING:-false}"
       JAEGER_ENDPOINT: "${JAEGER_ENDPOINT:-http://jaeger:4318/v1/traces}"
       OTEL_SERVICE_NAME: "genealogy-service"
@@ -200,6 +200,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_DB_CELERY: 1
       # JWT/Auth keys might not be needed by worker unless tasks validate tokens for some reason
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:5173"]'
       ENABLE_TRACING: "${ENABLE_TRACING:-false}"
       JAEGER_ENDPOINT: "${JAEGER_ENDPOINT:-http://jaeger:4318/v1/traces}"
       OTEL_SERVICE_NAME: "celery-worker-genealogy"
@@ -239,6 +240,7 @@ services:
       LOCAL_STORAGE_PATH: "/app/uploads" # Path inside container
       TEMP_UPLOAD_PATH: "/app/tmp_uploads" # Path inside container
       CLEANUP_SCHEDULE_CRON: "0 3 * * *" # Daily at 3 AM
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:5173"]'
       ENABLE_TRACING: "${ENABLE_TRACING:-false}"
       JAEGER_ENDPOINT: "${JAEGER_ENDPOINT:-http://jaeger:4318/v1/traces}"
       OTEL_SERVICE_NAME: "storage-service"
@@ -276,6 +278,7 @@ services:
       # MONGODB_DATABASE_NAME:
       AUTH_SERVICE_JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       ALGORITHM: "HS256"
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:5173"]'
       ENABLE_TRACING: "${ENABLE_TRACING:-false}"
       JAEGER_ENDPOINT: "${JAEGER_ENDPOINT:-http://jaeger:4318/v1/traces}"
       OTEL_SERVICE_NAME: "search-service"
@@ -309,7 +312,7 @@ services:
       # Optional: If gateway validates tokens (AUTH_SERVICE_JWT_SECRET_KEY, ALGORITHM)
       AUTH_SERVICE_JWT_SECRET_KEY: ${JWT_SECRET_KEY} # Enable gateway validation
       ALGORITHM: "HS256"
-      CORS_ORIGINS: "${CORS_ORIGINS_GATEWAY_PY:-http://localhost:3000,http://localhost:5173,http://localhost:8080,http://frontend:80}" # Allow frontend and local dev
+      CORS_ORIGINS: '["http://localhost:3000", "http://localhost:5173", "http://localhost:8080", "http://frontend:80"]' # Allow frontend and local dev
       ENABLE_TRACING: "${ENABLE_TRACING:-false}"
       JAEGER_ENDPOINT: "${JAEGER_ENDPOINT:-http://jaeger:4318/v1/traces}"
       OTEL_SERVICE_NAME: "api-gateway"

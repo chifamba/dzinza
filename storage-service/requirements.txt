@@ -23,5 +23,3 @@ celery[redis]
 
 # Other utilities
 email-validator # If handling emails in any models/schemas
-
-# For GEDCOM parsing if that feature is ported from original

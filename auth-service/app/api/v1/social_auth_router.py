@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response as FastAPIResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx # For making requests to social providers' token and user info endpoints
+from typing import Optional
 
 from app.core.config import settings
 from app.core import security

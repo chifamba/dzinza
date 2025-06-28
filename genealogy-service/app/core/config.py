@@ -47,7 +47,7 @@ class Settings(BaseSettings):
             self.CELERY_BROKER_URL = RedisDsn.build(
                 scheme="redis",
                 host=self.REDIS_HOST,
-                port=str(self.REDIS_PORT),
+                port=int(self.REDIS_PORT),
                 password=self.REDIS_PASSWORD,
                 path=f"/{self.REDIS_DB_CELERY}",
             )
@@ -55,7 +55,7 @@ class Settings(BaseSettings):
              self.CELERY_RESULT_BACKEND = RedisDsn.build(
                 scheme="redis",
                 host=self.REDIS_HOST,
-                port=str(self.REDIS_PORT),
+                port=int(self.REDIS_PORT),
                 password=self.REDIS_PASSWORD,
                 path=f"/{self.REDIS_DB_CELERY + 1}", # Use a different DB for results if desired
             )

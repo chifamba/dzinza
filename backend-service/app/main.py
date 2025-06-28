@@ -3,6 +3,8 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import httpx # For specific error types if handling them here
+from datetime import datetime # For type hint, not directly used here but good practice if extending health check
+from typing import Optional # For type hint, not directly used here but good practice if extending health check
 
 from app.core.config import settings
 from app.routes.gateway_router import router as gateway_api_router
@@ -162,6 +164,3 @@ app.add_route("/metrics", metrics_handler, methods=["GET"])
 # This is a common pattern: gateway handles routing, SSL, rate limiting, some caching, while auth is by end-services.
 # If gateway *must* authenticate, the dependency should be added to the proxy route definitions in `gateway_router.py`.
 # E.g. `current_user: Optional[uuid.UUID] = Depends(get_current_user_id_optional_dependency)` on proxy functions.
-
-from datetime import datetime # For type hint, not directly used here but good practice if extending health check
-from typing import Optional # For type hint, not directly used here but good practice if extending health check

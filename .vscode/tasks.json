@@ -1,72 +1,49 @@
 {
   "version": "2.0.0",
   "tasks": [
+    // --- ENVIRONMENT TASKS ---
     {
-      "label": "🚀 Start Full Development Environment",
+      "label": "🚀 Start All Containers",
       "type": "shell",
-      "command": "./scripts/start-dev.sh",
+      "command": "docker-compose up -d",
       "group": "build",
       "presentation": {
         "echo": true,
         "reveal": "always",
         "focus": false,
-        "panel": "shared",
-        "showReuseMessage": false
-      },
-      "problemMatcher": [],
-      "runOptions": {
-        "instanceLimit": 1
+        "panel": "shared"
       }
     },
     {
-      "label": "🛑 Stop Development Environment",
+      "label": "🛑 Stop All Containers",
       "type": "shell",
-      "command": "./scripts/stop-dev.sh",
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "focus": false
-      }
-    },
-    {
-      "label": "🔧 Start Backend Service Only",
-      "type": "shell",
-      "command": "npm run dev",
-      "options": {
-        "cwd": "${workspaceFolder}/backend-service"
-      },
+      "command": "docker-compose down",
       "group": "build",
       "presentation": {
         "echo": true,
         "reveal": "always",
         "focus": false,
-        "panel": "dedicated"
-      },
-      "isBackground": true,
-      "problemMatcher": {
-        "pattern": {
-          "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
-          "file": 1,
-          "line": 2,
-          "column": 3,
-          "severity": 4,
-          "message": 5
-        },
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": "starting.*server",
-          "endsPattern": "(listening on|server.*running)"
-        }
+        "panel": "shared"
       }
     },
     {
-      "label": "🎨 Start Frontend Only",
+      "label": "🔄 Restart All Containers",
+      "type": "shell",
+      "command": "docker-compose restart",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    // --- FRONTEND TASKS ---
+    {
+      "label": "🎨 Start Frontend (Dev)",
       "type": "shell",
       "command": "npm run dev",
-      "options": {
-        "cwd": "${workspaceFolder}/frontend"
-      },
+      "options": { "cwd": "${workspaceFolder}/frontend" },
       "group": "build",
       "presentation": {
         "echo": true,
@@ -92,32 +69,15 @@
       }
     },
     {
-      "label": "🧬 Start Genealogy Service",
+      "label": "🏗️ Build Frontend",
       "type": "shell",
-      "command": "tsx src/server.ts",
-      "options": {
-        "cwd": "${workspaceFolder}/genealogy-service"
-      },
+      "command": "npm run build",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
       "group": "build",
       "presentation": {
         "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "dedicated"
-      },
-      "isBackground": true,
-      "problemMatcher": []
-    },
-    {
-      "label": "🧪 Run All Tests",
-      "type": "shell",
-      "command": "npm run test",
-      "group": "test",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
+        "reveal": "silent",
+        "focus": false
       },
       "problemMatcher": ["$tsc"]
     },
@@ -125,9 +85,7 @@
       "label": "🧪 Frontend Tests (Watch)",
       "type": "shell",
       "command": "npm run test:watch",
-      "options": {
-        "cwd": "${workspaceFolder}/frontend"
-      },
+      "options": { "cwd": "${workspaceFolder}/frontend" },
       "group": "test",
       "presentation": {
         "echo": true,
@@ -141,9 +99,7 @@
       "label": "🎭 E2E Tests",
       "type": "shell",
       "command": "npm run test:e2e",
-      "options": {
-        "cwd": "${workspaceFolder}/frontend"
-      },
+      "options": { "cwd": "${workspaceFolder}/frontend" },
       "group": "test",
       "presentation": {
         "echo": true,
@@ -156,9 +112,7 @@
       "label": "📊 Test Coverage Report",
       "type": "shell",
       "command": "npm run test:coverage",
-      "options": {
-        "cwd": "${workspaceFolder}/frontend"
-      },
+      "options": { "cwd": "${workspaceFolder}/frontend" },
       "group": "test",
       "presentation": {
         "echo": true,
@@ -168,52 +122,10 @@
       }
     },
     {
-      "label": "🏗️ Build All Services",
-      "type": "shell",
-      "command": "npm run build",
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      },
-      "problemMatcher": ["$tsc"]
-    },
-    {
-      "label": "🏗️ Build Frontend",
-      "type": "shell",
-      "command": "npm run build",
-      "options": {
-        "cwd": "${workspaceFolder}/frontend"
-      },
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "focus": false
-      },
-      "problemMatcher": ["$tsc"]
-    },
-    {
-      "label": "🏗️ Build Backend",
-      "type": "shell",
-      "command": "npm run build",
-      "options": {
-        "cwd": "${workspaceFolder}/backend-service"
-      },
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "focus": false
-      },
-      "problemMatcher": ["$tsc"]
-    },
-    {
-      "label": "✨ Lint All Code",
+      "label": "✨ Lint Frontend",
       "type": "shell",
       "command": "npm run lint",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
       "group": "build",
       "presentation": {
         "echo": true,
@@ -224,9 +136,10 @@
       "problemMatcher": ["$eslint-stylish"]
     },
     {
-      "label": "🔍 Type Check All",
+      "label": "🔍 Type Check Frontend",
       "type": "shell",
       "command": "npm run typecheck",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
       "group": "build",
       "presentation": {
         "echo": true,
@@ -236,41 +149,7 @@
       },
       "problemMatcher": ["$tsc"]
     },
-    {
-      "label": "🗄️ Start Database Services",
-      "type": "shell",
-      "command": "docker-compose up -d postgres redis mongodb elasticsearch",
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "🗄️ Stop Database Services",
-      "type": "shell",
-      "command": "docker-compose down",
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "focus": false
-      }
-    },
-    {
-      "label": "🗄️ Reset Database",
-      "type": "shell",
-      "command": "docker-compose down -v && docker-compose up -d postgres redis mongodb elasticsearch",
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      }
-    },
+    // --- DATABASE/DOCKER TASKS ---
     {
       "label": "🗄️ View Database Logs",
       "type": "shell",
@@ -285,15 +164,15 @@
       "isBackground": true
     },
     {
-      "label": "🗄️ Connect to PostgreSQL",
+      "label": "🗄️ Reset Database",
       "type": "shell",
-      "command": "docker exec -it dzinza-postgres psql -U dzinza_user -d dzinza_db",
+      "command": "docker-compose down -v && docker-compose up -d postgres redis mongodb elasticsearch",
       "group": "build",
       "presentation": {
         "echo": true,
         "reveal": "always",
-        "focus": true,
-        "panel": "dedicated"
+        "focus": false,
+        "panel": "shared"
       }
     },
     {
@@ -309,6 +188,31 @@
       }
     },
     {
+      "label": "🐍 Build Auth Service",
+      "type": "shell",
+      "command": "docker compose build auth-service",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "🚀 Start Auth Service",
+      "type": "shell",
+      "command": "docker compose up auth-service",
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    // --- UTILITIES ---
+    {
       "label": "🧹 Clean All",
       "type": "shell",
       "command": "npm run clean && docker system prune -f",
@@ -321,9 +225,10 @@
       }
     },
     {
-      "label": "📦 Install All Dependencies",
+      "label": "📦 Install Frontend Dependencies",
       "type": "shell",
-      "command": "npm run install:all",
+      "command": "npm install",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
       "group": "build",
       "presentation": {
         "echo": true,
@@ -333,21 +238,10 @@
       }
     },
     {
-      "label": "🔐 Generate Password Hash",
-      "type": "shell",
-      "command": "node scripts/generate-password-hash.js",
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": true,
-        "panel": "dedicated"
-      }
-    },
-    {
-      "label": "🚨 Security Audit",
+      "label": "🚨 Security Audit (Frontend)",
       "type": "shell",
       "command": "npm run security:audit",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
       "group": "test",
       "presentation": {
         "echo": true,
@@ -355,52 +249,6 @@
         "focus": false,
         "panel": "shared"
       }
-    },
-    {
-      "label": "📋 Check Git Status",
-      "type": "shell",
-      "command": "git status --porcelain && echo '\\n--- Branch Info ---' && git branch -v",
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "📤 Quick Commit & Push",
-      "type": "shell",
-      "command": "git add . && git commit -m 'feat: quick commit' && git push",
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": true,
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "🔄 Pull Latest Changes",
-      "type": "shell",
-      "command": "git pull origin $(git branch --show-current)",
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "🔧 Restart Development Environment",
-      "type": "shell",
-      "dependsOrder": "sequence",
-      "dependsOn": [
-        "🛑 Stop Development Environment",
-        "🚀 Start Full Development Environment"
-      ],
-      "group": "build"
     }
   ]
 }

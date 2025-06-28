@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_FORGOT_PASSWORD_RPM: int = 5 # Per 15 minutes for forgot password
 
     # CORS
-    CORS_ORIGINS: List[AnyHttpUrl] = [] # Example: ["http://localhost:3000", "http://localhost:5173"]
+    CORS_ORIGINS: List[AnyHttpUrl] = ["http://localhost:3000", "http://localhost:5173"]   # Example: ["http://localhost:3000", "http://localhost:5173"]
 
     # Email settings (for password reset, verification etc.)
     SMTP_HOST: Optional[str] = None
@@ -79,7 +79,7 @@ class Settings(BaseSettings):
             self.REDIS_URI = RedisDsn.build(
                 scheme="redis",
                 host=self.REDIS_HOST,
-                port=str(self.REDIS_PORT),
+                port=int(self.REDIS_PORT),
                 password=self.REDIS_PASSWORD,
                 path=f"/{self.REDIS_DB or 0}",
             )

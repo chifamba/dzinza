@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from sqlalchemy import select, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.user_model import User, UserRole

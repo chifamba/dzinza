@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from motor.motor_asyncio import AsyncIOMotorClient # For type hint in lifespan
 import uuid # For user_id in auth dependency
+from datetime import datetime # for health check timestamp
 
 from app.core.config import settings
 from app.api.v1 import api_v1_router
@@ -127,8 +128,6 @@ async def health_check_genealogy():
 # Update routers to use the actual auth dependency from app.middleware.auth_middleware
 # This step is crucial. The placeholder dependencies in the routers need to be replaced.
 # I will do this by modifying the router files next.
-
-from datetime import datetime # for health check timestamp
 
 # Example of how to trigger a Celery task from an endpoint (if needed)
 # from app.tasks.duplicate_detection_tasks import detect_potential_duplicates_for_person_task

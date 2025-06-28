@@ -19,6 +19,7 @@ opentelemetry-sdk
 opentelemetry-exporter-otlp-proto-http
 opentelemetry-instrumentation-fastapi
 opentelemetry-instrumentation-elasticsearch # For Elasticsearch client
+#opentelemetry-instrumentation-motor # If MongoDB is used
 opentelemetry-instrumentation-httpx
 httpx
 

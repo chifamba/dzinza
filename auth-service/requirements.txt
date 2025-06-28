@@ -24,3 +24,5 @@ email-validator # For email validation in pydantic models
 # but often it's direct HTTP calls to provider's token info endpoints)
 pyotp # For MFA
 qrcode # For generating QR codes for OTP setup (optional, can be done frontend)
+python-multipart
+prometheus_client
