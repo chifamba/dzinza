@@ -1,0 +1,25 @@
+fastapi
+uvicorn[standard]
+motor # Async MongoDB driver
+pydantic
+pydantic-settings
+python-dotenv
+python-jose[cryptography] # For validating JWTs issued by auth-service
+passlib[bcrypt] # Might be needed if handling any local auth elements, or just for JWT
+# Observability
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-httpx # If calling other services (e.g., auth for token introspection)
+httpx
+# Metrics
+prometheus_client
+# Queue System (Celery with Redis)
+celery[redis]
+# Other utilities
+email-validator # If handling emails in any models/schemas
+# For GEDCOM parsing if that feature is ported from original
+# parse-gedcom (Need to find a Python equivalent, e.g. python-gedcom or build custom)
+# For now, will omit GEDCOM specific parser until functionality is clearer.
+# python-gedcom (example, if chosen later)
