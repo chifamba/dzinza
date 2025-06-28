@@ -1,7 +1,7 @@
 services:
   # --- Databases & Infrastructure ---
   postgres:
-    image: postgres:14.5-alpine # Using a specific version, 17.5 is very new. Let's use 14.5 for broader compatibility.
+    image: postgres:17.5-alpine # Using a specific version, 17.5 is very new. Let's use 14.5 for broader compatibility.
     container_name: dzinza-postgres
     ports:
       - "${DB_PORT:-5432}:5432"
@@ -27,7 +27,7 @@ services:
       retries: 3
 
   mongodb:
-    image: mongo:6.0 # Using a specific version, 8.0 is very new. Let's use 6.0.
+    image: mongo:8.0 # Using a specific version, 8.0 is very new. Let's use 6.0.
     container_name: dzinza-mongodb
     ports:
       - "27017:27017"
@@ -49,7 +49,7 @@ services:
       retries: 3
 
   redis:
-    image: redis:7.0-alpine # Using a specific version
+    image: redis:8.0-alpine # Using a specific version
     container_name: dzinza-redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -66,7 +66,7 @@ services:
       retries: 3
 
   elasticsearch:
-    image: elasticsearch:8.6.2 # Using a specific version, 9.0.2 is very new.
+    image: elasticsearch:9.0.2 # Using a specific version, 9.0.2 is very new.
     container_name: dzinza-elasticsearch
     ports:
       - "9200:9200"
