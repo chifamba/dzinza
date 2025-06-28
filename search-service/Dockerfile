@@ -1,51 +1,28 @@
-# Multi-stage build for optimal image size
-FROM node:18-alpine AS builder
+FROM python:3.11.3-slim-bullseye
+
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
 WORKDIR /app
 
-# Install dependencies (including dev dependencies for build)
-COPY package.json ./
-COPY package-lock.json ./
-RUN npm ci && npm cache clean --force
+# Install system dependencies if any (e.g., for specific Python packages if not pure Python)
+# RUN apt-get update && apt-get install -y --no-install-recommends some-package && rm -rf /var/lib/apt/lists/*
 
-# Copy source code
-COPY src ./src
-COPY tsconfig.json ./
+RUN groupadd -r appuser && useradd --no-log-init -r -g appuser appuser
 
-# Build the application
-RUN npm run build
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Production image
-FROM node:18-alpine AS production
+COPY . .
 
-# Create non-root user and group
-RUN addgroup -S appgroup && \
-    adduser -S appuser -G appgroup
-
-WORKDIR /app
-
-# Install dumb-init for signal handling
-RUN apk add --no-cache dumb-init
-
-# Copy package files and install production dependencies only
-COPY --chown=appuser:appgroup package.json ./
-COPY --chown=appuser:appgroup package-lock.json ./
-RUN npm ci --production && npm cache clean --force
-
-# Copy built application
-COPY --chown=appuser:appgroup --from=builder /app/dist ./dist/
-
-# Ensure the /app directory itself is owned by appuser
-RUN chown appuser:appgroup /app
+RUN chown -R appuser:appuser /app
 USER appuser
 
-# Expose port
+# Original search-service was on 3003
 EXPOSE 3003
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3003/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); })"
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3003"]
 
-# Start the application with dumb-init
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "start"]
+# HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+#   CMD curl -f http://localhost:3003/health || exit 1

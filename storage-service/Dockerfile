@@ -1,71 +1,33 @@
-# Multi-stage build for optimal image size
-FROM node:18-alpine AS builder
+FROM python:3.11.3-slim-bullseye
 
-# Set working directory
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
 WORKDIR /app
 
-# Copy package files
-COPY storage-service/package*.json ./
-COPY storage-service/package-lock.json ./ # Add package-lock.json
-COPY storage-service/tsconfig.json ./
+# Install system dependencies
+# python-magic needs libmagic1
+# Pillow might need libjpeg, zlib etc., but python-slim often has common ones.
+# If Pillow has issues, might need: apt-get install -y libjpeg-dev zlib1g-dev
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libmagic1 && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci && npm cache clean --force
+RUN groupadd -r appuser && useradd --no-log-init -r -g appuser appuser
 
-# Copy source code
-COPY storage-service/src/ ./src/
-COPY backend-service/shared/ ./shared/
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Build the application
-RUN npm run build
+COPY . .
 
-# Production image
-FROM node:18-alpine AS production
-
-# Create non-root user and group for security
-RUN addgroup -S appgroup && \
-    adduser -S appuser -G appgroup
-
-# Set working directory
-WORKDIR /app
-
-# Install dumb-init for signal handling
-RUN apk add --no-cache dumb-init
-
-# Copy package files and install production dependencies
-COPY --chown=appuser:appgroup storage-service/package*.json ./
-COPY --chown=appuser:appgroup storage-service/package-lock.json ./ # Add package-lock.json
-RUN npm ci --production && npm cache clean --force
-
-# Copy built application
-COPY --chown=appuser:appgroup --from=builder /app/dist ./dist/
-COPY --chown=appuser:appgroup --from=builder /app/shared ./shared/
-
-# Create necessary directories and ensure /app is owned by appuser
-# The chown on /app will also cover subdirectories created here.
-RUN mkdir -p /app/uploads /app/temp && \
-    chown -R appuser:appgroup /app
-
-# Switch to non-root user
+RUN chown -R appuser:appuser /app
 USER appuser
 
-# Expose port
+# Original storage-service was on 3005
 EXPOSE 3005
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "const http = require('http'); \
-  const options = { host: 'localhost', port: 3005, path: '/health', timeout: 2000 }; \
-  const req = http.request(options, (res) => { \
-    console.log('STATUS: ' + res.statusCode); \
-    process.exit(res.statusCode === 200 ? 0 : 1); \
-  }); \
-  req.on('error', (err) => { \
-    console.log('ERROR: ' + err.message); \
-    process.exit(1); \
-  }); \
-  req.end();"
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3005"]
 
-# Start application with dumb-init
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/server.js"]
+# HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+#   CMD curl -f http://localhost:3005/health || exit 1

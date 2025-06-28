@@ -1,5 +1,3 @@
-version: '3.8' # Specify Docker Compose version for better feature compatibility
-
 services:
   # --- Databases & Infrastructure ---
   postgres:
@@ -19,7 +17,11 @@ services:
       - dzinza-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-dzinza_user} -d ${DB_NAME:-dzinza_db}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USER:-dzinza_user} -d ${DB_NAME:-dzinza_db}",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -53,7 +55,7 @@ services:
       - "${REDIS_PORT:-6379}:6379"
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     # environment: # Not strictly needed if command sets password
-      # REDIS_PASSWORD: ${REDIS_PASSWORD}
+    # REDIS_PASSWORD: ${REDIS_PASSWORD}
     networks:
       - dzinza-network
     restart: unless-stopped
@@ -80,17 +82,21 @@ services:
       - dzinza-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -s -f http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -f http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5 # Increased retries as ES can take time
 
   # --- Python Application Services ---
-  auth-service-py:
+  auth-service:
     build:
-      context: ./auth-service-py
+      context: ./auth-service
       dockerfile: Dockerfile
-    container_name: dzinza-auth-service-py
+    container_name: dzinza-auth-service
     ports:
       - "3002:3002" # Assuming Python service runs on 3002 internally
     depends_on:
@@ -99,7 +105,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      # From .env.example of auth-service-py
+      # From .env.example of auth-service
       PROJECT_NAME: "Dzinza Auth Service PY"
       API_V1_STR: "/api/v1"
       ENVIRONMENT: "${NODE_ENV:-development}" # Use global NODE_ENV or default
@@ -113,21 +119,21 @@ services:
       REDIS_DB: 0 # Auth service Redis DB
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_REFRESH_SECRET_KEY: ${JWT_REFRESH_SECRET_KEY}
-      # Add other env vars from auth-service-py/.env.example (CORS, Email, Social, OTel)
+      # Add other env vars from auth-service/.env.example (CORS, Email, Social, OTel)
       CORS_ORIGINS: "${CORS_ORIGINS_AUTH_PY:-http://localhost:3000,http://localhost:5173}"
       ENABLE_TRACING: "${ENABLE_TRACING:-false}"
       JAEGER_ENDPOINT: "${JAEGER_ENDPOINT:-http://jaeger:4318/v1/traces}" # Assuming jaeger service name
-      OTEL_SERVICE_NAME: "auth-service-py"
+      OTEL_SERVICE_NAME: "auth-service"
     networks:
       - dzinza-network
     restart: unless-stopped
     # command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3002"] # Already in Dockerfile CMD
 
-  genealogy-service-py:
+  genealogy-service:
     build:
-      context: ./genealogy-service-py
+      context: ./genealogy-service
       dockerfile: Dockerfile
-    container_name: dzinza-genealogy-service-py
+    container_name: dzinza-genealogy-service
     ports:
       - "3004:3004"
     depends_on:
@@ -135,7 +141,7 @@ services:
         condition: service_healthy
       redis: # For Celery
         condition: service_healthy
-      auth-service-py: # If it needs to validate tokens by calling auth-service (less ideal)
+      auth-service: # If it needs to validate tokens by calling auth-service (less ideal)
         condition: service_started # Or service_healthy if auth has health check
     environment:
       PROJECT_NAME: "Dzinza Genealogy Service PY"
@@ -152,27 +158,38 @@ services:
       CORS_ORIGINS: "${CORS_ORIGINS_GENEALOGY_PY:-http://localhost:3000,http://localhost:5173}"
       ENABLE_TRACING: "${ENABLE_TRACING:-false}"
       JAEGER_ENDPOINT: "${JAEGER_ENDPOINT:-http://jaeger:4318/v1/traces}"
-      OTEL_SERVICE_NAME: "genealogy-service-py"
-      AUTH_SERVICE_BASE_URL: "http://auth-service-py:3002" # For potential direct calls
+      OTEL_SERVICE_NAME: "genealogy-service"
+      AUTH_SERVICE_BASE_URL: "http://auth-service:3002" # For potential direct calls
     networks:
       - dzinza-network
     restart: unless-stopped
 
   celery-worker-genealogy:
     build:
-      context: ./genealogy-service-py # Uses same image as genealogy-service-py
+      context: ./genealogy-service # Uses same image as genealogy-service
       dockerfile: Dockerfile
     container_name: dzinza-celery-worker-genealogy
-    command: ["celery", "-A", "app.tasks.celery_app", "worker", "-l", "INFO", "-Q", "genealogy_tasks", "-c", "1"] # Example queue and concurrency
+    command: [
+        "celery",
+        "-A",
+        "app.tasks.celery_app",
+        "worker",
+        "-l",
+        "INFO",
+        "-Q",
+        "genealogy_tasks",
+        "-c",
+        "1",
+      ] # Example queue and concurrency
     depends_on:
       mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
-      genealogy-service-py: # Ensure app code is built and potentially service is up
+      genealogy-service: # Ensure app code is built and potentially service is up
         condition: service_started
     environment:
-      # Needs same env vars as genealogy-service-py for config, DB access, etc.
+      # Needs same env vars as genealogy-service for config, DB access, etc.
       PROJECT_NAME: "Dzinza Genealogy Worker" # Different name for clarity
       API_V1_STR: "/api/v1" # Not directly used by worker but config might load it
       ENVIRONMENT: "${NODE_ENV:-development}"
@@ -190,11 +207,11 @@ services:
       - dzinza-network
     restart: unless-stopped
 
-  storage-service-py:
+  storage-service:
     build:
-      context: ./storage-service-py
+      context: ./storage-service
       dockerfile: Dockerfile
-    container_name: dzinza-storage-service-py
+    container_name: dzinza-storage-service
     ports:
       - "3005:3005"
     depends_on:
@@ -202,7 +219,7 @@ services:
         condition: service_healthy
       # minio: # If using MinIO as a separate service for S3 dev
       #   condition: service_started
-      auth-service-py:
+      auth-service:
         condition: service_started
     environment:
       PROJECT_NAME: "Dzinza Storage Service PY"
@@ -224,7 +241,7 @@ services:
       CLEANUP_SCHEDULE_CRON: "0 3 * * *" # Daily at 3 AM
       ENABLE_TRACING: "${ENABLE_TRACING:-false}"
       JAEGER_ENDPOINT: "${JAEGER_ENDPOINT:-http://jaeger:4318/v1/traces}"
-      OTEL_SERVICE_NAME: "storage-service-py"
+      OTEL_SERVICE_NAME: "storage-service"
     volumes: # If using local storage, map volumes
       - local_uploads:/app/uploads # Persist uploads if LOCAL_STORAGE_PATH is used by service
       - local_tmp_uploads:/app/tmp_uploads # For temp processing files
@@ -232,11 +249,11 @@ services:
       - dzinza-network
     restart: unless-stopped
 
-  search-service-py:
+  search-service:
     build:
-      context: ./search-service-py
+      context: ./search-service
       dockerfile: Dockerfile
-    container_name: dzinza-search-service-py
+    container_name: dzinza-search-service
     ports:
       - "3003:3003"
     depends_on:
@@ -244,9 +261,9 @@ services:
         condition: service_healthy
       # mongodb: # If search service uses its own Mongo instance for analytics
       #   condition: service_healthy
-      auth-service-py:
+      auth-service:
         condition: service_started
-      genealogy-service-py: # For data indexing, if done via API pull
+      genealogy-service: # For data indexing, if done via API pull
         condition: service_started
     environment:
       PROJECT_NAME: "Dzinza Search Service PY"
@@ -261,41 +278,41 @@ services:
       ALGORITHM: "HS256"
       ENABLE_TRACING: "${ENABLE_TRACING:-false}"
       JAEGER_ENDPOINT: "${JAEGER_ENDPOINT:-http://jaeger:4318/v1/traces}"
-      OTEL_SERVICE_NAME: "search-service-py"
-      GENEALOGY_SERVICE_BASE_URL: "http://genealogy-service-py:3004"
-      STORAGE_SERVICE_BASE_URL: "http://storage-service-py:3005"
+      OTEL_SERVICE_NAME: "search-service"
+      GENEALOGY_SERVICE_BASE_URL: "http://genealogy-service:3004"
+      STORAGE_SERVICE_BASE_URL: "http://storage-service:3005"
       INDEXING_BATCH_SIZE: 100
     networks:
       - dzinza-network
     restart: unless-stopped
 
-  backend-service-py: # API Gateway
+  backend-service: # API Gateway
     build:
-      context: ./backend-service-py
+      context: ./backend-service
       dockerfile: Dockerfile
-    container_name: dzinza-api-gateway-py
+    container_name: dzinza-api-gateway
     ports:
       - "3001:3001" # Main entry point for API requests
     depends_on: # Depends on all services it proxies to
-      - auth-service-py
-      - genealogy-service-py
-      - storage-service-py
-      - search-service-py
+      - auth-service
+      - genealogy-service
+      - storage-service
+      - search-service
     environment:
       PROJECT_NAME: "Dzinza API Gateway PY"
       API_V1_PREFIX: "/api" # Gateway's own prefix where it serves proxied routes
       ENVIRONMENT: "${NODE_ENV:-development}"
-      SERVICES_AUTH_SERVICE_URL: "http://auth-service-py:3002" # Service root
-      SERVICES_GENEALOGY_SERVICE_URL: "http://genealogy-service-py:3004"
-      SERVICES_STORAGE_SERVICE_URL: "http://storage-service-py:3005"
-      SERVICES_SEARCH_SERVICE_URL: "http://search-service-py:3003"
+      SERVICES_AUTH_SERVICE_URL: "http://auth-service:3002" # Service root
+      SERVICES_GENEALOGY_SERVICE_URL: "http://genealogy-service:3004"
+      SERVICES_STORAGE_SERVICE_URL: "http://storage-service:3005"
+      SERVICES_SEARCH_SERVICE_URL: "http://search-service:3003"
       # Optional: If gateway validates tokens (AUTH_SERVICE_JWT_SECRET_KEY, ALGORITHM)
       AUTH_SERVICE_JWT_SECRET_KEY: ${JWT_SECRET_KEY} # Enable gateway validation
       ALGORITHM: "HS256"
       CORS_ORIGINS: "${CORS_ORIGINS_GATEWAY_PY:-http://localhost:3000,http://localhost:5173,http://localhost:8080,http://frontend:80}" # Allow frontend and local dev
       ENABLE_TRACING: "${ENABLE_TRACING:-false}"
       JAEGER_ENDPOINT: "${JAEGER_ENDPOINT:-http://jaeger:4318/v1/traces}"
-      OTEL_SERVICE_NAME: "api-gateway-py"
+      OTEL_SERVICE_NAME: "api-gateway"
       SERVICE_REQUEST_TIMEOUT: "15.0"
     networks:
       - dzinza-network
@@ -304,7 +321,6 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.apigateway.rule=Host(`${DOMAIN:-dzinza.local}`) && PathPrefix(`/api`)"
       - "traefik.http.services.apigateway.loadbalancer.server.port=3001"
-
 
   # --- Frontend & Observability (mostly from original, with adjustments) ---
   frontend:
@@ -315,7 +331,7 @@ services:
     ports:
       - "8080:80" # Expose on 8080, Traefik can route from 80
     depends_on: # Should depend on the API gateway
-      - backend-service-py
+      - backend-service
     environment:
       # Frontend needs to know where the API gateway is.
       # If served on same domain by Traefik, API calls might be relative /api
@@ -355,10 +371,10 @@ services:
     image: jaegertracing/all-in-one:1.50 # Use a recent version
     container_name: dzinza-jaeger
     ports:
-      - "6831:6831/udp"  # Agent (jaeger protocol)
-      - "16686:16686"    # UI
-      - "4317:4317"      # OTLP gRPC receiver
-      - "4318:4318"      # OTLP HTTP receiver
+      - "6831:6831/udp" # Agent (jaeger protocol)
+      - "16686:16686" # UI
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     networks:
@@ -410,8 +426,8 @@ volumes:
   elasticsearch_data:
   prometheus_data:
   grafana_data:
-  local_uploads: # For storage-service-py if using local disk
-  local_tmp_uploads: # For storage-service-py temp files
+  local_uploads: # For storage-service if using local disk
+  local_tmp_uploads: # For storage-service temp files
 
 networks:
   dzinza-network:

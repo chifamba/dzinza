@@ -1,58 +1,44 @@
-# Multi-stage build for optimal image size
-FROM node:18-alpine AS builder
+# Stage 1: Build stage (if using compiled extensions or multi-stage builds)
+# For now, a single stage is sufficient for this Python service.
 
-# Set working directory
+FROM python:3.11.3-slim-bullseye
+
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+# ENV APP_HOME /app # Not strictly needed if using WORKDIR correctly
+
 WORKDIR /app
 
-# Copy package files
-COPY genealogy-service/package.json ./
-COPY genealogy-service/package-lock.json ./
+# Install system dependencies if any (e.g., for certain Python packages)
+# RUN apt-get update && apt-get install -y --no-install-recommends build-essential libpq-dev && rm -rf /var/lib/apt/lists/*
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci && npm cache clean --force
+# Create a non-root user for security
+RUN groupadd -r appuser && useradd --no-log-init -r -g appuser appuser
 
-# Copy shared utilities
-COPY backend-service/shared ./shared
+# Copy requirements first to leverage Docker cache
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY genealogy-service/src ./src
+# Copy the rest of the application code
+COPY . .
 
-# Build the application
-RUN npm run build
+# Change ownership to non-root user
+RUN chown -R appuser:appuser /app
 
-# Production image
-FROM node:18-alpine AS production
-
-# Create non-root user and group
-RUN addgroup -S appgroup && \
-    adduser -S appuser -G appgroup
-
-# Set working directory
-WORKDIR /app
-
-# Install dumb-init for signal handling
-RUN apk add --no-cache dumb-init
-
-# Copy package files and install production dependencies only
-COPY --chown=appuser:appgroup genealogy-service/package.json ./
-COPY --chown=appuser:appgroup genealogy-service/package-lock.json ./
-RUN npm ci --production && npm cache clean --force
-
-# Copy built application and shared utilities
-COPY --chown=appuser:appgroup --from=builder /app/dist ./dist/
-COPY --chown=appuser:appgroup --from=builder /app/shared ./shared/
-
-# Ensure the /app directory itself is owned by appuser
-RUN chown appuser:appgroup /app
+# Switch to non-root user
 USER appuser
 
-# Expose port
+# Expose port (original genealogy-service was on 3004)
 EXPOSE 3004
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node dist/healthcheck.js || exit 1
+# Command to run the application
+# Uvicorn for FastAPI. --host 0.0.0.0 to be accessible externally.
+# Port 3004 to match original service.
+# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3004", "--reload"] # For development
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3004"]
 
-# Start the application with dumb-init
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "start"]
+# Healthcheck (optional, but good practice)
+# HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+#   CMD curl -f http://localhost:3004/health || exit 1
+# (Requires curl in image, or use Python http.client)

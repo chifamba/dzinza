@@ -1,60 +1,53 @@
-# Multi-stage build for optimal image size
-FROM node:18-alpine AS builder
+# Stage 1: Build stage (if needed for compilation or asset building, not strictly necessary for pure Python)
+# For now, we'll use a single stage for simplicity.
 
-# Set working directory
+# Official Python runtime as a parent image
+FROM python:3.11.3-slim-bullseye
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+# ENV APP_HOME /app # Not strictly needed if using WORKDIR correctly
+
+# Set the working directory in the container
 WORKDIR /app
 
-# Copy package files
-COPY auth-service/package*.json ./
-COPY auth-service/tsconfig.json ./
+# Install system dependencies (if any)
+# RUN apt-get update && apt-get install -y --no-install-recommends some-package && rm -rf /var/lib/apt/lists/*
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci && npm cache clean --force
+# Create a non-root user and group
+RUN groupadd -r appuser && useradd --no-log-init -r -g appuser appuser
 
-# Copy shared utilities
-COPY backend-service/shared ./shared
+# Install Poetry or PDM if using them, otherwise copy requirements.txt
+# For requirements.txt:
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY auth-service/src ./src
+# Copy the rest of the application code into the container
+COPY . .
 
-# Build the application
-RUN npm run build
+# Change ownership of the app directory to the non-root user
+RUN chown -R appuser:appuser /app
 
-# Production image
-FROM node:18-alpine AS production
-
-# Create non-root user and group
-RUN addgroup -S appgroup && \
-    adduser -S appuser -G appgroup
-
-# Set working directory
-WORKDIR /app
-
-# Install dumb-init for signal handling
-RUN apk add --no-cache dumb-init
-
-# Copy package files and install production dependencies only
-# Ensure files copied are owned by the non-root user
-COPY --chown=appuser:appgroup auth-service/package*.json ./
-RUN npm ci --production && npm cache clean --force
-
-# Copy built application and shared utilities from builder stage
-# Ensure these are also owned by the non-root user
-COPY --chown=appuser:appgroup --from=builder /app/dist ./dist/
-COPY --chown=appuser:appgroup --from=builder /app/shared ./shared/
-
-# Ensure the /app directory itself is owned by appuser.
-# WORKDIR creates /app as root, COPY --chown handles contents.
-RUN chown appuser:appgroup /app
+# Switch to the non-root user
 USER appuser
 
-# Expose port
+# Expose the port the app runs on (FastAPI default is 8000 if not specified by Uvicorn)
+# The original auth-service was on 3002. We can configure Uvicorn to use this.
 EXPOSE 3002
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node dist/healthcheck.js || exit 1
+# Command to run the application using Uvicorn
+# The host 0.0.0.0 makes it accessible from outside the container.
+# The port should match the EXPOSE instruction and what docker-compose expects.
+# --reload is for development, remove for production.
+# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3002", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3002"]
 
-# Start the application with dumb-init
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "start"]
+# Healthcheck (optional, but good practice)
+# HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+#   CMD curl -f http://localhost:3002/health || exit 1
+# Note: curl might not be available in python-slim. Use wget or a Python script for healthcheck if needed.
+# Example using Python's http.client for healthcheck (add to CMD or separate script):
+# CMD python -m http.client localhost 3002 /health || exit 1
+# For now, keeping CMD simple. Healthcheck can be added later or handled by orchestrator.
