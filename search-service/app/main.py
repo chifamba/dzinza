@@ -6,8 +6,8 @@ from fastapi.exceptions import RequestValidationError
 import structlog
 
 from app.core.config import settings
-# from app.services.elasticsearch_client import init_es_client, close_es_client, get_es_client # To be created
-# from app.db.analytics_db import connect_to_mongo_analytics, close_mongo_analytics_connection, get_analytics_db # If using MongoDB for analytics
+from app.services.elasticsearch_client import init_es_client, close_es_client, ElasticsearchClientSingleton
+from app.db.analytics_db import connect_to_mongo_analytics, close_mongo_analytics_connection, AnalyticsDataStorage # For analytics DB
 
 # Configure structlog
 structlog.configure(
@@ -33,21 +33,27 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# @app.on_event("startup")
-# async def startup_event():
-#     logger.info(f"{settings.PROJECT_NAME} startup...")
-#     await init_es_client() # Initialize Elasticsearch client
-#     if settings.MONGODB_ANALYTICS_ENABLED:
-#         await connect_to_mongo_analytics()
-#     logger.info("Elasticsearch client initialized. Analytics DB connected if enabled.")
+@app.on_event("startup")
+async def startup_event():
+    logger.info(f"{settings.PROJECT_NAME} startup...")
+    try:
+        await init_es_client() # Initialize Elasticsearch client
+        if settings.MONGODB_ANALYTICS_ENABLED:
+            await connect_to_mongo_analytics()
+            logger.info("Analytics MongoDB connection established.")
+        logger.info("Service dependencies initialized.")
+    except Exception as e:
+        logger.critical(f"Failed to initialize service during startup: {e}", exc_info=True)
+        # Optionally re-raise to prevent app from starting if critical dependencies failed
+        # raise
 
-# @app.on_event("shutdown")
-# async def shutdown_event():
-#     logger.info(f"{settings.PROJECT_NAME} shutdown...")
-#     await close_es_client()
-#     if settings.MONGODB_ANALYTICS_ENABLED:
-#         await close_mongo_analytics_connection()
-#     logger.info("Elasticsearch client closed. Analytics DB connection closed if enabled.")
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info(f"{settings.PROJECT_NAME} shutdown...")
+    await close_es_client()
+    if settings.MONGODB_ANALYTICS_ENABLED:
+        await close_mongo_analytics_connection()
+    logger.info("Service dependencies closed.")
 
 # TODO: Add Prometheus and OpenTelemetry middleware
 
@@ -61,36 +67,74 @@ if settings.ALLOWED_ORIGINS:
         allow_headers=["*"],
     )
 
-# TODO: Include the API router (e.g., from app.api.api_v1.api import api_router)
-# app.include_router(api_router, prefix=settings.API_V1_STR)
+# Include the API router
+from app.api.api_v1.api import api_router as v1_api_router
+app.include_router(v1_api_router, prefix=settings.API_V1_STR)
 
-@app.get("/health", tags=["System"])
+
+@app.get("/health", tags=["System"]) # This health check is outside /api/v1 now
 async def health_check():
     logger.debug("Health check accessed")
-    es_status = "connected" # Placeholder
-    # try:
-    #     es_client = get_es_client()
-    #     if not await es_client.ping():
-    #         raise Exception("Elasticsearch ping failed")
-    #     logger.debug("Elasticsearch ping successful in health check.")
-    # except Exception as e:
-    #     es_status = "error"
-    #     logger.error(f"Elasticsearch health check failed: {e}", exc_info=True)
+    es_status = "unknown"
+    es_details = {}
+    analytics_db_status = "not_applicable" # Default if not enabled
+    analytics_db_details = {}
 
-    # TODO: Add MongoDB analytics DB health check if enabled
+    # Check Elasticsearch
+    try:
+        es_client = ElasticsearchClientSingleton.get_client()
+        if await es_client.ping():
+            es_status = "connected"
+        else:
+            es_status = "disconnected"
+            es_details = {"error": "Elasticsearch ping failed"}
+            logger.warning("Elasticsearch ping failed in health check.")
+    except RuntimeError as e:
+        es_status = "not_initialized"
+        es_details = {"error": str(e)}
+        logger.error(f"Elasticsearch client not available for health check: {e}", exc_info=True)
+    except Exception as e:
+        es_status = "error"
+        es_details = {"error": str(e)}
+        logger.error(f"Elasticsearch health check failed: {e}", exc_info=True)
 
-    # For now, basic health check
-    if es_status == "connected": # Add other checks
-        return {"status": "healthy", "service": settings.PROJECT_NAME, "version": settings.PROJECT_VERSION, "elasticsearch": es_status}
+    # Check Analytics MongoDB if enabled
+    if settings.MONGODB_ANALYTICS_ENABLED:
+        try:
+            if AnalyticsDataStorage.db: # Check if db object exists
+                await AnalyticsDataStorage.db.command('ping')
+                analytics_db_status = "connected"
+            else: # Should not happen if startup was successful and analytics enabled
+                analytics_db_status = "not_initialized"
+                analytics_db_details = {"error": "Analytics DB client not initialized in app state."}
+                logger.error("Analytics DB client not found in app state for health check.")
+        except Exception as e:
+            analytics_db_status = "error"
+            analytics_db_details = {"error": str(e)}
+            logger.error(f"Analytics MongoDB health check failed: {e}", exc_info=True)
+
+    overall_status = "healthy"
+    if es_status != "connected" or \
+       (settings.MONGODB_ANALYTICS_ENABLED and analytics_db_status != "connected"):
+        overall_status = "unhealthy"
+
+    response_payload = {
+        "status": overall_status,
+        "service": settings.PROJECT_NAME,
+        "version": settings.PROJECT_VERSION,
+        "dependencies": {
+            "elasticsearch": {"status": es_status, "details": es_details if es_status != 'connected' else 'OK'}
+        }
+    }
+    if settings.MONGODB_ANALYTICS_ENABLED:
+        response_payload["dependencies"]["mongodb_analytics"] = {"status": analytics_db_status, "details": analytics_db_details if analytics_db_status != 'connected' else 'OK'}
+
+    if overall_status == "healthy":
+        return response_payload
     else:
         return JSONResponse(
             status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "unhealthy",
-                "service": settings.PROJECT_NAME,
-                "version": settings.PROJECT_VERSION,
-                "elasticsearch": es_status
-            }
+            content=response_payload
         )
 
 # Global Exception Handlers

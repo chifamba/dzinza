@@ -62,17 +62,13 @@ async def shutdown_event():
         logger.info("HTTPX AsyncClient closed.")
 
 # --- Middleware ---
-# Response Time Header
-@app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Response-Time"] = str(process_time)
-    logger.info("Request processed", method=request.method, path=request.url.path, status_code=response.status_code, duration=process_time)
-    return response
 
-# CORS Middleware (apply before other custom middleware if they depend on CORS headers)
+# IMPORTANT: Order of middleware can matter.
+# CORS should usually be early.
+# Response Time can be early.
+# Auth should be after CORS, but before routes that need auth state.
+
+# CORS Middleware
 if settings.ALLOWED_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
@@ -82,6 +78,31 @@ if settings.ALLOWED_ORIGINS:
         allow_headers=["*"], # Allows all headers
         expose_headers=["X-Response-Time"] # Example of exposing custom headers
     )
+
+# Response Time Header
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Response-Time"] = str(process_time)
+    # Avoid logging here if AuthMiddleware or another middleware will log request completion with user info
+    # logger.info("Request processed", method=request.method, path=request.url.path, status_code=response.status_code, duration=process_time)
+    return response
+
+# Security Headers Middleware (Basic set, similar to some Helmet defaults)
+from starlette.middleware.headers import HeadersMiddleware
+app.add_middleware(
+    HeadersMiddleware,
+    headers={
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        # "Content-Security-Policy": "default-src 'self'; script-src 'self'; object-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;", # Example CSP - needs careful crafting
+        "X-XSS-Protection": "1; mode=block", # Deprecated by modern browsers but often still included
+        # "Strict-Transport-Security": "max-age=31536000; includeSubDomains", # If HTTPS is enforced
+        # "Referrer-Policy": "strict-origin-when-cross-origin",
+    }
+)
 
 # Authentication Middleware (if gateway handles token validation)
 from app.middleware.auth import AuthMiddleware

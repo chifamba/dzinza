@@ -67,11 +67,13 @@ def _filter_headers(incoming_headers: httpx.Headers, request_host: str) -> Dict[
     # - Trace propagation headers (OpenTelemetry)
     # - Authorization header might be re-generated or passed through
     # - If gateway authenticates, it might add a X-User-ID, X-User-Roles header
-
-    # Example: if request.state.user exists (from an auth middleware)
-    # if hasattr(request.state, "user") and request.state.user:
-    #     headers_to_forward["X-User-Id"] = str(request.state.user.id)
-    #     headers_to_forward["X-User-Roles"] = ",".join(request.state.user.roles)
+    if hasattr(request.state, "user") and request.state.user:
+        user_state = request.state.user
+        headers_to_forward["X-User-ID"] = str(user_state.id)
+        if user_state.email: # Add email if available
+             headers_to_forward["X-User-Email"] = str(user_state.email)
+        if user_state.roles: # Add roles if available
+            headers_to_forward["X-User-Roles"] = ",".join(user_state.roles)
 
     if request_host:
         headers_to_forward["X-Forwarded-Host"] = request_host
