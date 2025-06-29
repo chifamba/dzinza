@@ -1,0 +1,28 @@
+fastapi[all]>=0.100.0
+pydantic-settings>=2.0.0
+
+# Elasticsearch client
+elasticsearch[async]>=8.0.0 # Specify async extra for AsyncElasticsearch
+
+# MongoDB driver (if storing search analytics)
+motor>=3.3.0
+
+# For OpenTelemetry (optional)
+opentelemetry-api>=1.19.0
+opentelemetry-sdk>=1.19.0
+opentelemetry-instrumentation-fastapi>=0.40b0
+opentelemetry-instrumentation-elasticsearch>=0.40b0 # If available, or use http instrumentation
+opentelemetry-exporter-otlp-proto-http>=1.19.0
+
+# For Prometheus metrics (optional)
+starlette-prometheus>=0.9.0
+
+# JWT handling (if validating tokens locally)
+# python-jose[cryptography]>=3.3.0
+# passlib[bcrypt]>=1.7.4
+
+# Development/Testing
+pytest>=7.0.0
+pytest-asyncio>=0.20.0
+httpx>=0.24.0
+# pytest-elasticsearch # For testing with an Elasticsearch instance (optional)

@@ -1,7 +1,50 @@
 # Dzinza Genealogy Platform - Docker Compose Configuration
 # Complete development and production environment setup
 
+# Define global secrets - in a real setup, these would point to files or be managed by an orchestrator
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  mongo_password:
+    file: ./secrets/mongo_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  elasticsearch_password:
+    file: ./secrets/elasticsearch_password.txt # If used
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  jwt_refresh_secret:
+    file: ./secrets/jwt_refresh_secret.txt
+  api_key_general: # Renamed to avoid conflict if other API keys are service specific
+    file: ./secrets/api_key_general.txt
+  aws_access_key_id:
+    file: ./secrets/aws_access_key_id.txt
+  aws_secret_access_key:
+    file: ./secrets/aws_secret_access_key.txt
+  smtp_pass:
+    file: ./secrets/smtp_pass.txt
+  grafana_password:
+    file: ./secrets/grafana_password.txt
+  google_client_id:
+    file: ./secrets/google_client_id.txt
+  google_client_secret:
+    file: ./secrets/google_client_secret.txt
+  # Add other external API key secrets here as needed
+  # Example:
+  # openai_api_key:
+  #   file: ./secrets/openai_api_key.txt
+  seed_admin_password:
+    file: ./secrets/seed_admin_password.txt
+
 services:
+  # Base image for Python services (not a runnable service itself, but context for builds)
+  # This entry is more for reference; actual services will use this context.
+  # python_base:
+  #   build:
+  #     context: ./base
+  #     dockerfile: Dockerfile
+  #   image: dzinza-python-base:latest # Optional: tag the base image
+
   # Frontend - React Application
   frontend:
     build:
@@ -31,8 +74,10 @@ services:
     environment:
       - POSTGRES_DB=${DB_NAME:-dzinza_db}
       - POSTGRES_USER=${DB_USER:-dzinza_user}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password # Use secret file
       - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    secrets: # Grant access to the secret
+      - db_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
@@ -57,8 +102,10 @@ services:
       - "27017:27017"
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${DB_USER:-dzinza_user}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongo_password # Use secret file
       - MONGO_INITDB_DATABASE=${MONGODB_GENEALOGY_DB:-dzinza_genealogy}
+    secrets: # Grant access to the secret
+      - mongo_password
     volumes:
       - mongodb_data:/data/db
       - ./database/mongo-init:/docker-entrypoint-initdb.d
@@ -77,9 +124,11 @@ services:
     container_name: dzinza-redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    command: ["redis-server", "--requirepass", "/run/secrets/redis_password"] # Use secret file path
+    secrets: # Grant access to the secret
+      - redis_password
+    # Environment variable for REDIS_PASSWORD is no longer needed if accessed via file by the application
+    # If the application itself needs REDIS_PASSWORD env var, it should read it from /run/secrets/redis_password
     networks:
       - dzinza-network
     restart: unless-stopped
@@ -137,7 +186,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_SECURITY_ADMIN_PASSWORD_FILE=/run/secrets/grafana_password # Use secret file
+    secrets: # Grant access to the secret
+      - grafana_password
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
@@ -146,6 +197,297 @@ services:
       - dzinza-network
     restart: unless-stopped
 
+  # Python Services (Placeholders - to be implemented)
+  auth_service_py:
+    build:
+      context: ./auth-service # Assumes Python code will be in ./auth-service
+      dockerfile: ../base/Dockerfile # Uses the shared base Dockerfile
+      # Alternatively, if base image is built and tagged:
+      # image: dzinza-python-base:latest
+      # dockerfile: ./Dockerfile # Service-specific Dockerfile that starts FROM dzinza-python-base
+    container_name: dzinza-auth-service-py
+    ports:
+      - "${AUTH_SERVICE_PORT:-3002}:8000" # Assuming Python service runs on 8000 internally
+    volumes:
+      - ./auth-service:/home/app/web # Mount code for development
+      - shared_config:/etc/shared-config
+    environment:
+      - PYTHON_APP_MODULE=app.main:app # Example: for FastAPI
+      - PORT=8000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-dzinza_db} # Or specific auth DB if different
+      - DB_USER=${DB_USER:-dzinza_user}
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - JWT_REFRESH_SECRET_FILE=/run/secrets/jwt_refresh_secret
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS_FILE=/run/secrets/smtp_pass
+      - GOOGLE_CLIENT_ID_FILE=/run/secrets/google_client_id
+      - GOOGLE_CLIENT_SECRET_FILE=/run/secrets/google_client_secret
+      - OTEL_SERVICE_NAME=auth-service-py
+      - JAEGER_ENDPOINT=${JAEGER_ENDPOINT}
+      # Add other necessary env vars
+    secrets:
+      - db_password
+      - redis_password
+      - jwt_secret
+      - jwt_refresh_secret
+      - smtp_pass
+      - google_client_id
+      - google_client_secret
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"] # Adjust port and path
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend_service_py: # API Gateway
+    build:
+      context: ./backend-service
+      dockerfile: Dockerfile # Service-specific Dockerfile
+    container_name: dzinza-backend-service-py
+    ports:
+      - "${GATEWAY_PORT:-3001}:8000" # Gateway port mapping
+    volumes:
+      - ./backend-service:/home/app/web # Mount code for development
+      - shared_config:/etc/shared-config
+    environment:
+      - DEBUG=${DEBUG:-false}
+      # Downstream service URLs (these are picked up by config.py to build the SERVICE_URLS_BY_PREFIX map)
+      - AUTH_SERVICE_URL=http://auth_service_py:8000/api/v1
+      - GENEALOGY_SERVICE_URL=http://genealogy_service_py:8000/api/v1
+      - SEARCH_SERVICE_URL=http://search_service_py:8000/api/v1
+      - STORAGE_SERVICE_URL=http://storage_service_py:8000/api/v1
+
+      # JWT settings if gateway validates tokens
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - JWT_ALGORITHM=HS256 # Ensure this matches auth-service
+      - JWT_AUDIENCE=dzinza-app # Ensure this matches auth-service
+
+      - OTEL_SERVICE_NAME=api-gateway-py
+      - JAEGER_ENDPOINT=${JAEGER_ENDPOINT}
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - SHARED_CONFIG_PATH=/etc/shared-config/backend.yaml
+      - API_V1_STR=/api/v1 # Prefix for gateway's own endpoints (like health)
+    secrets:
+      - jwt_secret # If gateway validates tokens
+      # Add other secrets if gateway directly needs them (e.g., for specific API key auth to downstream)
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on: # Depends on all downstream services it proxies to
+      - auth_service_py
+      - genealogy_service_py
+      - genealogy_service_worker_py # Though not directly called, good to have worker up
+      - search_service_py
+      - storage_service_py
+    healthcheck:
+      # Health check path for gateway itself (e.g., /api/v1/gateway/health)
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/gateway/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  genealogy_service_py:
+    build:
+      context: ./genealogy-service # Path to the Python service code
+      dockerfile: Dockerfile      # Service-specific Dockerfile (uses base image)
+    container_name: dzinza-genealogy-service-py
+    ports:
+      - "${GENEALOGY_SERVICE_PORT:-3004}:8000" # Expose port, maps to 8000 in container
+    volumes:
+      - ./genealogy-service:/home/app/web # Mount code for development
+      - shared_config:/etc/shared-config   # Mount shared configuration volume
+    environment:
+      - DEBUG=${DEBUG:-false}
+      # MongoDB settings - constructed to match what Pydantic settings in config.py expects
+      # Assumes MONGO_INITDB_ROOT_USERNAME and MONGO_INITDB_ROOT_PASSWORD_FILE are used for auth.
+      # The MONGO_INITDB_ROOT_USERNAME is set to 'dzinza_user' by default in mongodb service.
+      - MONGODB_URL=mongodb://${DB_USER:-dzinza_user}@mongodb:27017 # Added user
+      - MONGODB_DATABASE_NAME=${MONGODB_GENEALOGY_DB:-dzinza_genealogy}
+      - MONGODB_PASSWORD_FILE=/run/secrets/mongo_password # Path to the secret file for the app to read
+
+      # Celery settings - constructed for Redis broker/backend
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD_FILE_CONTENT}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD_FILE_CONTENT}@redis:6379/1
+      # Note: REDIS_PASSWORD_FILE_CONTENT is a placeholder for how the app would read the secret.
+      # The app's config.py needs to be able to read from /run/secrets/redis_password.
+      # For Celery, it's often easier if the full URL includes the password.
+      # So, the app's config.py will need to read /run/secrets/redis_password and build the URL.
+      # Let's simplify here and assume config.py handles reading the secret file for Celery URLs.
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password # App reads this file
+      - REDIS_HOST=redis # For Celery config in app
+
+      - OTEL_SERVICE_NAME=genealogy-service-py
+      - JAEGER_ENDPOINT=${JAEGER_ENDPOINT} # Example for tracing
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      # Add other necessary environment variables, e.g., for shared config path if used by app
+      - SHARED_CONFIG_PATH=/etc/shared-config/genealogy.yaml
+    secrets:
+      - mongo_password   # Grant access to MongoDB password secret
+      - redis_password   # Grant access to Redis password secret
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - redis
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  genealogy_service_worker_py: # New service for Celery worker
+    build:
+      context: ./genealogy-service # Same build context as the API service
+      dockerfile: Dockerfile
+    container_name: dzinza-genealogy-worker-py
+    command: ["celery", "-A", "app.services.celery_app.celery_app", "worker", "-l", "info", "-P", "eventlet"] # Example command
+    volumes:
+      - ./genealogy-service:/home/app/web # Mount code for development
+      - shared_config:/etc/shared-config
+    environment:
+      - DEBUG=${DEBUG:-false}
+      - MONGODB_URL=mongodb://${DB_USER:-dzinza_user}@mongodb:27017
+      - MONGODB_DATABASE_NAME=${MONGODB_GENEALOGY_DB:-dzinza_genealogy}
+      - MONGODB_PASSWORD_FILE=/run/secrets/mongo_password
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - REDIS_HOST=redis
+      - OTEL_SERVICE_NAME=genealogy-worker-py # Different service name for tracing
+      - JAEGER_ENDPOINT=${JAEGER_ENDPOINT}
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - SHARED_CONFIG_PATH=/etc/shared-config/genealogy.yaml
+    secrets:
+      - mongo_password
+      - redis_password
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - redis
+      - genealogy_service_py # Optional: ensure API is up, though worker is independent
+
+  search_service_py:
+    build:
+      context: ./search-service
+      dockerfile: Dockerfile # Service-specific Dockerfile
+    container_name: dzinza-search-service-py
+    ports:
+      - "${SEARCH_SERVICE_PORT:-3003}:8000"
+    volumes:
+      - ./search-service:/home/app/web # Mount code for development
+      - shared_config:/etc/shared-config   # Mount shared configuration volume
+    environment:
+      - DEBUG=${DEBUG:-false}
+      # Elasticsearch settings (app's config.py will pick the appropriate ones)
+      - ELASTICSEARCH_URL=http://elasticsearch:9200 # Primary way to connect
+      # - ELASTICSEARCH_CLOUD_ID= # If using Elastic Cloud
+      # - ELASTICSEARCH_API_KEY_ID_FILE=/run/secrets/es_api_key_id # If using API key auth
+      # - ELASTICSEARCH_API_KEY_FILE=/run/secrets/es_api_key
+      # - ELASTICSEARCH_USERNAME_FILE=/run/secrets/es_username # If using basic auth
+      # Note: elasticsearch_password secret is available, ES service itself has xpack.security.enabled=false for now.
+      # If ES security were enabled, the app's config.py would use ELASTICSEARCH_PASSWORD_FILE.
+      - ELASTICSEARCH_PASSWORD_FILE=/run/secrets/elasticsearch_password
+
+      # MongoDB for Analytics (if enabled in app config)
+      - MONGODB_ANALYTICS_ENABLED=${MONGODB_ANALYTICS_ENABLED:-false}
+      - MONGODB_URL_ANALYTICS=mongodb://${DB_USER:-dzinza_user}@mongodb:27017/${MONGODB_SEARCH_DB:-dzinza_search_analytics}
+      - MONGODB_PASSWORD_FILE_ANALYTICS=/run/secrets/mongo_password
+
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret # For token validation if endpoints are protected
+      - JWT_ALGORITHM=HS256
+      - JWT_AUDIENCE=dzinza-app
+
+      - OTEL_SERVICE_NAME=search-service-py
+      - JAEGER_ENDPOINT=${JAEGER_ENDPOINT}
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - SHARED_CONFIG_PATH=/etc/shared-config/search.yaml
+    secrets:
+      - elasticsearch_password # For ES connection if auth is enabled on ES
+      - mongo_password         # For analytics DB
+      - jwt_secret             # For token validation
+      # - es_api_key_id        # Example if using ES API key auth
+      # - es_api_key
+      # - es_username
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+      - mongodb # If analytics enabled and uses MongoDB
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  storage_service_py:
+    build:
+      context: ./storage-service
+      dockerfile: Dockerfile # Service-specific Dockerfile
+    container_name: dzinza-storage-service-py
+    ports:
+      - "${STORAGE_SERVICE_PORT:-3005}:8000"
+    volumes:
+      - ./storage-service:/home/app/web
+      - shared_config:/etc/shared-config
+    environment:
+      - DEBUG=${DEBUG:-false}
+      # MONGODB_URI will be assembled by app from MONGO_HOST, MONGO_DB_NAME, MONGO_USER, MONGO_PASSWORD_FILE
+      - MONGO_HOST=mongodb
+      - MONGO_DB_NAME=${MONGODB_STORAGE_DB:-dzinza_storage}
+      - MONGO_USER=${DB_USER:-dzinza_user} # Using the same user as other DBs for simplicity
+      - MONGO_PASSWORD_FILE=/run/secrets/mongo_password
+
+      - AWS_ACCESS_KEY_ID_FILE=/run/secrets/aws_access_key_id
+      - AWS_SECRET_ACCESS_KEY_FILE=/run/secrets/aws_secret_access_key
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-dzinza-storage-bucket}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL} # For MinIO etc.
+
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret # For token validation
+      - JWT_ALGORITHM=HS256 # Must match auth-service
+      - JWT_AUDIENCE=dzinza-app # Must match auth-service
+
+      - OTEL_SERVICE_NAME=storage-service-py
+      - JAEGER_ENDPOINT=${JAEGER_ENDPOINT}
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - SHARED_CONFIG_PATH=/etc/shared-config/storage.yaml
+    secrets:
+      - mongo_password    # For metadata DB
+      - aws_access_key_id
+      - aws_secret_access_key
+      - jwt_secret        # For token validation
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   postgres_data:
   mongodb_data:
@@ -153,6 +495,7 @@ volumes:
   elasticsearch_data:
   prometheus_data:
   grafana_data:
+  shared_config: # Define the shared_config volume
 
 networks:
   dzinza-network:
