@@ -9,8 +9,11 @@ import time # For X-Response-Time header
 
 from app.core.config import settings
 # from app.services.proxy import reverse_proxy # To be created
-# from app.middleware.auth import AuthMiddleware # Example, if auth is handled by gateway middleware
-# from app.middleware.rate_limiter import setup_rate_limiter # Example
+from app.middleware.auth import AuthMiddleware # Already added
+from app.middleware.rate_limiter import limiter as app_limiter # Import the limiter instance
+from slowapi.errors import RateLimitExceeded # Import the exception
+from slowapi import _rate_limit_exceeded_handler # Import the default handler
+
 
 # Configure structlog
 structlog.configure(
@@ -44,8 +47,10 @@ app = FastAPI(
 async def startup_event():
     logger.info(f"{settings.PROJECT_NAME} startup...")
     app.state.http_client = httpx.AsyncClient(timeout=settings.SERVICE_TIMEOUT_SECONDS)
-    # if settings.ENABLE_RATE_LIMITING:
-    #     await setup_rate_limiter(app) # Example if using slowapi
+    if settings.ENABLE_RATE_LIMITING:
+        app.state.limiter = app_limiter # Attach limiter to app state
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler) # Add exception handler
+        logger.info("Rate limiter initialized and attached to app state.")
     logger.info("HTTPX AsyncClient initialized for proxying.")
     # TODO: Initialize JWT public key if using asymmetric algo & key is from file/service
 

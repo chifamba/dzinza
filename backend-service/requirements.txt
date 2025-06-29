@@ -7,7 +7,7 @@ python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4 # Usually for hashing, but often included with JWT setups
 
 # For rate limiting (example, choose one or implement custom)
-# slowapi # (Starlette/FastAPI compatible) - check for latest version
+slowapi>=0.1.9 # Check for the latest stable version
 
 # For OpenTelemetry (optional)
 opentelemetry-api>=1.19.0

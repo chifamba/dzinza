@@ -2,15 +2,17 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
 
 from app.services.proxy import reverse_proxy
-# from app.dependencies import get_current_user_optional # If auth is handled at gateway
+from app.core.config import settings # For rate limit strings
+from app.middleware.rate_limiter import limiter # Import the limiter instance
 
 router = APIRouter()
 
 # This catch-all route should be last if you have other specific routes in this router.
 # It will match any path not caught by preceding routes.
 @router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+@limiter.limit(settings.RATE_LIMIT_DEFAULT) # Apply default rate limit
 async def gateway_proxy_all(
-    request: Request,
+    request: Request, # FastAPI will inject the request object
     path: str,
     # current_user: Optional[User] = Depends(get_current_user_optional) # Example if gateway handles auth
 ):
