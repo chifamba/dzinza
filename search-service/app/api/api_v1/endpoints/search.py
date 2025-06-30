@@ -98,16 +98,32 @@ async def perform_search(
 
     return search_response
 
-# Placeholder for type-ahead / suggestions endpoint if needed
-# @router.get("/suggest", response_model=List[str])
-# async def get_search_suggestions(
-#     query: str = Query(..., min_length=2),
-#     es_client: AsyncElasticsearch = Depends(get_es_client_dependency)
-# ):
-#     # This would use Elasticsearch's completion suggester or search-as-you-type features
-#     # Example: suggestions = await search_logic.get_suggestions(es_client, query_fragment=query)
-#     # return suggestions
-#     return [f"Suggestion for '{query}' 1", f"Suggestion for '{query}' 2"]
+@router.get("/suggest", response_model=schemas.search.SuggestionResponse)
+async def get_search_suggestions(
+    *,
+    # Use SuggestionQuery as a dependency to get query parameters
+    query_params: schemas.search.SuggestionQuery = Depends(), # Gets 'text' and 'limit' from query params
+    es_client: AsyncElasticsearch = Depends(get_es_client_dependency),
+    # current_user: Optional[AuthenticatedUser] = Depends(get_current_user_optional) # Optional auth
+):
+    """
+    Provides search suggestions (type-ahead) based on the input text.
+    """
+    # TODO: Potentially filter suggestions based on user permissions if current_user is available
+    # This would require passing user context to search_logic.get_suggestions
+    # and modifying that function to incorporate such filters in its ES query.
+
+    suggestion_items = await search_logic.get_suggestions(
+        es_client=es_client,
+        query_text=query_params.text,
+        limit=query_params.limit
+        # record_types=query_params.record_types # If SuggestionQuery includes record_types
+    )
+
+    return schemas.search.SuggestionResponse(
+        query_text=query_params.text,
+        suggestions=suggestion_items
+    )
 
 # TODO: Add specific endpoints if needed, e.g., GET /search/persons?q=...
 # These would construct a SearchQuery internally and call execute_search.

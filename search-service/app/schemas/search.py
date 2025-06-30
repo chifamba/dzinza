@@ -19,7 +19,7 @@ class SearchQuery(BaseModel):
     sort_by: Optional[str] = Field(None, description="Field to sort results by (e.g., '_score', 'created_at').")
     sort_order: Optional[str] = Field(default="desc", pattern="^(asc|desc)$", description="Sort order: 'asc' or 'desc'.")
     request_highlighting: bool = Field(default=False, description="Set to true to request highlighting of search terms in results.")
-    # TODO: Add fields for faceting requests if needed.
+    request_facets: Optional[List[str]] = Field(None, description="List of fields for which to retrieve facet counts (e.g., 'record_type.keyword', 'tags.keyword').")
 
     class Config:
         json_schema_extra = {
@@ -64,8 +64,8 @@ class SearchResponse(BaseModel):
     page: int
     size: int
     total_pages: Optional[int] = None # Calculated: (total_hits + size - 1) // size
-    # facets: Optional[Dict[str, Any]] = Field(None, description="Aggregated facet counts.")
-    # took_ms: Optional[int] = Field(None, description="Time Elasticsearch took to process the query in milliseconds.")
+    facets: Optional[Dict[str, Dict[str, int]]] = Field(None, description="Aggregated facet counts, e.g., {'record_type.keyword': {'person': 10, 'event': 5}}.")
+    took_ms: Optional[int] = Field(None, description="Time Elasticsearch took to process the query in milliseconds.")
 
     @model_validator(mode='after') # Pydantic v2
     def calculate_total_pages(cls, values: 'SearchResponse') -> 'SearchResponse':
@@ -104,3 +104,38 @@ class SearchAnalyticsEvent(BaseModel):
 # from pydantic import model_validator # for Pydantic v2 class based validator for SearchResponse
 # `HttpUrl` also needs to be imported from pydantic.
 # `uuid` from uuid module.
+
+# --- Suggestion Schemas ---
+
+class SuggestionQuery(BaseModel):
+    text: str = Field(..., min_length=2, max_length=100, description="Partial text input for suggestions.")
+    limit: int = Field(default=5, ge=1, le=20, description="Maximum number of suggestions to return.")
+    # record_types: Optional[List[str]] = Field(None, description="Optional: filter suggestions by record types.")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "text": "John D",
+                "limit": 10
+            }
+        }
+
+class SuggestionResponseItem(BaseModel):
+    text: str = Field(description="The suggested completion text.")
+    # These are optional, depending on what the suggestion source can provide
+    record_type: Optional[str] = Field(None, description="Type of the record suggested (e.g., 'person', 'tag').")
+    record_id: Optional[str] = Field(None, description="ID of the suggested record, if applicable.")
+    # score: Optional[float] = Field(None, description="Confidence score for the suggestion.")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "text": "John Doe",
+                "record_type": "person",
+                "record_id": "uuid-of-john-doe"
+            }
+        }
+
+class SuggestionResponse(BaseModel):
+    query_text: str = Field(description="The original query text for which suggestions were generated.")
+    suggestions: List[SuggestionResponseItem]

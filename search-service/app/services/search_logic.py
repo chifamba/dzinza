@@ -2,6 +2,7 @@ from elasticsearch import AsyncElasticsearch, exceptions as es_exceptions
 from typing import List, Dict, Any, Optional
 import structlog
 
+from app import schemas # Import the schemas module
 from app.schemas.search import SearchQuery, SearchHit, SearchResponse, SearchHitSource
 from app.services.elasticsearch_client import get_es_client_dependency # For type hint or direct use
 # from app.core.config import settings # If specific index names are in settings
@@ -122,6 +123,15 @@ def build_elasticsearch_query(query_in: SearchQuery) -> Dict[str, Any]:
             "number_of_fragments": 3 # Number of snippets to return per field
         }
 
+    if query_in.request_facets:
+        es_query["aggs"] = {}
+        for facet_field in query_in.request_facets:
+            # Assuming facet_field is something like "record_type.keyword" or "tags.keyword"
+            # The size parameter determines how many unique terms (buckets) to return for the facet.
+            es_query["aggs"][facet_field.replace(".keyword", "_counts")] = { # Use a descriptive name for the agg result
+                "terms": {"field": facet_field, "size": 20} # Return top 20 facet values
+            }
+
     logger.debug("Built Elasticsearch query", es_query=es_query)
     return es_query
 
@@ -186,8 +196,22 @@ async def execute_search(
         )
 
     total_hits = es_response.get("hits", {}).get("total", {}).get("value", 0)
-    # took_ms = es_response.get("took")
-    # facets_data = es_response.get("aggregations") # If aggregations were requested
+    took_ms = es_response.get("took")
+
+    facets_data: Optional[Dict[str, Dict[str, int]]] = None
+    if query_in.request_facets and "aggregations" in es_response:
+        facets_data = {}
+        for agg_name, agg_result in es_response["aggregations"].items():
+            # agg_name here would be like "record_type_counts"
+            # The original field name (e.g. "record_type.keyword") can be part of agg_name or inferred
+            # For simplicity, let's assume the client knows what original field `agg_name` refers to,
+            # or we store metadata about requested facets.
+            # Here, we'll use the agg_name as the key in our response.
+            # A more robust way might be to map agg_name back to the original requested facet field.
+            original_facet_field_name = agg_name.replace("_counts", ".keyword") # Simple heuristic to get original field
+            facets_data[original_facet_field_name] = {
+                bucket["key"]: bucket["doc_count"] for bucket in agg_result.get("buckets", [])
+            }
 
     return SearchResponse(
         query=query_in,
@@ -195,8 +219,8 @@ async def execute_search(
         hits=hits_list,
         page=query_in.page,
         size=query_in.size,
-        # facets=facets_data,
-        # took_ms=took_ms
+        facets=facets_data,
+        took_ms=took_ms
     )
 
 # TODO: Add function for logging search analytics to MongoDB if MONGODB_ANALYTICS_ENABLED
@@ -204,3 +228,98 @@ async def execute_search(
 #     collection = db_analytics[SEARCH_ANALYTICS_COLLECTION] # Define this collection name
 #     await collection.insert_one(event_data.model_dump(by_alias=True))
 #     logger.info("Search analytic event logged.", query=event_data.query_string, user_id=event_data.user_id)
+
+
+async def get_suggestions(
+    es_client: AsyncElasticsearch,
+    query_text: str,
+    limit: int = 5,
+    record_types: Optional[List[str]] = None # Optional: filter suggestions by record type
+) -> List[schemas.search.SuggestionResponseItem]: # Ensure schemas is imported or use full path
+    """
+    Provides search suggestions based on query_text using match_phrase_prefix.
+    This is a basic implementation. For more advanced suggestions, consider
+    Elasticsearch's Completion Suggester or search_as_you_type field mappings.
+    """
+    if not query_text or len(query_text) < 2: # Min length for suggestions
+        return []
+
+    # Define fields to search for suggestions (prioritize names, titles)
+    # These fields should ideally be mapped in a way that supports prefix queries well.
+    # Using .keyword for exact prefix matching on parts of text fields might be too restrictive.
+    # Text fields analyzed with edge_ngram or similar are better for this.
+    # For now, we'll use standard text fields and rely on match_phrase_prefix.
+    suggestion_fields = ["title", "name", "*.full_name", "summary", "description", "tags"]
+
+    es_query_body = {
+        "query": {
+            "multi_match": {
+                "query": query_text,
+                "type": "phrase_prefix",
+                "fields": suggestion_fields
+            }
+        },
+        "size": limit, # Limit number of documents to fetch for suggestions
+        "_source": ["title", "name", "record_type"] # Fetch only necessary fields for suggestion text
+                                                 # and potentially record_type/id for linking
+    }
+
+    # Add record_type filter if provided
+    if record_types:
+        es_query_body["query"] = {
+            "bool": {
+                "must": [es_query_body["query"]],
+                "filter": [{"terms": {"record_type.keyword": record_types}}]
+            }
+        }
+
+    target_indexes_str = ",".join(DEFAULT_INDEXES_TO_SEARCH) # Search across default indexes for suggestions
+    if record_types: # If specific record types provided, try to narrow indexes
+        specific_indexes = {INDEX_MAP[rt.lower()] for rt in record_types if rt.lower() in INDEX_MAP}
+        if specific_indexes:
+            target_indexes_str = ",".join(list(specific_indexes))
+
+    logger.debug("Executing suggestion query", es_query=es_query_body, indexes=target_indexes_str)
+
+    try:
+        es_response = await es_client.search(
+            index=target_indexes_str,
+            body=es_query_body
+        )
+    except es_exceptions.ElasticsearchException as e:
+        logger.error(f"Elasticsearch suggestion query failed: {e.info}", error_info=e.info, query=es_query_body)
+        return [] # Return empty list on error
+
+    suggestions: List[schemas.search.SuggestionResponseItem] = []
+    seen_texts = set() # To avoid duplicate suggestion texts if multiple docs yield same primary text
+
+    for hit in es_response.get("hits", {}).get("hits", []):
+        source = hit.get("_source", {})
+        # Construct suggestion text: prioritize title, then name, then a snippet.
+        # This needs to be adapted based on common fields in your indexed documents.
+        text = source.get("title", source.get("name"))
+        if isinstance(text, dict) and "full_name" in text : # Handle PersonName like structures
+            text = text.get("full_name")
+
+        if not text and "summary" in source: # Fallback to summary
+            text = source["summary"]
+        elif not text and "description" in source: # Fallback to description
+            text = source["description"]
+
+        if not text or not isinstance(text, str): # Ensure text is a string
+            continue
+
+        text = text[:100] # Truncate long suggestions
+
+        if text.lower() not in seen_texts: # Basic deduplication
+            suggestions.append(schemas.search.SuggestionResponseItem(
+                text=text,
+                record_type=source.get("record_type"),
+                record_id=hit.get("_id")
+            ))
+            seen_texts.add(text.lower())
+
+        if len(suggestions) >= limit:
+            break
+
+    return suggestions
