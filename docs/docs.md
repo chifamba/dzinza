@@ -1,7 +1,7 @@
 ````markdown
 # Dzinza Project Documentation
 
-**Note:** The Dzinza platform has achieved its initial planned feature set. This documentation reflects the state of the platform based on the completed Node.js backend and associated frontend services. Future major architectural changes, if any, will be documented separately.
+**Note:** The Dzinza platform's backend services have been migrated from Node.js to Python (FastAPI). This documentation is being updated to reflect the new architecture and implementation details. The frontend remains React/TypeScript.
 
 ## Table of Contents
 
@@ -117,45 +117,75 @@ This accessibility guideline ensures that Dzinza serves all users effectively wh
 ...
 
 # Dzinza Genealogy Platform - API Documentation
-(Content updated to reflect completion)
 
-**Status: This document describes the API as implemented for the Dzinza platform's completed feature set.**
+**Status: This section is being updated to reflect the new Python (FastAPI) based microservice APIs.**
 
 ## API Overview
 
-The Dzinza API is a RESTful service built with Node.js/Express.js, supporting the platform's core functionalities.
-All endpoints use JSON for request/response bodies and include proper HTTP status codes and error handling.
+The Dzinza backend API is now implemented as a set of Python microservices using the FastAPI framework. These services are fronted by an API Gateway (`backend-service`). All endpoints use JSON for request/response bodies and include standard HTTP status codes and error handling.
 
-**Base URL:** `/api` (usually prefixed by a service-specific path, e.g., `/auth`, `/genealogy`, etc., managed by the API Gateway)
+**API Gateway Base URL:** `/api/v1` (e.g., `http://localhost:3001/api/v1` if using default gateway port)
 
-**Authentication:** Bearer token (JWT) required for most endpoints.
-(Detailed endpoint documentation remains the same as original, reflecting current features - omitted for brevity)
+**Authentication:** Bearer token (JWT) is required for most endpoints. Tokens are issued by the `auth-service`.
+
+**Service API Documentation (OpenAPI/Swagger):**
+Each Python microservice exposes its own OpenAPI specification and Swagger UI:
+-   **Auth Service:** Access its API docs via the gateway at `/api/v1/auth/docs` (e.g., `http://localhost:3001/api/v1/auth/docs`).
+-   **Genealogy Service:** Access its API docs via the gateway (for relevant prefixes like `/family-trees`, `/persons`, etc.). For example, family tree docs might be conceptually at `/api/v1/family-trees/docs` (actual path depends on how gateway exposes aggregated docs or if direct service access is used for docs). Direct service OpenAPI is at `http://genealogy-service-py:8000/api/v1/docs`.
+-   **Storage Service:** API docs via gateway at `/api/v1/files/docs`. Direct: `http://storage-service-py:8000/api/v1/docs`.
+-   **Search Service:** API docs via gateway at `/api/v1/search/docs`. Direct: `http://search-service-py:8000/api/v1/docs`.
+
+The legacy Node.js API documentation (`docs/api-swagger-legacy-node.yaml`) is available for historical reference only.
+
+(Detailed endpoint documentation will now be sourced from these individual OpenAPI specs.)
 ...
 
 # Authentication System Implementation Status
-(Content updated to reflect completion)
 
-## ✅ COMPLETED FEATURES
+**Status: The Authentication System has been migrated to a Python (FastAPI) microservice (`auth-service`).**
 
-### F1.1 User Authentication & Authorization - Implementation Complete
+## ✅ CORE FEATURES IMPLEMENTED (Python `auth-service`)
+
+### F1.1 User Authentication & Authorization
 
 #### 🔧 Core Authentication Components
-- All listed components (Login, Register, Email Verification, Forgot/Reset Password pages, useAuth hook, ProtectedRoute, AuthAPI, ApiClient, UI elements, Navigation, App Routes, i18n, Basic Profile, Config, Tests) are considered **COMPLETED**.
+-   **User Registration:** Endpoint `/auth/register` for new user creation.
+-   **Login:** Endpoint `/auth/login` for email/password authentication; handles MFA if enabled.
+-   **JWT Issuance:** Issues access and refresh tokens upon successful login.
+-   **Token Refresh:** Endpoint `/auth/refresh` to get a new access token.
+-   **Email Verification:** Flow for verifying user email addresses.
+-   **Password Management:** Endpoints for requesting password reset, and resetting password with a token. Authenticated users can change their own password.
+-   **Multi-Factor Authentication (MFA):** TOTP-based MFA, including enablement, verification during login, and backup codes.
+-   **User Profile (`/users/me`):** Authenticated users can retrieve and update their own profile information.
+-   **Secure Password Storage:** Uses `passlib` with bcrypt for hashing passwords.
+-   **Dependencies & Config:** Uses SQLAlchemy for DB interaction (PostgreSQL), Pydantic for validation, `python-jose` for JWTs.
+-   **Audit Logging:** Structure for logging key authentication events.
+-   **Admin User Management:** Basic admin endpoints for listing, viewing, updating, and deleting users (requires superuser role).
 
-## 📋 IMPLEMENTATION DETAILS - ALL DELIVERED
+## 📋 IMPLEMENTATION DETAILS (Python `auth-service`)
 
 ### Security Features
-- All listed security features are **IMPLEMENTED**.
+- JWT-based authentication with access and refresh tokens.
+- Secure password hashing (bcrypt).
+- HTTPS (assumed in production deployment).
+- Input validation using Pydantic.
+- Token expiry and refresh mechanisms.
+- MFA (TOTP).
+- Account lockout mechanism after failed login attempts.
 
-### User Experience Features
-- All listed UX features are **IMPLEMENTED**.
+### User Experience Features (Supported by Backend)
+- Clear error messages for auth failures.
+- Email-based flows for verification and password reset.
+- Secure handling of sensitive user data.
 
 ### Developer Experience
-- All listed DX features are **IMPLEMENTED**.
+- FastAPI's automatic OpenAPI documentation.
+- Structured logging with `structlog`.
+- Pydantic-based settings management.
 
-## 🚀 PROJECT STATUS (Previously "NEXT STEPS")
+## 🚀 PROJECT STATUS (Python `auth-service`)
 
-The Dzinza Authentication System (Frontend & Backend interactions defined by workstreams) is **fully implemented and feature-complete** according to the initial project scope. All core authentication flows, security measures, and user experience enhancements are in place.
+The Python `auth-service` provides core authentication and user management functionalities, aiming for parity with the previous Node.js implementation and incorporating modern security best practices. Further testing and refinement are ongoing.
 
 ## 📊 PROGRESS SUMMARY
 
@@ -279,11 +309,39 @@ The Dzinza Authentication System (Frontend & Backend interactions defined by wor
 ...
 
 # System Architecture
-(Content updated to describe the as-built system architecture)
+(Content to be updated to describe the Python microservices architecture, API Gateway, databases, and interactions. Placeholder for now.)
+
+**Overview:** The Dzinza platform now utilizes a microservices architecture for its backend, implemented in Python using the FastAPI framework. A dedicated API Gateway service manages requests to the various downstream services.
+
+**Key Components:**
+-   **Frontend:** React (TypeScript, Vite, Tailwind CSS) - remains as is.
+-   **API Gateway (`backend-service`):** Python (FastAPI), responsible for request routing, authentication (JWT validation), rate limiting, and forwarding to appropriate microservices.
+-   **Authentication Service (`auth-service`):** Python (FastAPI, SQLAlchemy, PostgreSQL, Redis), handles user registration, login, JWT issuance, MFA, password management, user profiles.
+-   **Genealogy Service (`genealogy-service`):** Python (FastAPI, Motor/MongoDB, Celery), manages family trees, persons, relationships, events, notifications, merge suggestions, and GEDCOM processing.
+-   **Storage Service (`storage-service`):** Python (FastAPI, Motor/MongoDB, Boto3), handles file/media uploads, S3 integration, metadata, image processing, and cleanup.
+-   **Search Service (`search-service`):** Python (FastAPI, Elasticsearch-py), provides search capabilities across platform data, logs search analytics.
+-   **Databases:** PostgreSQL (for `auth-service`), MongoDB (for `genealogy-service`, `storage-service` metadata, `search-service` analytics), Redis (for `auth-service` caching/rate-limiting, Celery broker), Elasticsearch (for `search-service`).
+-   **Infrastructure:** Docker & Docker Compose for containerization and local orchestration.
+-   **CI/CD:** GitHub Actions for automated builds, linting, testing, and Docker image publishing.
+
+(Further details on data flow, service interactions, and deployment will be added here.)
 ...
 
 # Testing Strategy
-(Content updated to reflect the testing strategies applied to the completed project)
+(Content to be updated to reflect Pytest for backend, Vitest for frontend, and overall testing approach for the Python microservices.)
+
+**Backend Testing (Python):**
+-   **Unit Tests:** Pytest is used for unit testing individual functions, classes, and CRUD operations within each microservice. Mocks are used for external dependencies like databases or other services.
+-   **Integration Tests:** Pytest with `TestClient` (for FastAPI) is used to test API endpoints within each service, mocking external service calls where necessary.
+-   **Focus:** Business logic, data validation, API contract adherence, error handling.
+
+**Frontend Testing (Vitest):**
+-   (Existing Vitest setup remains for component and integration tests for the React frontend.)
+
+**End-to-End Testing:**
+-   (Conceptual) End-to-end tests will verify user flows across the frontend, API Gateway, and backend microservices. Tools like Cypress or Playwright could be used.
+
+**CI Pipeline:** The GitHub Actions workflow includes steps for running linters (Ruff for Python) and Pytest for all backend services on pushes and pull requests.
 ...
 
 # User Manual
@@ -296,22 +354,22 @@ The Dzinza Authentication System (Frontend & Backend interactions defined by wor
 
 | Document                 | Status                             | Last Updated | Version |
 | ------------------------ | ---------------------------------- | ------------ | ------- |
-| Project Overview         | ✅ Complete                        | 2024-07-22   | 1.1     |
-| System Architecture      | ✅ Complete                        | 2024-07-22   | 1.1     |
-| Development Guidelines   | ✅ Complete                        | 2024-07-22   | 1.0     |
+| Project Overview         | 🔄 Needs Update (Python Focus)     | 2024-07-24   | 1.2     |
+| System Architecture      | 🔄 Needs Update (Python Focus)     | 2024-07-24   | 1.2     |
+| Development Guidelines   | 🔄 Needs Update (Python Focus)     | 2024-07-24   | 1.1     |
 | Agent Rules              | ✅ Complete                        | 2024-07-22   | 1.0     |
-| Database Schema          | ✅ Complete                        | 2024-07-22   | 1.1     |
-| API Documentation        | ✅ Complete (Reflects Features)    | 2024-07-22   | 1.0     |
+| Database Schema          | 🔄 Needs Update (Python Models)    | 2024-07-24   | 1.2     |
+| API Documentation        | 📝 Updated (Points to OpenAPI)     | 2024-07-24   | 1.1     |
 | Comprehensive Review     | ✅ Complete                        | 2024-07-22   | 1.1     |
-| Feature Specifications   | ✅ Complete (As Implemented)       | 2024-07-22   | 1.0     |
+| Feature Specifications   | 🔄 Needs Update (Python Parity)    | 2024-07-24   | 1.1     |
 | Accessibility Guidelines | ✅ Complete (Initial Version)      | 2024-07-22   | 1.0     |
 | Security Guidelines      | ✅ Complete (Initial Version)      | 2024-07-22   | 1.0     |
 | Data Privacy             | ✅ Complete (Initial Version)      | 2024-07-22   | 1.0     |
-| Implementation Plan      | ✅ Complete (Achieved)             | 2024-07-22   | 1.0     |
-| User Manual              | ✅ Complete                        | 2024-07-22   | 1.0     |
-| Installation Guide       | ✅ Complete                        | 2024-07-22   | 1.0     |
-| Quick Start Guide        | ✅ Complete                        | 2024-07-22   | 1.0     |
-| Deployment Guide         | ✅ Complete                        | 2024-07-22   | 1.0     |
+| Implementation Plan      | 🔄 Superseded by Migration         | 2024-07-24   | 1.1     |
+| User Manual              | 🔄 Needs Update (Python Backend)   | 2024-07-24   | 1.1     |
+| Installation Guide       | 🔄 Needs Update (Python Backend)   | 2024-07-24   | 1.1     |
+| Quick Start Guide        | ✅ Updated (Python/Docker Focus)   | 2024-07-24   | 1.1     |
+| Deployment Guide         | 🔄 Needs Update (Python Services)  | 2024-07-24   | 1.1     |
 | Monitoring Guide         | ✅ Complete                        | 2024-07-22   | 1.0     |
 
 ## 🔗 Cross-References

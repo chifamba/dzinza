@@ -1,194 +1,168 @@
-# Environment Configuration Guide
+# Environment Configuration Guide (Python Backend with Docker Compose)
 
 ## Overview
 
-The Dzinza project uses a hierarchical environment configuration system that promotes consistency, security, and maintainability across all services.
+The Dzinza project's Python backend services are configured primarily through environment variables managed by Docker Compose, with sensitive values handled using Docker Secrets. Each Python service uses Pydantic-Settings to load its configuration.
 
 ## Configuration Structure
 
-### 1. Main Configuration Files
+### 1. Docker Compose Environment (`.env` file at project root)
+   - A single `.env` file at the root of the project is used by `docker-compose.yml` for variable substitution.
+   - This file typically defines external ports, common user/database names (if not using secrets for everything), and global settings like `DEBUG` mode or `JAEGER_ENDPOINT`.
+   - **Example `.env` content (for Docker Compose):**
+     ```bash
+     # Docker Compose specific variables
+     COMPOSE_PROJECT_NAME=dzinza
+     DB_PORT=54321 # Example: Map host port 54321 to container port 5432 for PostgreSQL
+     REDIS_PORT=63790
+     GATEWAY_PORT=3001 # External port for the API Gateway
 
-#### Root Level (Project-wide)
+     # Common settings that might be used by multiple services via Docker Compose env vars
+     DEBUG=false
+     DB_USER=dzinza_app_user
+     DB_NAME=dzinza_platform_db
+     MONGODB_GENEALOGY_DB=dzinza_genealogy_store
+     # etc.
+     ```
+   - An `.env.example` file at the root serves as a template for this Docker Compose `.env` file.
 
-- **`.env`** - Main development environment file with all shared configuration
-- **`.env.development`** - Development-specific overrides
-- **`.env.production`** - Production-specific overrides
-- **`.env.example`** - Template file for new environments (DO NOT use directly)
+### 2. Docker Secrets (`./secrets/` directory)
+   - All sensitive information (database passwords, API keys, JWT secrets) are stored as individual files within the `./secrets/` directory (e.g., `./secrets/db_password.txt`, `./secrets/jwt_secret.txt`).
+   - These files are mounted into the respective service containers by Docker Compose at runtime (typically under `/run/secrets/`).
+   - Refer to `.secrets.baseline` for a list of required secret files.
+   - **These secret files MUST NOT be committed to version control.**
 
-#### Service Level (Service-specific)
-
-Each service has its own `.env` file containing only service-specific configuration:
-
-- `auth-service/.env` - Authentication service overrides
-- `backend-service/.env` - Backend service overrides
-- `genealogy-service/.env` - Genealogy service overrides
-- `search-service/.env` - Search service overrides
-- `storage-service/.env` - Storage service overrides
-
-### 2. Configuration Hierarchy
-
-Configuration is loaded in this order (later files override earlier ones):
-
-1. **Root `.env`** - Base configuration shared across all services
-2. **Service-specific `.env`** - Service-level overrides
-3. **Environment-specific files** (`.env.development`, `.env.production`)
-4. **System environment variables** - Highest priority
+### 3. Service-Level Configuration (Python Pydantic Settings)
+   - Each Python microservice (e.g., `auth-service`, `genealogy-service`) has an `app/core/config.py` file defining a Pydantic `Settings` model.
+   - This model declares all expected configuration parameters for the service, their types, and default values.
+   - Pydantic-Settings loads values in the following order of precedence (highest first):
+     1. Environment variables passed to the container (via `docker-compose.yml`).
+     2. Values from a `.env` file located within the service's own root directory (e.g., `auth-service/.env`) - useful for local development overrides *outside* Docker.
+     3. Default values defined in the `Settings` model itself.
+   - For secrets, the `Settings` model typically defines variables like `DB_PASSWORD_FILE` which point to the path of the mounted Docker secret file (e.g., `/run/secrets/db_password`). The model then has logic (e.g., `@property` methods) to read the content of these files.
 
 ## Key Principles
 
-### 1. **Centralized Shared Configuration**
+1.  **Docker Compose for Orchestration:** `docker-compose.yml` defines the services, their build contexts, environment variables, and mounted secrets.
+2.  **Environment Variables for Flexibility:** Most configuration is passed as environment variables to the containers, allowing for different settings per environment (dev, staging, prod) without code changes.
+3.  **Docker Secrets for Security:** Sensitive data is handled exclusively through Docker secrets. Python services read these secrets from the mounted file paths.
+4.  **Pydantic-Settings for Validation:** Each Python service validates its configuration at startup using its Pydantic `Settings` model, ensuring all required parameters are present and correctly typed.
+5.  **Centralized Definition, Distributed Consumption:** While Docker Compose centralizes the *injection* of environment variables and secrets, each service's `config.py` is the source of truth for *what* configuration it expects.
 
-All common settings (database credentials, JWT secrets, AWS keys) are defined once in the root `.env` file.
+## Configuration Examples (Illustrative from `docker-compose.yml` and Service `config.py`)
 
-### 2. **Service-Specific Overrides**
+Refer to the `docker-compose.yml` file and each service's `app/core/config.py` for the most up-to-date and detailed configuration parameters.
 
-Each service only defines configuration that is unique to that service (port numbers, service names, specific feature flags).
+### Example: `auth-service` Configuration
 
-### 3. **Environment-Specific Overrides**
-
-Development and production environments only override what's different from the base configuration.
-
-### 4. **Consistent Variable Naming**
-
-- Database: `DB_*`, `MONGODB_*`, `REDIS_*`, `ELASTICSEARCH_*`
-- Authentication: `JWT_*`, `BCRYPT_*`, `API_KEY`
-- Services: `*_SERVICE_*`, `*_PORT`, `*_URL`
-- Frontend: `VITE_*`
-- AWS: `AWS_*`, `S3_*`
-- Features: `ENABLE_*`
-
-### 5. **Security Best Practices**
-
-- Sensitive values are base64 encoded where appropriate
-- JWT secrets are unified across all services
-- Example files contain placeholder values only
-- Actual `.env` files are git-ignored
-
-## Configuration Sections
-
-### Database Configuration
-
-```bash
-# PostgreSQL
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=dzinza_db
-DB_USER=dzinza_user
-DB_PASSWORD=dzinza_secure_password_123
-
-# MongoDB
-MONGODB_URI=mongodb://localhost:27017/dzinza
-MONGO_PASSWORD=bW9uZ29fc2VjdXJlX3Bhc3N3b3JkXzQ1Ngo # base64 encoded
-
-# Redis
-REDIS_URL=redis://localhost:6379
-REDIS_PASSWORD=cmVkaXNfc2VjdXJlX3Bhc3N3b3JkXzc4OQo # base64 encoded
+**In `docker-compose.yml` (for `auth_service_py`):**
+```yaml
+services:
+  auth_service_py:
+    environment:
+      - DEBUG=${DEBUG:-false}
+      - DB_HOST=postgres
+      - DB_PORT=5432 # Internal port for PostgreSQL service
+      - DB_USER=${DB_USER:-dzinza_user}
+      - DB_NAME=${DB_NAME:-dzinza_db}
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379 # Internal port for Redis service
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - JWT_REFRESH_SECRET_FILE=/run/secrets/jwt_refresh_secret
+      - JWT_ALGORITHM=HS256
+      - JWT_ISSUER=dzinza-auth-service
+      - JWT_AUDIENCE=dzinza-app
+      # ... other settings like SMTP, Google OAuth file paths ...
+    secrets:
+      - db_password
+      - redis_password
+      - jwt_secret
+      - jwt_refresh_secret
+      # ... other secrets ...
 ```
 
-### Service Configuration
+**In `auth-service/app/core/config.py` (Pydantic Settings model - simplified):**
+```python
+class Settings(BaseSettings):
+    DEBUG: bool = False
+    DB_HOST: str
+    DB_PORT: int
+    DB_USER: str
+    DB_NAME: str
+    DB_PASSWORD_FILE: Optional[str] = None
+    # ...
+    JWT_SECRET_FILE: Optional[str] = None
+    # ...
 
-```bash
-# Service Discovery
-AUTH_SERVICE_URL=http://localhost:3002
-GENEALOGY_SERVICE_URL=http://localhost:3004
-STORAGE_SERVICE_URL=http://localhost:3005
-SEARCH_SERVICE_URL=http://localhost:3003
+    @property
+    def ASSEMBLED_DATABASE_URL(self) -> str:
+        # Logic to read DB_PASSWORD_FILE and construct URL
+        # ...
 
-# Service Ports
-GATEWAY_PORT=3000
-BACKEND_PORT=3001
-AUTH_SERVICE_PORT=3002
-SEARCH_SERVICE_PORT=3003
-GENEALOGY_SERVICE_PORT=3004
-STORAGE_SERVICE_PORT=3005
+    @property
+    def ASSEMBLED_JWT_SECRET(self) -> str:
+        # Logic to read JWT_SECRET_FILE
+        # ...
 ```
 
-### Security Configuration
+### Example: `backend-service` (API Gateway) Configuration
 
-```bash
-# JWT (unified across all services)
-JWT_SECRET=your_unified_jwt_secret
-JWT_EXPIRES_IN=24h
-JWT_REFRESH_SECRET=your_unified_refresh_secret
-JWT_REFRESH_EXPIRES_IN=7d
+**In `docker-compose.yml` (for `backend_service_py`):**
+```yaml
+services:
+  backend_service_py:
+    environment:
+      - DEBUG=${DEBUG:-false}
+      - AUTH_SERVICE_BASE_URL=http://auth_service_py:8000
+      - GENEALOGY_SERVICE_BASE_URL=http://genealogy_service_py:8000
+      # ... other downstream service base URLs ...
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret # If gateway validates tokens
+      # ...
+    secrets:
+      - jwt_secret
+```
+**In `backend-service/app/core/config.py`:**
+```python
+class Settings(BaseSettings):
+    DEBUG: bool = False
+    AUTH_SERVICE_BASE_URL: AnyHttpUrl
+    GENEALOGY_SERVICE_BASE_URL: AnyHttpUrl
+    # ...
+    SERVICE_BASE_URLS_BY_PREFIX: Dict[str, str] = {} # Populated by validator
 
-# Password Security
-BCRYPT_ROUNDS=12
-BCRYPT_SALT_ROUNDS=12
+    @model_validator(mode='after')
+    def build_service_map(cls, values: 'Settings') -> 'Settings':
+        # Populates SERVICE_BASE_URLS_BY_PREFIX using individual service base URLs
+        # ...
 ```
 
-### Frontend Configuration
+## Setting Up a New Environment
 
-```bash
-# API Endpoints
-VITE_API_BASE_URL=http://localhost:3001
-VITE_AUTH_SERVICE_URL=http://localhost:3002
+1.  **Create Root `.env` File:** Copy `env.example` (at the project root) to `.env`. Customize variables like external ports or global debug flags for your Docker Compose environment.
+2.  **Create Secret Files:** In the `./secrets/` directory, create plain text files for each secret listed in `docker-compose.yml` under the `secrets:` section and referenced by services. For example, create `./secrets/db_password.txt` and put the PostgreSQL password in it. **Do not commit these files.** Use `.secrets.baseline` as a checklist.
+3.  **Service-Specific `.env` (Optional, for local dev without Docker):** If running a Python service locally (outside Docker, e.g., `uvicorn app.main:app --reload`), you can create a `.env` file in that service's root directory (e.g., `auth-service/.env`) to set its specific environment variables. Pydantic-Settings will load these.
 
-# Application Settings
-VITE_APP_NAME=Dzinza
-VITE_APP_VERSION=1.0.0
-VITE_ENABLE_MFA=true
-VITE_DEBUG_MODE=true # false in production
-```
+## Best Practices for Python Services
 
-## Usage Guidelines
-
-### Setting Up a New Environment
-
-1. **Copy the example file:**
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. **Replace all placeholder values** with actual values appropriate for your environment
-
-3. **Never commit `.env` files** to version control
-
-### Adding New Configuration
-
-1. **Shared configuration** → Add to root `.env` and `.env.example`
-2. **Service-specific configuration** → Add to service's `.env` file
-3. **Environment-specific configuration** → Add to `.env.development` or `.env.production`
-
-### Best Practices
-
-1. **Use descriptive variable names** following the established naming conventions
-2. **Document new variables** in this guide when adding them
-3. **Use base64 encoding** for passwords and sensitive data
-4. **Group related variables** using comments and sections
-5. **Test configuration changes** across all affected services
+1.  **Define all configurable parameters** in the service's `app/core/config.py` using a Pydantic `Settings` model. This provides type validation and clear defaults.
+2.  **Prioritize environment variables** for configuration in containerized environments. Docker Compose is the primary way to set these.
+3.  **Use Docker Secrets** for all sensitive data. The `Settings` model should expect a `_FILE` suffixed environment variable pointing to the secret's file path within the container (e.g., `DB_PASSWORD_FILE=/run/secrets/db_password`).
+4.  **Construct connection strings** or complex configurations dynamically within the `Settings` model (e.g., using `@property` or `@model_validator`) from basic components and secret file contents.
+5.  **Refer to `docker-compose.yml`** and each service's `config.py` for the definitive list of environment variables they expect or can use.
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Variable not found**: Check the configuration hierarchy - ensure the variable is defined in the right file
-2. **Service can't connect**: Verify service URLs and ports match between configuration files
-3. **Authentication failures**: Ensure JWT secrets are identical across all services
-4. **Database connection issues**: Check that database credentials and connection strings are correct
-
-### Debugging Configuration
-
-1. **Check loaded values** using environment variable inspection in your application
-2. **Verify file hierarchy** - ensure files are being loaded in the correct order
-3. **Test with minimal configuration** - start with basic settings and add complexity gradually
+1.  **Service Fails to Start Due to Missing Config:** Check the service logs. Pydantic-Settings will raise validation errors if required environment variables (that don't have defaults or can't be derived) are missing. Ensure they are set in `docker-compose.yml`.
+2.  **Secret Not Found:** Verify the secret file exists in your local `./secrets/` directory, is correctly named, and the `secrets:` definition in `docker-compose.yml` correctly maps it. Also check that the `_FILE` environment variable in `docker-compose.yml` for the service correctly points to `/run/secrets/<secret_name>`.
+3.  **Incorrect Service URLs (Gateway):** If the API Gateway cannot connect to downstream services, verify the `*_SERVICE_BASE_URL` environment variables in its Docker Compose definition are correct (pointing to Docker service names and internal ports).
 
 ## Security Considerations
 
-1. **Never commit actual `.env` files** - only commit `.env.example` templates
-2. **Use strong, unique passwords** for all services
-3. **Rotate secrets regularly** in production environments
-4. **Limit access** to environment files in production
-5. **Use proper encryption** for sensitive data in transit and at rest
+1.  **Docker Secrets are paramount** for sensitive data.
+2.  **Minimize default values for sensitive info** in `config.py`; require them from environment variables or secret files.
+3.  **Regularly review** required environment variables and secrets for each service.
+4.  Ensure the root `.env` file (for Docker Compose) and any local service `.env` files are **git-ignored**.
 
-## Migration from Old Configuration
-
-If upgrading from the previous configuration system:
-
-1. **Backup existing `.env` files**
-2. **Copy shared configuration** to root `.env`
-3. **Move service-specific settings** to service `.env` files
-4. **Remove duplicate variables** across files
-5. **Update variable names** to follow new conventions
-6. **Test all services** to ensure they load configuration correctly
+This guide reflects the configuration strategy for the Python-based microservices architecture.

@@ -24,39 +24,45 @@ The initial development phase focused on delivering the following core capabilit
 - **Observability:** Prometheus metrics and Jaeger distributed tracing integrated into backend services.
 - **CI/CD Pipeline:** Automated workflows for testing, building, and deploying services.
 
-## 4. Implementation Plan & Status
+## 4. Project Status & Backend Migration to Python
 
-The initial implementation plan, as detailed across 17 core workstreams in `JULES_TASKS.md`, covered the development of the features listed above.
+The Dzinza Genealogy Platform has undergone a significant architectural change: **the backend services have been migrated from their original Node.js implementation to Python 3.11+ using the FastAPI framework.** This strategic migration was undertaken to leverage Python's robust ecosystem for data handling, AI/ML capabilities (planned), and to improve overall backend performance, scalability, and maintainability.
 
--   **Phase 1: Foundation & Core Backend/Frontend (Workstreams 1-5, 7, 9, 11, 13, 15)**
-    -   Status: **✅ COMPLETED**
-    -   Description: Included setting up DevOps, infrastructure, core backend services (auth, genealogy, storage, search), initial UI/UX design system, and core backend logic for user profiles, family trees, media, stories, collaboration, and search.
--   **Phase 2: Frontend Feature Implementation & Integration (Workstreams 4, 6, 8, 10, 12, 14, 16)**
-    -   Status: **✅ COMPLETED**
-    -   Description: Focused on building out the frontend UIs for authentication, family tree visualization and interaction, user profile management, media galleries and uploads, story/event creation and viewing, collaboration features, and search interfaces. This phase also included integrating these frontend components with their respective backend services.
--   **Phase 3: Admin Panel & Advanced Features (Workstream 17 and remaining tasks in others)**
-    -   Status: **✅ COMPLETED**
-    -   Description: Development of the admin panel, completion of GEDCOM import/export, advanced UI controls (e.g., tree zoom, date pickers for analytics), and finalization of observability and CI/CD deployment scripts.
+**Key aspects of the migration:**
+- All core backend services (Authentication, Genealogy Data Management, File Storage, Search, and the API Gateway) have been re-implemented in Python.
+- The existing React/Tailwind CSS frontend has been preserved and now interacts with the new Python-based APIs.
+- Data persistence layers (PostgreSQL, MongoDB, Redis, Elasticsearch) remain, with Python services now using appropriate async drivers (SQLAlchemy with asyncpg, Motor, redis-py, elasticsearch-py).
+- Background tasks (e.g., duplicate person detection in genealogy) are now handled by Celery with a Redis broker.
+- The CI/CD pipeline has been updated to build, lint, test, and create Docker images for the Python services.
 
-**All milestones and phases within the initial implementation plan are now complete.** The platform has achieved its targeted feature set for this development cycle.
+**Current Status:**
+- The primary migration of all backend services to Python is functionally complete.
+- Node.js code for backend services has been removed from the repository (pending final verification by the `cleanup_node_artifacts.sh` script execution by the user).
+- Ongoing work includes comprehensive testing of the new Python services, performance tuning, documentation updates, and refinement of feature parity with the original Node.js implementation.
 
-## 5. Technology Stack Summary
+The original project plan (detailed in `docs/markdown/legacy/JULES_TASKS.md` and related documents) described the development of the Node.js version. While the core features remain the goal, their backend implementation is now Python-based.
 
--   **Frontend**: React, TypeScript, Tailwind CSS, Vite
--   **Backend**: Node.js, Express, TypeScript (Microservices)
--   **Databases**: PostgreSQL, MongoDB, Redis
--   **Search**: Elasticsearch
--   **Storage**: Cloud-based (e.g., S3-compatible)
--   **Infrastructure**: Docker, Kubernetes (target)
--   **CI/CD**: GitHub Actions
+## 5. Technology Stack (Post-Migration)
+
+-   **Frontend**: React 18+, TypeScript, Tailwind CSS, Vite.
+-   **Backend**: Python 3.11+, FastAPI, Pydantic.
+    -   **Authentication Service**: FastAPI, SQLAlchemy (PostgreSQL), Redis, JWT (python-jose), Passlib.
+    -   **Genealogy Service**: FastAPI, Motor (MongoDB), Celery, Pydantic models for complex genealogical data.
+    -   **Storage Service**: FastAPI, Boto3 (for S3-compatible storage), Motor (MongoDB for metadata), Pillow.
+    -   **Search Service**: FastAPI, Elasticsearch-py (async), Pydantic. (MongoDB for analytics optional).
+    -   **API Gateway (Backend Service)**: FastAPI, HTTPX for reverse proxying.
+    -   **Common Python Libraries**: Structlog, OpenTelemetry, Pytest.
+-   **Databases**: PostgreSQL, MongoDB, Redis, Elasticsearch.
+-   **Infrastructure**: Docker, Docker Compose.
+-   **CI/CD**: GitHub Actions (updated for Python and Node.js frontend).
 
 ## 6. Future Development
 
-While the planned initial scope is complete, future development could include:
--   Mobile applications.
--   Advanced DNA analysis features.
--   Deeper integration with historical record databases.
--   Enhanced AI-powered research suggestions.
--   Community-driven feature requests.
+With the Python backend migration largely complete, future development will focus on:
+-   Building out planned advanced features (DNA analysis, AI research suggestions, mobile apps) on the new Python stack.
+-   Expanding test coverage and ensuring robustness of the Python services.
+-   Optimizing performance and scalability.
+-   Enhancing user-facing features on the existing React frontend.
+-   Community-driven feature requests and improvements.
 
-This document reflects the state of the project as of the completion of the initial 17 workstreams.
+This document reflects the project's state after the backend migration to Python.
