@@ -200,11 +200,8 @@ services:
   # Python Services (Placeholders - to be implemented)
   auth_service_py:
     build:
-      context: ./auth-service # Assumes Python code will be in ./auth-service
-      dockerfile: ../base/Dockerfile # Uses the shared base Dockerfile
-      # Alternatively, if base image is built and tagged:
-      # image: dzinza-python-base:latest
-      # dockerfile: ./Dockerfile # Service-specific Dockerfile that starts FROM dzinza-python-base
+      context: ./auth-service
+      dockerfile: Dockerfile # Use service-specific Dockerfile
     container_name: dzinza-auth-service-py
     ports:
       - "${AUTH_SERVICE_PORT:-3002}:8000" # Assuming Python service runs on 8000 internally
