@@ -1,147 +1,85 @@
 #!/bin/bash
 
 # Small test for the demo script functions
+# This script now sources functions from the updated populate_demo_data.sh
 set -e
 
-API_BASE_URL="http://localhost:3001/api"
-FRONTEND_URL="http://localhost:5173/api"
-DEFAULT_EMAIL="admin@dzinza.org"
-DEFAULT_PASSWORD="AdminPassword123!"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR/.." # Not strictly needed here if not cd'ing to root
 
-# Global variables for auth token
-AUTH_TOKEN=""
+# Source the main demo data script to get its functions and variables
+# This assumes populate_demo_data.sh is in the same directory
+# Sourcing will execute the initial check_jq, authenticate, get_or_create_default_tree
+echo "Sourcing populate_demo_data.sh to setup environment and functions..." >&2
+source "$SCRIPT_DIR/populate_demo_data.sh"
 
-# Function to authenticate and get token
-authenticate() {
-  echo "Authenticating with the API..." >&2
-  
-  payload=$(jq -n \
-    --arg email "$DEFAULT_EMAIL" \
-    --arg password "$DEFAULT_PASSWORD" \
-    '{email: $email, password: $password}')
-  
-  response=$(curl -s -X POST "$FRONTEND_URL/auth/login" \
-    -H "Content-Type: application/json" \
-    -d "$payload")
-  
-  AUTH_TOKEN=$(echo "$response" | jq -r '.tokens.accessToken // empty')
-  
-  if [ -z "$AUTH_TOKEN" ] || [ "$AUTH_TOKEN" == "null" ]; then
-    echo "Failed to authenticate. Response:" >&2
-    echo "$response" >&2
-    exit 1
-  fi
-  
-  echo "Authentication successful" >&2
-}
+echo ""
+echo "--- Starting Test Demo Functions ---" >&2
 
-# Function to create a person
-create_person() {
-  local first_name="$1"
-  local last_name="$2"
-  local gender="$3"
-  local dob="$4"
-  local dod="${5:-}"
-  local pob="${6:-}"
-  local pod="${7:-}"
-  local occupation="${8:-}"
-  local biography="${9:-}"
-  local person_id
-
-  echo "Creating person: $first_name $last_name..." >&2
-
-  # Build payload
-  local payload_base=$(jq -n \
-    --arg firstName "$first_name" \
-    --arg lastName "$last_name" \
-    --arg gender "$gender" \
-    '{firstName: $firstName, lastName: $lastName, gender: $gender}')
-  
-  if [ -n "$dob" ]; then
-    payload_base=$(echo "$payload_base" | jq --arg dob "$dob" '. + {birthDate: $dob}')
-  fi
-  
-  if [ -n "$pob" ]; then
-    payload_base=$(echo "$payload_base" | jq --arg pob "$pob" '. + {placeOfBirth: $pob}')
-  fi
-  
-  if [ -n "$occupation" ]; then
-    payload_base=$(echo "$payload_base" | jq --arg occ "$occupation" '. + {occupation: $occ}')
-  fi
-
-  response=$(curl -s -X POST "$FRONTEND_URL/genealogy/members" \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $AUTH_TOKEN" \
-    -d "$payload_base")
-
-  person_id=$(echo "$response" | jq -r '.id // empty')
-
-  if [ -z "$person_id" ] || [ "$person_id" == "null" ]; then
-    echo "Error creating person '$first_name $last_name'. Response:" >&2
-    echo "$response" >&2
-    echo ""
-  else
-    echo "Created $first_name $last_name with ID: $person_id" >&2
-    echo "$person_id"
-  fi
-}
-
-# Function to create a relationship
-create_relationship() {
-  local person1_id="$1"
-  local person2_id="$2"
-  local type="$3"
-
-  if [ -z "$person1_id" ] || [ "$person1_id" == "null" ] || [ -z "$person2_id" ] || [ "$person2_id" == "null" ]; then
-    echo "Skipping relationship due to missing person ID(s)" >&2
-    return
-  fi
-
-  echo "Creating relationship: $person1_id ($type) $person2_id..." >&2
-
-  payload=$(jq -n \
-    --arg p1Id "$person1_id" \
-    --arg p2Id "$person2_id" \
-    --arg type "$type" \
-    '{person1Id: $p1Id, person2Id: $p2Id, type: $type}')
-
-  response=$(curl -s -X POST "$FRONTEND_URL/genealogy/relationships" \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $AUTH_TOKEN" \
-    -d "$payload")
-
-  relationship_id=$(echo "$response" | jq -r '.id // empty')
-
-  if [ -z "$relationship_id" ] || [ "$relationship_id" == "null" ]; then
-    echo "Error creating relationship. Response:" >&2
-    echo "$response" >&2
-  else
-    echo "Relationship created with ID: $relationship_id" >&2
-  fi
-}
-
-# Test the functions
-authenticate
-
-echo "Testing person creation..." >&2
-FATHER=$(create_person "Test" "Father" "male" "1970-01-01" "" "Test City" "" "Engineer" "A test father")
-MOTHER=$(create_person "Test" "Mother" "female" "1972-05-15" "" "Test City" "" "Teacher" "A test mother")
-CHILD=$(create_person "Test" "Child" "female" "2000-08-20" "" "Test City" "" "Student" "A test child")
-
-echo "Father ID: '$FATHER'" >&2
-echo "Mother ID: '$MOTHER'" >&2
-echo "Child ID: '$CHILD'" >&2
-
-if [ -n "$FATHER" ] && [ -n "$MOTHER" ]; then
-  create_relationship "$FATHER" "$MOTHER" "SPOUSE"
+if [ -z "$AUTH_TOKEN" ]; then
+  echo "ERROR: Authentication failed (AUTH_TOKEN not set from sourced script). Exiting test." >&2
+  exit 1
 fi
 
-if [ -n "$FATHER" ] && [ -n "$CHILD" ]; then
-  create_relationship "$FATHER" "$CHILD" "PARENT_CHILD"
+if [ -z "$DEMO_TREE_ID" ]; then
+  echo "ERROR: DEMO_TREE_ID not set (get_or_create_default_tree might have failed in sourced script). Exiting test." >&2
+  exit 1
 fi
 
-if [ -n "$MOTHER" ] && [ -n "$CHILD" ]; then
-  create_relationship "$MOTHER" "$CHILD" "PARENT_CHILD"
+echo "Using API Gateway: $GATEWAY_URL" >&2
+echo "Using Tree ID: $DEMO_TREE_ID for tests." >&2
+echo "Testing person and relationship creation..." >&2
+
+# create_person function is now from the sourced populate_demo_data.sh
+# Usage: create_person <first_name> <last_name> <gender> <dob_string> [dod_string] [pob] [pod] [occupation] [biography]
+# Python Gender enum values: "male", "female", "non_binary", "other", "unknown"
+
+# create_relationship function is also from sourced script
+# Usage: create_relationship <p1_id> <p2_id> <python_relationship_type> [spousal_status] [parental_role_p1]
+# Python RelationshipType enum values: "spouse", "parent_of", "child_of", "sibling_of", etc.
+# SpousalStatus: "Married", "Divorced", etc.
+# ParentalRole: "BiologicalFather", "BiologicalMother", etc. (for person1 if type is parent_of)
+
+FATHER_FN="TestFather"
+FATHER_LN="ScriptUser"
+MOTHER_FN="TestMother"
+MOTHER_LN="ScriptUser"
+CHILD_FN="TestChild"
+CHILD_LN="ScriptUser"
+
+# Create Persons
+FATHER_ID=$(create_person "$FATHER_FN" "$FATHER_LN" "male" "1970-01-01" "" "Test City" "" "Engineer" "A test father created by script.")
+MOTHER_ID=$(create_person "$MOTHER_FN" "$MOTHER_LN" "female" "1972-05-15" "" "Test City" "" "Teacher" "A test mother created by script.")
+CHILD_ID=$(create_person "$CHILD_FN" "$CHILD_LN" "female" "2000-08-20" "" "Test City" "" "Student" "A test child created by script.")
+
+echo ""
+echo "--- Person Creation Results ---" >&2
+echo "Father ID: '$FATHER_ID'" >&2
+echo "Mother ID: '$MOTHER_ID'" >&2
+echo "Child ID: '$CHILD_ID'" >&2
+echo ""
+
+echo "--- Testing Relationship Creation ---" >&2
+# Create Relationships
+if [ -n "$FATHER_ID" ] && [ -n "$MOTHER_ID" ] && [ "$FATHER_ID" != "null" ] && [ "$MOTHER_ID" != "null" ]; then
+  create_relationship "$FATHER_ID" "$MOTHER_ID" "spouse" "Married"
+else
+  echo "Skipping FATHER-MOTHER spouse relationship due to missing ID(s)." >&2
 fi
 
-echo "Test completed!" >&2
+if [ -n "$FATHER_ID" ] && [ -n "$CHILD_ID" ] && [ "$FATHER_ID" != "null" ] && [ "$CHILD_ID" != "null" ]; then
+  create_relationship "$FATHER_ID" "$CHILD_ID" "parent_of" "" "BiologicalFather"
+else
+  echo "Skipping FATHER-CHILD parent_of relationship due to missing ID(s)." >&2
+fi
+
+if [ -n "$MOTHER_ID" ] && [ -n "$CHILD_ID" ] && [ "$MOTHER_ID" != "null" ] && [ "$CHILD_ID" != "null" ]; then
+  create_relationship "$MOTHER_ID" "$CHILD_ID" "parent_of" "" "BiologicalMother"
+else
+  echo "Skipping MOTHER-CHILD parent_of relationship due to missing ID(s)." >&2
+fi
+
+echo ""
+echo "--- Test Demo Functions Completed! ---" >&2
+echo "Verify results by checking the application or database for tree $DEMO_TREE_ID." >&2
+echo "Persons created: $FATHER_FN $FATHER_LN, $MOTHER_FN $MOTHER_LN, $CHILD_FN $CHILD_LN." >&2

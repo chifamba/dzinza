@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# Environment Configuration Validation Script
-# This script checks for common issues in environment configuration files
+# Environment Configuration Validation Script (Updated for Python/Docker Compose)
+# This script checks for common issues in local environment configuration files,
+# primarily the root .env file used by Docker Compose and the secrets directory.
 
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$PROJECT_ROOT"
+cd "$PROJECT_ROOT" || exit 1
 
-echo "🔍 Validating Environment Configuration..."
+echo "🔍 Validating Local Environment Configuration for Dzinza (Python Backend)..."
 echo "Project root: $PROJECT_ROOT"
 echo ""
 
@@ -21,189 +22,183 @@ NC='\033[0m' # No Color
 
 # Function to print colored output
 print_status() {
-    local color=$1
-    local message=$2
+    local color="$1"
+    local message="$2"
     echo -e "${color}${message}${NC}"
 }
 
 # Function to check if file exists
 check_file_exists() {
-    local file=$1
-    local description=$2
+    local file="$1"
+    local description="$2"
+    local is_critical="${3:-false}" # Optional 3rd arg, true if missing is a critical error
     
     if [[ -f "$file" ]]; then
         print_status "$GREEN" "✅ $description exists: $file"
         return 0
     else
-        print_status "$RED" "❌ $description missing: $file"
-        return 1
+        if [[ "$is_critical" == "true" ]]; then
+            print_status "$RED" "❌ CRITICAL: $description missing: $file"
+            return 1
+        else
+            print_status "$YELLOW" "⚠️  $description missing: $file (This might be okay depending on your setup)"
+            return 0 # Not a failure for non-critical missing files like optional .env files
+        fi
     fi
 }
 
-# Function to check for placeholder values
+# Function to check if directory exists
+check_dir_exists() {
+    local dir="$1"
+    local description="$2"
+    local is_critical="${3:-false}"
+
+    if [[ -d "$dir" ]]; then
+        print_status "$GREEN" "✅ $description exists: $dir/"
+        return 0
+    else
+        if [[ "$is_critical" == "true" ]]; then
+            print_status "$RED" "❌ CRITICAL: $description missing: $dir/"
+            return 1
+        else
+            print_status "$YELLOW" "⚠️  $description missing: $dir/"
+            return 0
+        fi
+    fi
+}
+
+
+# Function to check for placeholder values in a file
 check_placeholders() {
-    local file=$1
-    local description=$2
+    local file="$1"
+    local description="$2"
     
     if [[ ! -f "$file" ]]; then
-        return 1
+        return 0 # Skip if file doesn't exist (existence check is separate)
     fi
     
+    # Common placeholders to look for
     local placeholders=(
-        "CHANGE_THIS_TO_YOUR"
-        "your-super-secret"
+        "your_unified_jwt_secret"
+        "your_unified_refresh_secret"
+        "fallback_jwt_secret_please_change"
+        "fallback_jwt_refresh_secret_please_change"
+        "dzinza_secure_password_123"
+        "mongo_secure_password_456"
+        "redis_secure_password_789"
+        "YOUR_SECRET"
+        "YOUR_KEY"
+        "__CHANGE_ME__"
         "PLACEHOLDER"
-        "EXAMPLE"
-        "TEMPLATE"
+        "DEFAULT_FALLBACK" # Add any other common placeholders from your .env.example or secret baselines
     )
     
-    local found_placeholders=()
+    local found_placeholders_in_file=()
     
     for placeholder in "${placeholders[@]}"; do
-        if grep -q "$placeholder" "$file"; then
-            found_placeholders+=("$placeholder")
+        # Check if placeholder exists as a value (i.e., after an equals sign)
+        if grep -qE "^[^#]*=[^#]*${placeholder}" "$file"; then
+            found_placeholders_in_file+=("$placeholder")
         fi
     done
     
-    if [[ ${#found_placeholders[@]} -gt 0 ]]; then
-        print_status "$YELLOW" "⚠️  $description contains placeholder values:"
-        for placeholder in "${found_placeholders[@]}"; do
-            echo "    - $placeholder"
+    if [[ ${#found_placeholders_in_file[@]} -gt 0 ]]; then
+        print_status "$YELLOW" "⚠️  $description ($file) may contain placeholder values for the following keys/patterns:"
+        # Show lines with placeholders
+        for placeholder in "${found_placeholders_in_file[@]}"; do
+             grep -nE "^[^#]*=[^#]*${placeholder}" "$file" | sed "s/^/    Line /"
         done
         return 1
     else
-        print_status "$GREEN" "✅ $description has no placeholder values"
+        print_status "$GREEN" "✅ $description ($file) has no obvious placeholder values."
         return 0
     fi
 }
 
-# Function to check for duplicate variables
+# Function to check for duplicate variable definitions in a file
 check_duplicates() {
-    local file=$1
-    local description=$2
+    local file="$1"
+    local description="$2"
     
     if [[ ! -f "$file" ]]; then
-        return 1
+        return 0 # Skip if file doesn't exist
     fi
     
-    local duplicates=$(grep -E '^[A-Z_]+=.*' "$file" | cut -d'=' -f1 | sort | uniq -d)
+    # Extracts variable names (before '=') from non-commented lines
+    local duplicates=$(grep -E '^[A-Za-z_][A-Za-z0-9_]*=.*' "$file" | cut -d'=' -f1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sort | uniq -d)
     
     if [[ -n "$duplicates" ]]; then
-        print_status "$RED" "❌ $description contains duplicate variables:"
+        print_status "$RED" "❌ $description ($file) contains duplicate variable definitions:"
         echo "$duplicates" | while read -r var; do
             echo "    - $var"
         done
         return 1
     else
-        print_status "$GREEN" "✅ $description has no duplicate variables"
+        print_status "$GREEN" "✅ $description ($file) has no duplicate variable definitions."
         return 0
     fi
 }
 
-# Function to validate JWT secrets consistency
-check_jwt_consistency() {
-    local files=(".env" "backend-service/.env" "auth-service/.env")
-    local jwt_secrets=()
-    local jwt_refresh_secrets=()
-    
-    for file in "${files[@]}"; do
-        if [[ -f "$file" ]]; then
-            local jwt_secret=$(grep -E '^JWT_SECRET=' "$file" 2>/dev/null | cut -d'=' -f2- || echo "")
-            local jwt_refresh=$(grep -E '^JWT_REFRESH_SECRET=' "$file" 2>/dev/null | cut -d'=' -f2- || echo "")
-            
-            if [[ -n "$jwt_secret" ]]; then
-                jwt_secrets+=("$file:$jwt_secret")
-            fi
-            if [[ -n "$jwt_refresh" ]]; then
-                jwt_refresh_secrets+=("$file:$jwt_refresh")
-            fi
-        fi
-    done
-    
-    # Check JWT_SECRET consistency
-    local unique_jwt_secrets=$(printf '%s\n' "${jwt_secrets[@]}" | cut -d':' -f2 | sort | uniq | wc -l)
-    if [[ $unique_jwt_secrets -gt 1 ]]; then
-        print_status "$RED" "❌ JWT_SECRET values are inconsistent across files"
-        return 1
-    elif [[ $unique_jwt_secrets -eq 1 ]]; then
-        print_status "$GREEN" "✅ JWT_SECRET values are consistent"
-    fi
-    
-    # Check JWT_REFRESH_SECRET consistency
-    local unique_refresh_secrets=$(printf '%s\n' "${jwt_refresh_secrets[@]}" | cut -d':' -f2 | sort | uniq | wc -l)
-    if [[ $unique_refresh_secrets -gt 1 ]]; then
-        print_status "$RED" "❌ JWT_REFRESH_SECRET values are inconsistent across files"
-        return 1
-    elif [[ $unique_refresh_secrets -eq 1 ]]; then
-        print_status "$GREEN" "✅ JWT_REFRESH_SECRET values are consistent"
-    fi
-    
-    return 0
-}
-
 # Main validation
-echo "📋 Checking required files..."
-echo ""
-
-# Check main environment files
 error_count=0
+warning_count=0 # Not used to fail script, but for info
 
-check_file_exists ".env" "Main environment file" || ((error_count++))
-check_file_exists ".env.example" "Environment template" || ((error_count++))
-check_file_exists ".env.development" "Development environment" || ((error_count++))
-check_file_exists ".env.production" "Production environment" || ((error_count++))
+echo -e "\n📋 ${BLUE}Checking Core Configuration Files...${NC}"
+check_file_exists ".env" "Root .env file (for Docker Compose)" "false" # Not critical if all vars are in compose file or system env
+check_file_exists ".env.example" "Root .env.example template" "true" || ((error_count++))
+check_dir_exists "./secrets" "Secrets directory (./secrets/)" "true" || ((error_count++))
 
-echo ""
-echo "📋 Checking service environment files..."
-echo ""
+# Check for a few key secret files (names from .secrets.baseline or docker-compose.yml)
+if [ -d "./secrets" ]; then
+    echo -e "\n📋 ${BLUE}Checking Key Secret Files in ./secrets/...${NC}"
+    check_file_exists "./secrets/db_password.txt" "PostgreSQL DB password secret" "true" || ((error_count++))
+    check_file_exists "./secrets/mongo_password.txt" "MongoDB password secret" "true" || ((error_count++))
+    check_file_exists "./secrets/redis_password.txt" "Redis password secret" "true" || ((error_count++))
+    check_file_exists "./secrets/jwt_secret.txt" "JWT secret" "true" || ((error_count++))
+    check_file_exists "./secrets/jwt_refresh_secret.txt" "JWT refresh secret" "true" || ((error_count++))
+fi
 
-# Check service environment files
+echo -e "\n📋 ${BLUE}Checking Optional Service-Level .env Files (for local non-Docker dev)...${NC}"
 services=("auth-service" "backend-service" "genealogy-service" "search-service" "storage-service")
 for service in "${services[@]}"; do
-    check_file_exists "$service/.env" "$service environment file" || ((error_count++))
+    check_file_exists "$service/.env" "$service local .env file" "false"
 done
 
-echo ""
-echo "🔍 Checking for placeholder values..."
-echo ""
+echo -e "\n🔍 ${BLUE}Checking for Placeholder Values in .env Files...${NC}"
+# Check root .env if it exists
+if [[ -f ".env" ]]; then
+    check_placeholders ".env" "Root .env file" || ((error_count++))
+fi
+# Check service .env files if they exist
+for service in "${services[@]}"; do
+    if [[ -f "$service/.env" ]]; then
+        check_placeholders "$service/.env" "$service local .env file" || ((error_count++))
+    fi
+done
+# Note: This script doesn't check placeholders *inside* the ./secrets files themselves.
+# Users should ensure actual secrets are placed there, not placeholders.
 
-# Check for placeholder values in actual .env files
-env_files=(".env" "backend-service/.env" "auth-service/.env" "genealogy-service/.env" "search-service/.env" "storage-service/.env")
-for file in "${env_files[@]}"; do
-    if [[ -f "$file" ]]; then
-        check_placeholders "$file" "$(basename "$(dirname "$file")")/$(basename "$file")" || ((error_count++))
+echo -e "\n🔍 ${BLUE}Checking for Duplicate Variables in .env Files...${NC}"
+if [[ -f ".env" ]]; then
+    check_duplicates ".env" "Root .env file" || ((error_count++))
+fi
+for service in "${services[@]}"; do
+    if [[ -f "$service/.env" ]]; then
+        check_duplicates "$service/.env" "$service local .env file" || ((error_count++))
     fi
 done
 
-echo ""
-echo "🔍 Checking for duplicate variables..."
-echo ""
-
-# Check for duplicate variables
-for file in "${env_files[@]}"; do
-    if [[ -f "$file" ]]; then
-        check_duplicates "$file" "$(basename "$(dirname "$file")")/$(basename "$file")" || ((error_count++))
-    fi
-done
-
-echo ""
-echo "🔍 Checking JWT secret consistency..."
-echo ""
-
-# Check JWT consistency
-check_jwt_consistency || ((error_count++))
-
-echo ""
-echo "📊 Validation Summary"
+echo -e "\n📊 ${BLUE}Validation Summary${NC}"
 echo "===================="
 
 if [[ $error_count -eq 0 ]]; then
-    print_status "$GREEN" "✅ All environment configuration checks passed!"
+    print_status "$GREEN" "✅ All critical environment configuration checks passed!"
     echo ""
-    print_status "$BLUE" "💡 Your environment configuration is properly set up."
+    print_status "$BLUE" "💡 Review any warnings above. Ensure actual secrets are in ./secrets/ and that the root .env (if used) is configured correctly for your Docker Compose setup."
+    print_status "$BLUE" "   Refer to docs/ENVIRONMENT_CONFIGURATION.md for detailed guidance."
     exit 0
 else
-    print_status "$RED" "❌ Found $error_count configuration issues"
+    print_status "$RED" "❌ Found $error_count critical configuration issue(s)."
     echo ""
     print_status "$YELLOW" "💡 Please review the issues above and fix them before proceeding."
     print_status "$YELLOW" "   Refer to docs/ENVIRONMENT_CONFIGURATION.md for guidance."

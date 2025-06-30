@@ -1,256 +1,80 @@
 #!/bin/bash
-# Start development environment
+# Start Dzinza development environment (Python Backend + React Frontend)
 
-# Get the directory of this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR/.."
-
-
-
-# ========================.  Set the environment variables ==============================
-
-
-# =================================================================
-# DATABASE CONFIGURATION
-# =================================================================
-# PostgreSQL - Main relational database
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=dzinza_db
-DB_USER=dzinza_user
-DB_PASSWORD=dzinza_secure_password_123
-DB_POOL_SIZE=20
-
-# MongoDB - For certain services (auth, storage)
-MONGODB_URI=mongodb://localhost:27017/dzinza
-MONGO_PASSWORD=mongo_secure_password_456
-MONGODB_AUTH_DB=dzinza_auth
-MONGODB_GENEALOGY_DB=dzinza_genealogy
-MONGODB_STORAGE_DB=dzinza_storage
-MONGODB_SEARCH_DB=dzinza_search
-
-# Redis - Session management and caching
-REDIS_URL=redis://localhost:6379
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD='cmVkaXNfc2VjdXJlX3Bhc3N3b3JkXzc4OQo'
-#REDIS_PASSWORD=redis_secure_password_789
-REDIS_DB=0
-
-# Elasticsearch - Advanced search capabilities
-ELASTICSEARCH_URL=http://localhost:9200
-ELASTICSEARCH_USERNAME=
-ELASTICSEARCH_PASSWORD=
-
-# =================================================================
-# SERVICE CONFIGURATION
-# =================================================================
-NODE_ENV=development
-API_BASE_URL=http://localhost:3000
-
-# Service Ports
-GATEWAY_PORT=3000
-BACKEND_PORT=3001
-AUTH_SERVICE_PORT=3002
-SEARCH_SERVICE_PORT=3003
-GENEALOGY_SERVICE_PORT=3004
-STORAGE_SERVICE_PORT=3005
-
-# Service URLs (for service discovery)
-AUTH_SERVICE_URL=http://localhost:3002
-GENEALOGY_SERVICE_URL=http://localhost:3004
-STORAGE_SERVICE_URL=http://localhost:3005
-SEARCH_SERVICE_URL=http://localhost:3003
-
-# =================================================================
-# AUTHENTICATION & SECURITY
-# =================================================================
-# JWT Configuration - Unified across all services
-JWT_SECRET=eW91cl8yNTZfYml0X2p3dF9zZWNyZXRfa2V5X2Zvcl9kZXZlbG9wbWVudF9jaGFuZ2VfaW5fcHJvZHVjdGlvbgobaead50ba4dee391c494e5a692ff9619e0ed00400c9bcd4809794c841308413c
-JWT_EXPIRES_IN=24h
-JWT_REFRESH_SECRET=e874ninW91cl8yNTZfYml0X2p3dF9zZWNyZXRfa2V5X2Zvcl9kZXZlbG9wbWVudF9jaGFuZ2VfaW5fcHJvZHVjdGlvbgobaead50ba4dee391c494e5a692ff9619e0ed00400c9bcd4809794c841308413c
-JWT_REFRESH_EXPIRES_IN=7d
-
-# Password Security
-BCRYPT_ROUNDS=12
-BCRYPT_SALT_ROUNDS=12
-
-# API Keys
-API_KEY=dev_api_key_123
-
-# CORS Configuration
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:3001
-
-# =================================================================
-# CLOUD STORAGE & AWS CONFIGURATION
-# =================================================================
-AWS_ACCESS_KEY_ID=dev_access_key
-AWS_SECRET_ACCESS_KEY=dev_secret_key
-AWS_REGION=us-east-1
-S3_BUCKET=dzinza-dev-bucket
-S3_BUCKET_NAME=dzinza-dev-bucket
-S3_BUCKET_REGION=us-east-1
-
-# =================================================================
-# EMAIL CONFIGURATION
-# =================================================================
-SMTP_HOST=smtp.ethereal.email
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=
-SMTP_PASS=
-FROM_EMAIL=noreply@dzinza.org
-FROM_NAME='Dzinza Genealogy Platform'
-SUPPORT_EMAIL=support@dzinza.org
-
-# =================================================================
-# MONITORING & LOGGING
-# =================================================================
-GRAFANA_PASSWORD=P@dmin123
-LOG_LEVEL=info
-LOG_FORMAT=json
-ENABLE_METRICS=true
-METRICS_PORT=9090
-
-# OpenTelemetry Tracing Configuration
-ENABLE_TRACING=true
-OTEL_SERVICE_NAME=dzinza-platform
-JAEGER_ENDPOINT=http://localhost:4318/v1/traces
-
-# =================================================================
-# RATE LIMITING
-# =================================================================
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=1000
-AUTH_RATE_LIMIT_WINDOW_MS=900000
-AUTH_RATE_LIMIT_MAX_REQUESTS=20
-
-# =================================================================
-# FILE UPLOAD CONFIGURATION
-# =================================================================
-MAX_FILE_SIZE=104857600
-MAX_IMAGE_SIZE=52428800
-MAX_DOCUMENT_SIZE=104857600
-ALLOWED_IMAGE_TYPES=jpg,jpeg,png,gif,webp,tiff,bmp
-ALLOWED_DOCUMENT_TYPES=pdf,doc,docx,txt,rtf
-
-# =================================================================
-# FRONTEND CONFIGURATION
-# =================================================================
-VITE_API_URL=http://localhost:3001
-VITE_API_BASE_URL=http://localhost:3001
-VITE_AUTH_SERVICE_URL=http://localhost:3002
-VITE_GENEALOGY_SERVICE_URL=http://localhost:3004
-VITE_SEARCH_SERVICE_URL=http://localhost:3003
-VITE_STORAGE_SERVICE_URL=http://localhost:3005
-VITE_APP_NAME=Dzinza
-VITE_APP_VERSION=1.0.0
-VITE_JWT_STORAGE_KEY=dzinza_access_token
-VITE_REFRESH_TOKEN_KEY=dzinza_refresh_token
-VITE_SESSION_TIMEOUT=3600000
-VITE_ENABLE_MFA=true
-VITE_ENABLE_SOCIAL_LOGIN=false
-VITE_ENABLE_EMAIL_VERIFICATION=true
-VITE_DEFAULT_LANGUAGE=en
-VITE_SUPPORTED_LANGUAGES=en,sn,nd
-VITE_DEBUG_MODE=true
-VITE_LOG_LEVEL=debug
-
-# =================================================================
-# FEATURE FLAGS
-# =================================================================
-ENABLE_DNA_MATCHING=true
-ENABLE_PHOTO_ENHANCEMENT=true
-ENABLE_AI_SUGGESTIONS=true
-ENABLE_REAL_TIME_COLLABORATION=true
-ENABLE_ADVANCED_SEARCH=true
-ENABLE_SOCIAL_FEATURES=true
-ENABLE_SWAGGER=true
-ENABLE_DEBUG_ROUTES=true
-ENABLE_SEED_DATA=false
-
-# =================================================================
-# GENEALOGY SPECIFIC CONFIGURATION
-# =================================================================
-DEFAULT_TREE_PRIVACY=private
-MAX_TREE_SIZE=10000
-MAX_FAMILY_MEMBERS_PER_USER=5000
-DNA_MATCH_THRESHOLD=7.0
-MAX_DNA_MATCHES_DISPLAYED=1000
-
-# =================================================================
-# SEARCH CONFIGURATION
-# =================================================================
-MAX_SEARCH_RESULTS=100
-SEARCH_TIMEOUT_MS=30000
-ES_INDEX_PREFIX=dzinza
-ES_MAX_RESULT_WINDOW=10000
-
-# =================================================================
-# RATE LIMITING (UPLOAD SPECIFIC)
-# =================================================================
-UPLOAD_RATE_LIMIT_WINDOW_MS=3600000
-UPLOAD_RATE_LIMIT_MAX_REQUESTS=100
-
-# =================================================================
-# EXTERNAL APIS
-# =================================================================
-ANCESTRY_API_KEY=
-FAMILYSEARCH_API_KEY=
-GOOGLE_MAPS_API_KEY=
-OPENAI_API_KEY=
-DNA_API_KEY=
-PHOTO_ENHANCEMENT_API_KEY=
-
-# =================================================================
-# LOCALIZATION
-# =================================================================
-SUPPORTED_LANGUAGES=en,sn,nd
-DEFAULT_LANGUAGE=en
-DEFAULT_TIMEZONE=UTC
-
-
-
-
-
-
 
 # Navigate to the project root
 cd "$PROJECT_ROOT" || { echo "Failed to navigate to project root: $PROJECT_ROOT"; exit 1; }
 
-echo "Starting Dzinza development environment (from $PWD)..."
+echo "Current directory: $(pwd)"
+echo "Ensuring Node.js dependencies for frontend are installed..."
 
-# Start backend services
-# docker-compose.yml is expected in the current directory (project root)
-echo "Starting Docker services..."
-echo $REDIS_PASSWORD
-docker-compose up -d postgres redis mongodb elasticsearch
+# Check if frontend directory and package.json exist
+if [ -d "frontend" ] && [ -f "frontend/package.json" ]; then
+  echo "Installing/updating frontend dependencies (if needed)..."
+  (cd frontend && npm install)
+  if [ $? -ne 0 ]; then
+    echo "Frontend npm install failed. Please check errors."
+    # exit 1 # Optionally exit if frontend setup is critical before compose
+  fi
+else
+  echo "WARNING: Frontend directory or frontend/package.json not found. Skipping frontend npm install step."
+  echo "The frontend service might fail to start if its Docker image doesn't handle dependency installation."
+fi
 
-# Wait for services
-sleep 15
+echo ""
+echo "Starting all Dzinza services via Docker Compose..."
+echo "This will build images if they don't exist or if code has changed."
+echo "Services will run in detached mode (-d). View logs with 'docker-compose logs -f'."
 
-echo "Installing backend dependencies..."
-(cd backend-service && npm install)
+# Start all services defined in docker-compose.yml
+# --build: Rebuild images if their Dockerfile or context has changed.
+# -d: Run in detached mode.
+docker-compose up --build -d
 
-echo "Starting backend in development mode..."
-# Runs in a subshell, backgrounded. CWD of main script is not affected.
-(cd backend-service && npm run dev) &
+# Check the exit code of docker-compose up
+if [ $? -ne 0 ]; then
+  echo "-----------------------------------------------------"
+  echo "ERROR: 'docker-compose up' command failed."
+  echo "Please check the output above for error messages."
+  echo "Common issues:"
+  echo "  - Docker daemon not running."
+  echo "  - Errors in Dockerfiles or docker-compose.yml."
+  echo "  - Port conflicts if services try to use ports already in use on the host."
+  echo "  - Missing secret files in the ./secrets directory (refer to .secrets.baseline)."
+  echo "  - Incorrect variables in the root .env file."
+  echo "-----------------------------------------------------"
+  exit 1
+fi
 
-echo "Installing frontend dependencies..."
-(cd frontend && npm install)
-
-echo "Installing genealogy-service dependencies..."
-(cd genealogy-service && npm install)
-
-echo "Starting genealogy-service in development mode..."
-# Runs in a subshell, backgrounded. CWD of main script is not affected.
-(cd genealogy-service && npm run dev) &
-
-echo "Starting frontend in development mode..."
-# CWD is project root.
-cd frontend && npm run dev
-
-echo "Development environment is running!"
-echo "Frontend: http://localhost:3000"
-echo "Backend: http://localhost:3001"
-echo "API Docs: http://localhost:3001/api/docs"
+echo ""
+echo "Dzinza development environment services are starting up in the background."
+echo "------------------------------------------------------------------------"
+echo "Key services and access points (ports might vary based on your .env file):"
+echo ""
+echo "- Frontend (React App):      http://localhost:${FRONTEND_PORT:-8080}"
+echo "  (or http://dzinza.local if local DNS/proxy is configured)"
+echo ""
+echo "- API Gateway:               http://localhost:${GATEWAY_PORT:-3001}"
+echo "  (All backend API requests should go through the gateway)"
+echo ""
+echo "- Python Service Access (via Gateway - examples):"
+echo "  - Auth Service:          http://localhost:${GATEWAY_PORT:-3001}/api/v1/auth/docs"
+echo "  - Genealogy Service:     http://localhost:${GATEWAY_PORT:-3001}/api/v1/family-trees/docs (example, check service for actual doc path)"
+echo "  - Storage Service:       http://localhost:${GATEWAY_PORT:-3001}/api/v1/files/docs"
+echo "  - Search Service:        http://localhost:${GATEWAY_PORT:-3001}/api/v1/search/docs"
+echo ""
+echo "Individual Python services also expose their own ports (e.g., auth_service_py on ${AUTH_SERVICE_PORT:-3002}),"
+echo "but these are typically for internal communication or direct debugging, not primary user access."
+echo ""
+echo "------------------------------------------------------------------------"
+echo "Monitoring & Management:"
+echo "- To view logs for all services:         docker-compose logs -f"
+echo "- To view logs for a specific service:   docker-compose logs -f <service_name>"
+echo "  (e.g., docker-compose logs -f auth_service_py)"
+echo "- To see running containers:             docker-compose ps"
+echo "- To stop all services:                docker-compose down"
+echo "- To stop and remove volumes:          docker-compose down -v"
+echo "------------------------------------------------------------------------"
+echo "Setup complete! It might take a few moments for all services to be fully available."
