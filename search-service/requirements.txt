@@ -1,8 +1,14 @@
-fastapi[all]>=0.100.0
-pydantic-settings>=2.0.0
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+pydantic==2.8.2
+pydantic-settings==2.3.4
+SQLAlchemy==2.0.31
+psycopg2-binary==2.9.9 
 
 # Elasticsearch client
-elasticsearch[async]>=8.0.0 # Specify async extra for AsyncElasticsearch
+elasticsearch==8.14.0
+pytest==8.2.2
+httpx==0.27.0
 
 # MongoDB driver (if storing search analytics)
 motor>=3.3.0
@@ -21,8 +27,6 @@ starlette-prometheus>=0.9.0
 # python-jose[cryptography]>=3.3.0
 # passlib[bcrypt]>=1.7.4
 
-# Development/Testing
-pytest>=7.0.0
-pytest-asyncio>=0.20.0
-httpx>=0.24.0
+
 # pytest-elasticsearch # For testing with an Elasticsearch instance (optional)
+

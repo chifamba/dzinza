@@ -4,6 +4,7 @@ celery>=5.3.0
 redis>=5.0.0         # For Celery broker/backend and potentially caching
 python-gedcom>=0.4.0 # For GEDCOM parsing
 pydantic-settings>=2.0.0 # For managing settings
+eventlet
 
 # For OpenTelemetry (optional, but good practice)
 opentelemetry-api>=1.19.0
