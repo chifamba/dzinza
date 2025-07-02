@@ -23,6 +23,35 @@ else
   echo "The frontend service might fail to start if its Docker image doesn't handle dependency installation."
 fi
 
+# 0. Validate environment and secrets before starting
+if [ -f "$SCRIPT_DIR/validate-env.sh" ]; then
+  echo "\nValidating environment configuration..."
+  bash "$SCRIPT_DIR/validate-env.sh" || { echo "Environment validation failed. Aborting startup."; exit 1; }
+else
+  echo "WARNING: validate-env.sh not found. Skipping environment validation."
+fi
+
+# 0.1 Check for Docker
+if ! command -v docker &>/dev/null; then
+  echo "ERROR: Docker is not installed or not in PATH. Please install Docker Desktop or Docker Engine."
+  exit 1
+fi
+
+# 0.2 Check for Docker Compose
+if ! docker compose version &>/dev/null && ! docker-compose version &>/dev/null; then
+  echo "ERROR: Docker Compose is not installed or not in PATH."
+  echo "Install Docker Compose v2 (preferred) or v1. See https://docs.docker.com/compose/install/"
+  exit 1
+fi
+
+# 0.3 Check if required ports are free (warn, don't fail)
+REQUIRED_PORTS=(8080 3001 3002 3003 3004 3005 5432 27017 6379 9200 3300 9090 3900 3901)
+for port in "${REQUIRED_PORTS[@]}"; do
+  if lsof -i :$port &>/dev/null; then
+    echo "WARNING: Port $port appears to be in use. This may cause a service to fail to start."
+  fi
+done
+
 echo ""
 echo "Starting all Dzinza services via Docker Compose..."
 echo "This will build images if they don't exist or if code has changed."
