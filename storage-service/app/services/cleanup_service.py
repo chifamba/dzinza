@@ -1,20 +1,19 @@
-import asyncio
-import structlog # Changed from logging
 from datetime import datetime, timedelta
-from apscheduler.schedulers.asyncio import AsyncIOScheduler # For async scheduling
+import structlog  # Changed from logging
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler  # For async scheduling
 from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
-from app.database import get_database # Assuming this can be used to get a DB instance for a background task
-from app.services.s3_service import S3Client # Direct import for S3 operations
-from app import crud, models # To get soft-deleted records and for model validation
-from app.database import AsyncIOMotorDatabase # For type hinting
-
-# FastAPI's HTTPException for specific error handling if needed from S3Client
+from app.database import get_database  # For background task DB instance
+from app.services.s3_service import S3Client  # For S3 operations
+from app import crud, models  # For soft-deleted records/model validation
+from app.database import AsyncIOMotorDatabase  # For type hinting
 from fastapi import HTTPException
 
 
-logger = structlog.get_logger(__name__) # Use structlog
+logger = structlog.get_logger(__name__)
+
 
 class CleanupServiceClass:
     def __init__(self):
@@ -31,21 +30,28 @@ class CleanupServiceClass:
             try:
                 self.scheduler.add_job(
                     self.run_cleanup_tasks,
-                    trigger=CronTrigger.from_crontab(settings.CLEANUP_SCHEDULE_CRON),
+                    trigger=CronTrigger.from_crontab(
+                        settings.CLEANUP_SCHEDULE_CRON
+                    ),
                     id="daily_cleanup_job",
                     name="Daily S3 and DB Cleanup",
                     replace_existing=True,
                 )
                 self.scheduler.start()
-                logger.info(f"Cleanup job scheduled with cron: {settings.CLEANUP_SCHEDULE_CRON}")
+                logger.info(
+                    f"Cleanup job scheduled with cron: {settings.CLEANUP_SCHEDULE_CRON}"
+                )
                 self._initialized = True
             except Exception as e:
-                logger.error(f"Failed to schedule cleanup job: {e}", exc_info=True)
+                logger.error(
+                    f"Failed to schedule cleanup job: {e}", exc_info=True
+                )
         else:
-            logger.warning("CLEANUP_SCHEDULE_CRON not defined. Cleanup job not scheduled.")
+            logger.warning(
+                "CLEANUP_SCHEDULE_CRON not defined. Cleanup job not scheduled."
+            )
             # Mark as initialized even if not scheduled to prevent re-attempts if cron is simply not set
             self._initialized = True
-
 
     async def run_cleanup_tasks(self):
         logger.info("Starting scheduled cleanup tasks...")
@@ -91,7 +97,6 @@ class CleanupServiceClass:
         finally:
             # If db session was managed here, close it. Motor client is usually managed globally.
             pass
-
 
     async def _cleanup_soft_deleted_s3_files(self, db: AsyncIOMotorDatabase):
         """
@@ -158,7 +163,6 @@ class CleanupServiceClass:
                 logger.error(f"General error during S3 cleanup for file ID {file_record.id}, S3 key {file_record.s3_key}: {e}", exc_info=True)
 
         logger.info(f"Soft-deleted S3 files cleanup finished. Processed: {count_processed}, S3 Objects Attempted Delete: {count_s3_deleted}, DB Records Hard-Deleted: {count_db_hard_deleted}.")
-
 
     async def shutdown(self):
         if self.scheduler.running:

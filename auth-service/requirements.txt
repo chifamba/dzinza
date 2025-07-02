@@ -10,13 +10,15 @@ passlib[bcrypt]==1.7.4 # For password hashing
 python-multipart==0.0.9 # For form data (e.g., if supporting OAuth form posts)
 email-validator==2.1.1 # For email validation
 structlog==24.1.0 # For structured logging
-opentelemetry-api==1.23.0
-opentelemetry-sdk==1.23.0
+opentelemetry-api
+opentelemetry-sdk
 opentelemetry-exporter-otlp-proto-http==1.23.0
-opentelemetry-instrumentation-fastapi==0.44b0
-opentelemetry-instrumentation-psycopg2==0.44b0
-opentelemetry-instrumentation-redis==0.44b0
-starlette-prometheus==0.10.0 # For Prometheus metrics with Starlette/FastAPI
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-psycopg2
+opentelemetry-instrumentation-redis
+starlette-prometheus
+slowapi # For rate limiting
+
 # For social auth, might need:
 # httpx==0.27.0
 # requests-oauthlib==1.3.1

@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app import models # For Enums like MergeSuggestionStatus
+from app.models_main import MergeSuggestionStatus
 from app import schemas # API Schemas (specifically schemas.merge_suggestion)
 from app.crud import crud_merge_suggestion, crud_person, crud_family_tree # CRUD functions
 from app.db.base import get_database # DB Dependency
@@ -47,7 +47,7 @@ async def list_suggestions_for_person(
     *,
     db: AsyncIOMotorDatabase = Depends(get_database),
     person_id: uuid.UUID,
-    status_filter: Optional[models.MergeSuggestionStatus] = Query(None, alias="status"), # Use alias for query param
+    status_filter: Optional[MergeSuggestionStatus] = Query(None, alias="status"), # Use alias for query param
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     current_user: AuthenticatedUser = Depends(get_current_active_user)
@@ -145,7 +145,7 @@ async def update_merge_suggestion_status(
     # If status is 'accepted', the actual merge logic is complex and typically handled by a service method
     # or a background task, which might be triggered here.
     # For now, this endpoint only updates the suggestion's status.
-    if updated_suggestion.status == models.MergeSuggestionStatus.ACCEPTED:
+    if updated_suggestion.status == MergeSuggestionStatus.ACCEPTED:
         # Placeholder: Trigger merge process
         # await service_layer.process_person_merge(db, suggestion=updated_suggestion)
         pass

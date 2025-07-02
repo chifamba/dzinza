@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import model_validator # Import model_validator
+from pydantic import model_validator, Field
 from typing import List, Optional
 from functools import lru_cache
 

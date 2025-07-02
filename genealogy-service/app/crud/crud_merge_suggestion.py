@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
-from app.models import MergeSuggestion, MergeSuggestionStatus # DB Model & Enum
+from app.models_main import MergeSuggestion, MergeSuggestionStatus # DB Model & Enum
 from app.schemas.merge_suggestion import MergeSuggestionCreate # API Schemas
 from app.db.base import MERGE_SUGGESTIONS_COLLECTION
 

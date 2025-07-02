@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
-from app.models import MergeSuggestionStatus, MergeSuggestion as MergeSuggestionDB
+from app.models_main import MergeSuggestionStatus, MergeSuggestion as MergeSuggestionDB
 
 # --- MergeSuggestion Schemas ---
 

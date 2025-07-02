@@ -1,10 +1,12 @@
 fastapi[all]>=0.100.0 # Includes pydantic, uvicorn, etc.
 motor>=3.3.0         # Async MongoDB driver
+pymongo>=4.0.0       # MongoDB driver (required by motor)
 celery>=5.3.0
 redis>=5.0.0         # For Celery broker/backend and potentially caching
 python-gedcom>=0.4.0 # For GEDCOM parsing
 pydantic-settings>=2.0.0 # For managing settings
 eventlet
+structlog>=24.1.0
 
 # For OpenTelemetry (optional, but good practice)
 opentelemetry-api>=1.19.0

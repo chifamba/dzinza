@@ -3,7 +3,7 @@ from datetime import date
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
-from app.models import EventType, Event as EventDB # DB model for Read schema
+from app.models_main import EventType, Event as EventDB # DB model for Read schema
 
 # --- Event Schemas ---
 

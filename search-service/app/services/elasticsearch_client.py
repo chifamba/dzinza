@@ -1,4 +1,5 @@
-from elasticsearch import AsyncElasticsearch, ConnectionError, ElasticsearchException
+from elasticsearch import AsyncElasticsearch, ConnectionError
+from elasticsearch.exceptions import TransportError
 from typing import Optional
 import structlog
 
@@ -36,7 +37,7 @@ class ElasticsearchClientSingleton:
                 raise ConnectionError("Failed to ping Elasticsearch cluster after initialization.")
 
             logger.info("Elasticsearch client initialized and connection verified.")
-        except ElasticsearchException as e:
+        except TransportError as e:
             logger.error(f"Failed to initialize Elasticsearch client: {e}", exc_info=True)
             if cls.client: # If client was partially created before error
                 try:

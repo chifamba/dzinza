@@ -4,11 +4,12 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app import models # DB Models
-from app import schemas # API Schemas (specifically schemas.event)
-from app.crud import crud_event, crud_family_tree, crud_person, crud_relationship # CRUD functions
-from app.db.base import get_database # DB Dependency
-from app.dependencies import AuthenticatedUser, get_current_active_user # Auth Dependency
+from app import schemas
+from app.crud import crud_event, crud_person, crud_family_tree
+from app.db.base import get_database
+from app.dependencies import AuthenticatedUser, get_current_active_user
+from app.models_main import EventType, PersonPrivacyOptions
+
 from .relationship import check_tree_permission # Re-use helper from relationship endpoint or move to shared
 
 router = APIRouter()
@@ -95,7 +96,7 @@ async def list_events_for_person(
                 break # Found a tree user has access to
             except HTTPException:
                 continue
-        if not can_view_person and person.privacy_settings.show_profile != models.PersonPrivacyOptions.PUBLIC:
+        if not can_view_person and person.privacy_settings.show_profile != PersonPrivacyOptions.PUBLIC:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot access events for this person.")
 
     events = await crud_event.get_events_for_person(db=db, person_id=person_id, tree_id=tree_id, skip=skip, limit=limit)
@@ -134,7 +135,7 @@ async def list_events_in_tree(
     *,
     db: AsyncIOMotorDatabase = Depends(get_database),
     tree_id: uuid.UUID,
-    event_type: Optional[models.EventType] = Query(None),
+    event_type: Optional[EventType] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=0, le=500),
     current_user: AuthenticatedUser = Depends(get_current_active_user)

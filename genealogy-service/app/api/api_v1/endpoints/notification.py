@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pydantic import BaseModel
 
 from app import models # DB Models (needed for Notification model if not directly from schemas)
 from app import schemas # API Schemas (specifically schemas.notification)
@@ -36,7 +37,7 @@ async def list_user_notifications(
     )
     return schemas.notification.NotificationList(items=notifications, total=total_notifications, unread_count=unread_count)
 
-class NotificationSummaryResponse(schemas.BaseModel): # Using Pydantic BaseModel from schemas if available
+class NotificationSummaryResponse(BaseModel): # Using Pydantic BaseModel directly
     total_notifications: int
     unread_notifications: int
 
@@ -69,7 +70,7 @@ async def mark_notification_read(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found or already marked as read.")
     return updated_notification
 
-class MarkAllReadResponse(schemas.BaseModel):
+class MarkAllReadResponse(BaseModel):
     updated_count: int
 
 @router.post("/mark-all-read", response_model=MarkAllReadResponse) # Using POST as it changes state for multiple items
@@ -101,7 +102,7 @@ async def delete_user_notification(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found or not owned by user.")
     return None # FastAPI returns 204
 
-class DeleteAllResponse(schemas.BaseModel):
+class DeleteAllResponse(BaseModel):
     deleted_count: int
 
 @router.delete("/all", response_model=DeleteAllResponse) # Changed from "/all/" to "/all"

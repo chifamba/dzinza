@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
-from app.models import PersonHistoryChangeType, PersonHistory as PersonHistoryDB
+from app.models_main import PersonHistoryChangeType, PersonHistory as PersonHistoryDB
 
 # --- PersonHistory Schemas ---
 

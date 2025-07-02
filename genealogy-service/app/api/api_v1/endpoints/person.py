@@ -4,11 +4,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app import models # DB Models
 from app import schemas # API Schemas (ensure person schemas are imported, e.g. from app.schemas.person)
 from app.crud import crud_person, crud_family_tree # CRUD functions
 from app.db.base import get_database # DB Dependency
 from app.dependencies import AuthenticatedUser, get_current_active_user # Auth Dependency
+from app.models_main import PersonPrivacyOptions
 
 router = APIRouter()
 
@@ -97,7 +97,7 @@ async def read_person(
 
     if not can_view:
         # Check person's own privacy settings if they allow public view irrespective of tree
-        if person.privacy_settings.show_profile != models.PersonPrivacyOptions.PUBLIC:
+        if person.privacy_settings.show_profile != PersonPrivacyOptions.PUBLIC:
              raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to view this person."

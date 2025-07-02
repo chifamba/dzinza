@@ -29,6 +29,10 @@ secrets:
     file: ./secrets/google_client_id.txt
   google_client_secret:
     file: ./secrets/google_client_secret.txt
+  minio_access_key:
+    file: ./secrets/minio_access_key.txt
+  minio_secret_key:
+    file: ./secrets/minio_secret_key.txt
   # Add other external API key secrets here as needed
   # Example:
   # openai_api_key:
@@ -124,7 +128,7 @@ services:
     container_name: redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
-    command: ["redis-server", "--requirepass", "/run/secrets/redis_password"] # Use secret file path
+    command: ["redis-server", "--requirepass", "redis_secure_password_789"]
     secrets: # Grant access to the secret
       - redis_password
     # Environment variable for REDIS_PASSWORD is no longer needed if accessed via file by the application
@@ -240,7 +244,7 @@ services:
       - google_client_secret
     networks:
       - dzinza-network
-    restart: unless-stopped
+    restart: no #unless-stopped
     depends_on:
       - postgres
       - redis
@@ -314,10 +318,12 @@ services:
       - shared_config:/etc/shared-config # Mount shared configuration volume
     environment:
       - DEBUG=${DEBUG:-false}
+      - DB_USER=${DB_USER:-dzinza_user}
+      - DB_PASSWORD=${MONGO_PASSWORD:-mongo_secure_password}
       # MongoDB settings - constructed to match what Pydantic settings in config.py expects
       # Assumes MONGO_INITDB_ROOT_USERNAME and MONGO_INITDB_ROOT_PASSWORD_FILE are used for auth.
       # The MONGO_INITDB_ROOT_USERNAME is set to 'dzinza_user' by default in mongodb service.
-      - MONGODB_URL=mongodb://${DB_USER:-dzinza_user}@mongodb:27017 # Added user
+      - MONGODB_URL=mongodb://${DB_USER:-dzinza_user}:${MONGO_PASSWORD:-mongo_secure_password_456}@mongodb:27017
       - MONGODB_DATABASE_NAME=${MONGODB_GENEALOGY_DB:-dzinza_genealogy}
       - MONGODB_PASSWORD_FILE=/run/secrets/mongo_password # Path to the secret file for the app to read
 
@@ -343,7 +349,7 @@ services:
       - redis_password # Grant access to Redis password secret
     networks:
       - dzinza-network
-    restart: unless-stopped
+    restart: no #  unless-stopped
     depends_on:
       - mongodb
       - redis
@@ -388,7 +394,7 @@ services:
       - redis_password
     networks:
       - dzinza-network
-    restart: unless-stopped
+    restart: no #  unless-stopped
     depends_on:
       - mongodb
       - redis
@@ -439,7 +445,7 @@ services:
       # - es_username
     networks:
       - dzinza-network
-    restart: unless-stopped
+    restart: no #  unless-stopped
     depends_on:
       - elasticsearch
       - mongodb # If analytics enabled and uses MongoDB
@@ -467,11 +473,11 @@ services:
       - MONGO_USER=${DB_USER:-dzinza_user} # Using the same user as other DBs for simplicity
       - MONGO_PASSWORD_FILE=/run/secrets/mongo_password
 
-      - AWS_ACCESS_KEY_ID_FILE=/run/secrets/aws_access_key_id
-      - AWS_SECRET_ACCESS_KEY_FILE=/run/secrets/aws_secret_access_key
-      - AWS_REGION=${AWS_REGION:-us-east-1}
-      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-dzinza-storage-bucket}
-      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL} # For MinIO etc.
+      - S3_ENDPOINT_URL=http://garage:3900
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=admin-token
+      - S3_BUCKET_NAME=dzinza-storage-bucket
+      - S3_FORCE_PATH_STYLE=true
 
       - JWT_SECRET_FILE=/run/secrets/jwt_secret # For token validation
       - JWT_ALGORITHM=HS256 # Must match auth-service
@@ -489,7 +495,7 @@ services:
       - jwt_secret # For token validation
     networks:
       - dzinza-network
-    restart: unless-stopped
+    restart: no # unless-stopped
     depends_on:
       - mongodb
     healthcheck:
@@ -497,6 +503,75 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Garage S3-compatible Service
+  garage:
+    image: dxflrs/garage:v2.0.0
+    container_name: dzinza-garage
+    ports:
+      - "3900:3900" # S3 API
+      - "3901:3901" # Garage web admin
+    environment:
+      - GARAGE_ADMIN_TOKEN=admin-token
+      - GARAGE_API_BIND_ADDR=0.0.0.0:3900
+      - GARAGE_WEB_ADMIN_BIND_ADDR=0.0.0.0:3901
+      - GARAGE_DATA_DIR=/data
+      - GARAGE_METADATA_DIR=/metadata
+    volumes:
+      - garage_data:/data
+      - garage_metadata:/metadata
+      - ./garage.toml:/etc/garage.toml
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  garage1:
+    image: dxflrs/garage:v2.0.0
+    container_name: dzinza-garage1
+    hostname: garage1
+    ports:
+      - "39000:39000" # S3 API
+      - "39011:39011" # RPC
+      - "39021:39021" # Web admin
+    volumes:
+      - ./garage1.toml:/etc/garage.toml
+      - garage1_data:/var/lib/garage/data1
+      - garage1_meta:/var/lib/garage/meta1
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  garage2:
+    image: dxflrs/garage:v2.0.0
+    container_name: dzinza-garage2
+    hostname: garage2
+    ports:
+      - "39002:39002" # S3 API
+      - "39012:39012" # RPC
+      - "39022:39022" # Web admin
+    volumes:
+      - ./garage2.toml:/etc/garage.toml
+      - garage2_data:/var/lib/garage/data2
+      - garage2_meta:/var/lib/garage/meta2
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  garage3:
+    image: dxflrs/garage:v2.0.0
+    container_name: dzinza-garage3
+    hostname: garage3
+    ports:
+      - "39003:39003" # S3 API
+      - "39013:39013" # RPC
+      - "39023:39023" # Web admin
+    volumes:
+      - ./garage3.toml:/etc/garage.toml
+      - garage3_data:/var/lib/garage/data3
+      - garage3_meta:/var/lib/garage/meta3
+    networks:
+      - dzinza-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
@@ -506,6 +581,15 @@ volumes:
   prometheus_data:
   grafana_data:
   shared_config: # Define the shared_config volume
+  minio_data: # Data volume for MinIO
+  garage_data: # Data volume for Garage
+  garage_metadata: # Metadata volume for Garage
+  garage1_data:
+  garage1_meta:
+  garage2_data:
+  garage2_meta:
+  garage3_data:
+  garage3_meta:
 
 networks:
   dzinza-network:

@@ -4,7 +4,8 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase # For d
 import asyncio # For running async CRUD operations from sync Celery task
 
 from app.services.celery_app import celery_app
-from app.models import Person, MergeSuggestionCreate, MergeSuggestionStatus
+from app.models_main import Person, MergeSuggestionStatus, PersonName
+from app.schemas.merge_suggestion import MergeSuggestionCreate
 from app.core.config import settings # For DB connection details
 # Note: Directly using CRUD functions from within Celery tasks can be tricky if they depend on FastAPI's
 # request scope or specific dependency injection patterns not available in a Celery worker context.
@@ -189,24 +190,15 @@ def find_duplicate_persons_task(self, person_id_str: str): # `self` is the task 
 # from app.services.tasks import find_duplicate_persons_task
 # find_duplicate_persons_task.delay(str(person.id)) # .delay() is a shortcut for .send_task()
 
-# Note on `_get_task_db` and `_close_task_db`:
-# Creating a new MongoDB client for each task might be inefficient for high task volumes.
-# For production, consider:
-# 1. Worker signals: `worker_process_init` to create a client per worker process,
-#    and `worker_process_shutdown` to close it. Store client on `celery_app` or global.
-# 2. Passing connection details to tasks and letting them manage short-lived clients.
-# 3. Using a connection pool if your driver supports it well in an async/Celery context.
-# The current simplified `_get_task_db` creates one client per task invocation if not already existing in the worker's global scope,
-# which is okay for low volume but not ideal. The `loop.run_until_complete(_close_task_db())` ensures it's closed.**Note on `_get_task_db` and `_close_task_db` in the above code:**
-
-The way `_db_client` and `_db` are defined as globals in `tasks.py` means they would be shared across all tasks executed by a single Celery worker process if not handled carefully.
-The `_close_task_db()` call in the `finally` block of the task is intended to clean up, but if multiple tasks run concurrently within the same worker process and event loop, this global state could be problematic.
-
-A better pattern for managing resources like DB connections in Celery tasks, especially with `asyncio`, involves:
-1.  **Worker Process Initialization:** Create the `AsyncIOMotorClient` when the Celery worker process starts (`@worker_process_init.connect`) and store it, for example, on the `celery_app` instance or a process-local context.
-2.  **Task Access:** Tasks can then access this pre-initialized client.
-3.  **Worker Process Shutdown:** Close the client when the worker process shuts down (`@worker_process_shutdown.connect`).
-
-However, for simplicity in this step, the current approach of creating/closing a client per task invocation (or reusing if the global `_db` is already populated by a previous task in the same worker and loop) is used. This is less efficient but avoids more complex Celery signal handling for now. The `asyncio.new_event_loop()` and `set_event_loop()` per task call is also a simplification to ensure an event loop is available for `asyncio.run` or `loop.run_until_complete`.
-
-I will proceed with this simplified DB connection management within the task for now and make a note to potentially refine it later if performance becomes an issue or if more complex async interactions are needed within tasks.
+# Note: The following block was mistakenly left as a docstring or comment, but without a comment symbol it causes a SyntaxError.
+# The way `_db_client` and `_db` are defined as globals in `tasks.py` means they would be shared across all tasks executed by a single Celery worker process if not handled carefully.
+# The `_close_task_db()` call in the `finally` block of the task is intended to clean up, but if multiple tasks run concurrently within the same worker process and event loop, this global state could be problematic.
+#
+# A better pattern for managing resources like DB connections in Celery tasks, especially with `asyncio`, involves:
+# 1.  **Worker Process Initialization:** Create the `AsyncIOMotorClient` when the Celery worker process starts (`@worker_process_init.connect`) and store it, for example, on the `celery_app` instance or a process-local context.
+# 2.  **Task Access:** Tasks can then access this pre-initialized client.
+# 3.  **Worker Process Shutdown:** Close the client when the worker process shuts down (`@worker_process_shutdown.connect`).
+#
+# However, for simplicity in this step, the current approach of creating/closing a client per task invocation (or reusing if the global `_db` is already populated by a previous task in the same worker and loop) is used. This is less efficient but avoids more complex Celery signal handling for now. The `asyncio.new_event_loop()` and `set_event_loop()` per task call is also a simplification to ensure an event loop is available for `asyncio.run` or `loop.run_until_complete`.
+#
+# I will proceed with this simplified DB connection management within the task for now and make a note to potentially refine it later if performance becomes an issue or if more complex async interactions are needed within tasks.

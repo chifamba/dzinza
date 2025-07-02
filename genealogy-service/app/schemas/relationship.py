@@ -3,7 +3,7 @@ from datetime import date
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
-from app.models import (
+from app.models_main import (
     RelationshipType,
     SpousalStatus,
     ParentalRole,

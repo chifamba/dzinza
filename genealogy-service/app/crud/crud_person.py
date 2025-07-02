@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument # For find_one_and_update
 import structlog # Added for logging task dispatch errors
 
-from app.models import Person # DB Model
+from app.models_main import Person # DB Model
 from app.schemas.person import PersonCreate, PersonUpdate # API Schemas from the new location
 from app.db.base import PERSONS_COLLECTION
 from app.crud import crud_person_history # Import PersonHistory CRUD operations
@@ -49,7 +49,7 @@ async def create_person(db: AsyncIOMotorDatabase, *, person_in: PersonCreate, cr
         find_duplicate_persons_task.delay(str(db_person.id))
     except Exception as e:
         # Log error if task dispatch fails, but don't let it fail the CRUD operation
-    logger.error(f"Failed to dispatch duplicate detection task for new person {db_person.id}: {e}", exc_info=True)
+        logger.error(f"Failed to dispatch duplicate detection task for new person {db_person.id}: {e}", exc_info=True)
         pass # Non-critical failure for task dispatch
 
     return db_person

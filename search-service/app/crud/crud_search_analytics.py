@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.models import SearchAnalyticsEventDB # DB Model for analytics
+from app.analytics_models import SearchAnalyticsEventDB # DB Model for analytics
 from app.db.analytics_db import SEARCH_ANALYTICS_COLLECTION # Collection name
 from app.core.config import settings # To check if analytics are enabled
 import structlog

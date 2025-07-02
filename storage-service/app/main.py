@@ -1,20 +1,20 @@
-from fastapi import FastAPI, Request
+"""Main entrypoint for the storage-service FastAPI application."""
+
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exceptions import RequestValidationError
 
 from app.config import settings
-from app.database import connect_to_mongo, close_mongo_connection, get_database # For health check potentially
-from app.services.s3_service import startup_s3_client, shutdown_s3_client, S3Client # For health check
-from app.services.cleanup_service import startup_cleanup_service, shutdown_cleanup_service # Import cleanup service handlers
-from app.api import api_router # Import the main API router
+from app.database import connect_to_mongo, close_mongo_connection, get_database  # For health check potentially
+from app.services.s3_service import startup_s3_client, shutdown_s3_client, S3Client  # For health check
+from app.services.cleanup_service import startup_cleanup_service, shutdown_cleanup_service  # Import cleanup service handlers
+from app.api import api_router  # Import the main API router
 
-# For Prometheus and OpenTelemetry
 from starlette_prometheus import PrometheusMiddleware, metrics
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-import logging
-import structlog # Import structlog
+import structlog  # Import structlog
 
 # Configure structlog
 structlog.configure(
@@ -24,7 +24,7 @@ structlog.configure(
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info, # Use standard structlog processor
+        structlog.processors.format_exc_info,  # Use standard structlog processor
         structlog.dev.ConsoleRenderer() if settings.DEBUG else structlog.processors.JSONRenderer(),
     ],
     logger_factory=structlog.stdlib.LoggerFactory(),
@@ -32,16 +32,7 @@ structlog.configure(
     cache_logger_on_first_use=True,
 )
 
-logger = structlog.get_logger(__name__) # Use structlog logger
-
-# Custom processor class definition can be removed if not used.
-# class StructlogExcInfoFormatter:
-#     def __call__(self, logger, name, event_dict):
-#         if "exc_info" in event_dict:
-#             event_dict["exception"] = structlog.processors.format_exc_info(None, None, event_dict["exc_info"])
-#         return event_dict
-# struct_log_processors = StructlogExcInfoFormatter()
-
+logger = structlog.get_logger(__name__)  # Use structlog logger
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -104,8 +95,8 @@ async def health_check():
     try:
         # A lightweight way to check MongoDB connection with Motor
         # Accessing DataStorage.db directly after it's set by connect_to_mongo
-        if get_database() is not None: # Check if db object exists
-             await get_database().command('ping') # Pings the server
+        if get_database() is not None:  # Check if db object exists
+            await get_database().command('ping')  # Pings the server
         else:
             db_status = "not_initialized"
     except Exception as e:
@@ -115,8 +106,7 @@ async def health_check():
 
     s3_status = "connected" if S3Client.is_connected() else "disconnected"
     if not S3Client.is_connected():
-         logger.warning("Health check: S3 Client is not connected.")
-
+        logger.warning("Health check: S3 Client is not connected.")
 
     if db_status == "connected" and s3_status == "connected":
         return {
@@ -125,17 +115,16 @@ async def health_check():
             "mongodb": db_status,
             "s3": s3_status
         }
-    else:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "unhealthy",
-                "service": settings.PROJECT_NAME,
-                "mongodb": db_status,
-                "s3": s3_status,
-                "mongodb_details": db_details if db_status=="error" else "N/A"
-            }
-        )
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={
+            "status": "unhealthy",
+            "service": settings.PROJECT_NAME,
+            "mongodb": db_status,
+            "s3": s3_status,
+            "mongodb_details": db_details if db_status == "error" else "N/A"
+        }
+    )
 
 # Global Exception Handlers
 @app.exception_handler(StarletteHTTPException)

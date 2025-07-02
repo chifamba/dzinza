@@ -1,0 +1,26 @@
+metadata_dir = "/var/lib/garage/meta1"
+data_dir = "/var/lib/garage/data1"
+db_engine = "lmdb"
+metadata_auto_snapshot_interval = "6h"
+
+replication_factor = 3
+compression_level = 2
+
+node_name = "node1"
+rpc_bind_addr = "0.0.0.0:39011"
+rpc_public_addr = "garage1:39011"
+rpc_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+bootstrap_peers = [
+  "85bcad019552fd1c000a3b02582926b91f83d0831937b20c851ce18717ef5807@garage2:39012",
+  "de5c19395377789b2d56516441289363ec1125a8020781b99ea67342eb74966c@garage3:39013"
+]
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "0.0.0.0:39000"
+root_domain = ".s3.garage"
+
+[s3_web]
+bind_addr = "0.0.0.0:39021"
+root_domain = ".web.garage"
+index = "index.html"

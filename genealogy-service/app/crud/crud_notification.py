@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
-from app.models import Notification # DB Model
+from app.models_main import Notification # DB Model
 # Schemas might be used if creating notifications via API, but often they are system-generated.
 # from app.schemas.notification import NotificationCreate # If users can create them
 from app.db.base import NOTIFICATIONS_COLLECTION # Collection name, to be defined in base.py

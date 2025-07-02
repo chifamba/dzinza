@@ -4,11 +4,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app import models # DB Models
 from app import schemas # API Schemas (specifically schemas.relationship)
 from app.crud import crud_relationship, crud_family_tree, crud_person # CRUD functions
 from app.db.base import get_database # DB Dependency
 from app.dependencies import AuthenticatedUser, get_current_active_user # Auth Dependency
+from app.models_main import RelationshipType, PersonPrivacyOptions
 
 router = APIRouter()
 
@@ -60,7 +60,7 @@ async def list_relationships_for_person(
     db: AsyncIOMotorDatabase = Depends(get_database),
     person_id: uuid.UUID,
     tree_id: Optional[uuid.UUID] = Query(None, description="Filter by tree ID if person is in multiple trees"),
-    relationship_type: Optional[models.RelationshipType] = Query(None, description="Filter by relationship type"),
+    relationship_type: Optional[RelationshipType] = Query(None, description="Filter by relationship type"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=0, le=200),
     current_user: AuthenticatedUser = Depends(get_current_active_user)
@@ -90,7 +90,7 @@ async def list_relationships_for_person(
                 break
             except HTTPException:
                 continue # User doesn't have access to this particular tree
-        if not can_view_person and person.privacy_settings.show_profile != models.PersonPrivacyOptions.PUBLIC:
+        if not can_view_person and person.privacy_settings.show_profile != PersonPrivacyOptions.PUBLIC:
              raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot access relationships for this person.")
 
 

@@ -4,9 +4,9 @@ from typing import List, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.models import FamilyTree # Pydantic model for DB representation
-from app.schemas import FamilyTreeCreate, FamilyTreeUpdate # Pydantic models for API input
-from app.db.base import FAMILY_TREES_COLLECTION # Collection name
+from app.models_main import FamilyTree  # Pydantic model for DB representation
+from app.schemas import FamilyTreeCreate, FamilyTreeUpdate  # Pydantic models for API input
+from app.db.base import FAMILY_TREES_COLLECTION  # Collection name
 
 async def create_tree(db: AsyncIOMotorDatabase, *, tree_in: FamilyTreeCreate, owner_id: str) -> FamilyTree:
     """

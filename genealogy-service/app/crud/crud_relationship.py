@@ -5,7 +5,7 @@ from typing import List, Optional, Union
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
-from app.models import Relationship, RelationshipEvent # DB Models
+from app.models_main import Relationship, RelationshipEvent # DB Models
 from app.schemas.relationship import RelationshipCreateData, RelationshipUpdateData, RelationshipEventData # API Schemas
 from app.db.base import RELATIONSHIPS_COLLECTION
 

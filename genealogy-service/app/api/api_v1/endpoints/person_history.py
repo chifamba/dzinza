@@ -1,10 +1,10 @@
 import uuid
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app import models # For PersonPrivacyOptions if needed for permission checks
+from app.models_main import PersonPrivacyOptions
 from app import schemas # API Schemas (specifically schemas.person_history)
 from app.crud import crud_person_history, crud_person, crud_family_tree # CRUD functions
 from app.db.base import get_database # DB Dependency
@@ -41,7 +41,7 @@ async def list_person_history_entries(
             except HTTPException:
                 continue
 
-    if not can_view and person.privacy_settings.show_profile != models.PersonPrivacyOptions.PUBLIC:
+    if not can_view and person.privacy_settings.show_profile != PersonPrivacyOptions.PUBLIC:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to view this person's history.")
 
     history_entries = await crud_person_history.get_history_for_person(
@@ -80,7 +80,10 @@ async def read_specific_person_history_version(
     *,
     db: AsyncIOMotorDatabase = Depends(get_database),
     person_id: uuid.UUID,
-    version: int = Query(..., ge=1, description="The specific version number of the history entry."),
+    version: int = Path(
+        ..., ge=1,
+        description="The specific version number of the history entry."
+    ),
     current_user: AuthenticatedUser = Depends(get_current_active_user)
 ):
     """
@@ -100,7 +103,7 @@ async def read_specific_person_history_version(
                 break
             except HTTPException:
                 continue
-    if not can_view and person.privacy_settings.show_profile != models.PersonPrivacyOptions.PUBLIC:
+    if not can_view and person.privacy_settings.show_profile != PersonPrivacyOptions.PUBLIC:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to view this person's history.")
 
     history_entry = await crud_person_history.get_person_version(

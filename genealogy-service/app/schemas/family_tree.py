@@ -1,8 +1,9 @@
 import uuid
 from typing import Optional, List
+from datetime import datetime
 from pydantic import BaseModel, Field
 
-from app.models import PrivacySetting, FamilyTree # Import base model for Read schema
+from app.models_main import FamilyTree, PrivacySetting # Import base model for Read schema
 
 # --- FamilyTree Schemas ---
 

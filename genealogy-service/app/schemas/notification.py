@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
-from app.models import Notification as NotificationDB # DB model for Read schema
+from app.models_main import Notification as NotificationDB # DB model for Read schema
 
 # --- Notification Schemas ---
 

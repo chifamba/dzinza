@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm # For standard login form
 from sqlalchemy.orm import Session
 from datetime import timedelta
 import uuid
+from typing import Optional
 
 from app import crud, models, schemas, utils
 from app.database import get_db
@@ -66,8 +67,7 @@ async def register_user(user_in: schemas.RegisterRequest, db: Session = Depends(
 async def login_for_access_token(
     response: Response, # To set cookies
     login_data: schemas.LoginRequest, # Use Pydantic model for request body
-    db: Session = Depends(get_db),
-    request: Request # To get IP and User-Agent
+    db: Session = Depends(get_db)  # To get IP and User-Agent
 ):
     """
     Authenticate user and return JWT tokens.

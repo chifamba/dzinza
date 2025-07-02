@@ -239,11 +239,11 @@ class AuditLog(Base):
 # The plan states "any changes must use fail-safe migrations", implying changes are possible.
 # For now, these models are the target.You are absolutely right! My apologies. I am still in the process of defining the Python `auth-service` components.
 
-So far for **Step 3.1 auth-service**:
-*   Created directory structure.
-*   Populated `requirements.txt`.
-*   Created `config.py` for settings management.
-*   Created `database.py` for SQLAlchemy setup.
-*   Defined SQLAlchemy models in `models.py` (User, RefreshToken, AuditLog).
+# So far for **Step 3.1 auth-service**:
+# *   Created directory structure.
+# *   Populated `requirements.txt`.
+# *   Created `config.py` for settings management.
+# *   Created `database.py` for SQLAlchemy setup.
+# *   Defined SQLAlchemy models in `models.py` (User, RefreshToken, AuditLog).
 
-The next step is to define the Pydantic schemas in `auth-service/app/schemas.py` that will be used for request and response validation, and for data interchange with the API.
+#  The next step is to define the Pydantic schemas in `auth-service/app/schemas.py` that will be used for request and response validation, and for data interchange with the API.

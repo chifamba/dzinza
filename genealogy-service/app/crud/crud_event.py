@@ -5,7 +5,7 @@ from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
-from app.models import Event # DB Model
+from app.models_main import Event # DB Model
 from app.schemas.event import EventCreateData, EventUpdateData # API Schemas
 from app.db.base import EVENTS_COLLECTION
 

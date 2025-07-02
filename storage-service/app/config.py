@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     # MongoDB (for file metadata)
     MONGODB_URI_FILE: Optional[str] = None # Path to secret file for full URI
-    MONGODB_URI: Optional[str] = "mongodb://localhost:27017/dzinza_storage" # Direct URI (fallback or for non-Docker)
+    MONGODB_URI: Optional[str] = None # Direct URI (fallback or for non-Docker)
     # Alternatively, individual components if URI is constructed:
     MONGO_HOST: str = "localhost"
     MONGO_PORT: int = 27017

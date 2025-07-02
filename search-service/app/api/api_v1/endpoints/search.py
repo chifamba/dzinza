@@ -13,7 +13,7 @@ from app.dependencies import get_current_active_user # For now, assume search mi
 
 from app.core.config import settings # For MONGODB_ANALYTICS_ENABLED check
 from app.db.analytics_db import get_analytics_db_dependency # If logging analytics
-from app.models import SearchAnalyticsEventDB # If logging analytics
+from app.analytics_models import SearchAnalyticsEventDB # If logging analytics
 from app.crud import crud_search_analytics # If logging analytics
 
 router = APIRouter()

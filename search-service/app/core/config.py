@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, Optional, Union, Dict
+from typing import List, Optional, Union, Dict, Any
 from pydantic import model_validator, AnyHttpUrl
 from functools import lru_cache
 

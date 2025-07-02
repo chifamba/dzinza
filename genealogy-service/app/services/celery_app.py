@@ -1,7 +1,13 @@
+import eventlet
+# Patch as early as possible for eventlet compatibility
+# This must be the first import
+eventlet.monkey_patch()
+
 from celery import Celery
 from celery.signals import worker_process_init, worker_process_shutdown
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 import asyncio
+from typing import Optional
 
 from app.core.config import settings
 import structlog

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List # Import List
-
+import uuid
 from app import crud, models, schemas
 from app.database import get_db
 from app.dependencies import get_current_active_user, get_current_active_superuser
@@ -141,4 +141,4 @@ async def delete_user_by_admin(
     # return schemas.MessageResponse(message="User deleted successfully")
 
 # Need to import uuid in this file if using it for type hinting user_id
-import uuid
+

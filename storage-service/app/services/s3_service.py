@@ -50,8 +50,8 @@ class S3ServiceClass:
                 'signature_version': 's3v4',
                 'retries': {'max_attempts': 3, 'mode': 'standard'}
             }
-            if settings.S3_FORCE_PATH_STYLE and settings.S3_ENDPOINT_URL: # Specific for MinIO usually
-                 s3_config_dict['s3'] = {'addressing_style': 'path'}
+            if settings.S3_FORCE_PATH_STYLE and settings.S3_ENDPOINT_URL:  # Specific for MinIO usually
+                s3_config_dict['s3'] = {'addressing_style': 'path'}
 
             s3_config = BotoConfig(**s3_config_dict)
 

@@ -3,9 +3,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Union, Any
 from jose import JWTError, jwt
 from pydantic import ValidationError
+from pydantic import EmailStr
 
 from .config import settings
-from .schemas import TokenPayload # Assuming TokenPayload is defined in schemas.py
+from .schemas import TokenPayload   # Assuming TokenPayload is defined in schemas.py
 
 # Password Hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=settings.BCRYPT_ROUNDS)
