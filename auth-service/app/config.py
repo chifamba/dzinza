@@ -57,7 +57,7 @@ class Settings(BaseSettings):
 
     # OpenTelemetry
     ENABLE_TRACING: bool = False
-    OTEL_SERVICE_NAME: str = "auth-service-py"
+    OTEL_SERVICE_NAME: str = "auth-service"
     JAEGER_ENDPOINT: str = "http://localhost:4318/v1/traces"
 
     # Account Security

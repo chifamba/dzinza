@@ -33,6 +33,7 @@
 from fastapi import Depends, HTTPException, status, Request
 from pydantic import BaseModel
 import httpx
+import os
 
 class AuthenticatedUser(BaseModel):
     id: str
@@ -53,8 +54,8 @@ async def get_current_active_user(request: Request) -> AuthenticatedUser:
             headers={"WWW-Authenticate": "Bearer"},
         )
     token = auth_header.split(" ", 1)[1]
-    # Replace with your actual Auth Service URL
-    AUTH_SERVICE_URL = "http://auth-service:8000/api/v1/users/me"
+    # Use environment variable or default to Docker Compose service name
+    AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://dzinza-auth-service:8000/api/v1/users/me")
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm # For standard login form
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, datetime
 import uuid
 from typing import Optional
 
@@ -65,6 +65,7 @@ async def register_user(user_in: schemas.RegisterRequest, db: Session = Depends(
 
 @router.post("/login", response_model=schemas.Token)
 async def login_for_access_token(
+    request: Request,
     response: Response, # To set cookies
     login_data: schemas.LoginRequest, # Use Pydantic model for request body
     db: Session = Depends(get_db)  # To get IP and User-Agent

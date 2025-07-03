@@ -17,10 +17,10 @@ class Settings(BaseSettings):
 
     # URLs for downstream services (scheme, host, port only)
     # These can be set via environment variables, e.g., AUTH_SERVICE_BASE_URL
-    AUTH_SERVICE_BASE_URL: AnyHttpUrl = "http://auth-service-py:8000" # Internal Docker URL
-    GENEALOGY_SERVICE_BASE_URL: AnyHttpUrl = "http://genealogy-service-py:8000"
-    SEARCH_SERVICE_BASE_URL: AnyHttpUrl = "http://search-service-py:8000"
-    STORAGE_SERVICE_BASE_URL: AnyHttpUrl = "http://storage-service-py:8000"
+    AUTH_SERVICE_BASE_URL: AnyHttpUrl = "http://auth-service:8000" # Internal Docker URL
+    GENEALOGY_SERVICE_BASE_URL: AnyHttpUrl = "http://genealogy-service:8000"
+    SEARCH_SERVICE_BASE_URL: AnyHttpUrl = "http://search-service:8000"
+    STORAGE_SERVICE_BASE_URL: AnyHttpUrl = "http://storage-service:8000"
 
     # This mapping can be used by the proxy to determine target URLs based on path prefixes
     # Keys are path prefixes (e.g., "auth"), values will be the base URLs above.

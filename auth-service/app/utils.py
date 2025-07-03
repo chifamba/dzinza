@@ -4,6 +4,9 @@ from typing import Optional, Union, Any
 from jose import JWTError, jwt
 from pydantic import ValidationError
 from pydantic import EmailStr
+import uuid
+import secrets
+import string
 
 from .config import settings
 from .schemas import TokenPayload   # Assuming TokenPayload is defined in schemas.py
@@ -191,8 +194,6 @@ async def send_welcome_email(email: EmailStr, first_name: str):
     await send_email_async(email, subject, html_content)
 
 # Add other utilities like generating random strings, OTPs, etc. as needed.
-import secrets
-import string
 
 def generate_random_string(length: int = 32) -> str:
     alphabet = string.ascii_letters + string.digits
