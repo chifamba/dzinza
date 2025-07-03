@@ -41,7 +41,8 @@ async def get_notification_by_id(
     Get a specific notification by its ID, ensuring it belongs to the user.
     """
     collection = db[NOTIFICATIONS_COLLECTION]
-    doc = await collection.find_one({"_id": notification_id, "user_id": user_id})
+    notification_id_str = str(notification_id)
+    doc = await collection.find_one({"_id": notification_id_str, "user_id": user_id})
     return Notification(**doc) if doc else None
 
 async def get_notifications_for_user(
@@ -85,8 +86,10 @@ async def mark_notification_as_read(
     Mark a specific notification as read. Ensures user owns the notification.
     """
     collection = db[NOTIFICATIONS_COLLECTION]
+    # Convert UUID to string for MongoDB query
+    notification_id_str = str(notification_id)
     updated_doc = await collection.find_one_and_update(
-        {"_id": notification_id, "user_id": user_id, "read": False}, # Only update if currently unread
+        {"_id": notification_id_str, "user_id": user_id, "read": False}, # Only update if currently unread
         {"$set": {"read": True, "updated_at": datetime.utcnow()}},
         return_document=ReturnDocument.AFTER
     )
@@ -117,7 +120,8 @@ async def delete_notification(
     Delete a specific notification. Ensures user owns the notification.
     """
     collection = db[NOTIFICATIONS_COLLECTION]
-    result = await collection.delete_one({"_id": notification_id, "user_id": user_id})
+    notification_id_str = str(notification_id)
+    result = await collection.delete_one({"_id": notification_id_str, "user_id": user_id})
     return result.deleted_count > 0
 
 async def delete_all_notifications_for_user(
