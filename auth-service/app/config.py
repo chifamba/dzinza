@@ -48,7 +48,12 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
 
     # CORS
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:5174"] # Frontend dev ports
+    ALLOWED_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:8080"  # Added for frontend dev server
+    ] # Frontend dev ports
 
     # OpenTelemetry
     ENABLE_TRACING: bool = False
