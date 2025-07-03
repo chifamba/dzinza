@@ -1,6 +1,6 @@
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseCall
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 import jwt # From PyJWT (python-jose also uses/wraps this or similar)
 import structlog
@@ -44,7 +44,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp):
         super().__init__(app)
 
-    async def dispatch(self, request: Request, call_next: RequestResponseCall):
+    async def dispatch(self, request: Request, call_next):
         request.state.user = None # Ensure user state is reset for each request
 
         # Check if path is exempt from authentication

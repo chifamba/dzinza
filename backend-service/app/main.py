@@ -86,26 +86,21 @@ async def add_process_time_header(request: Request, call_next):
     response = await call_next(request)
     process_time = time.time() - start_time
     response.headers["X-Response-Time"] = str(process_time)
-    # Avoid logging here if AuthMiddleware or another middleware will log request completion with user info
-    # logger.info("Request processed", method=request.method, path=request.url.path, status_code=response.status_code, duration=process_time)
     return response
 
-# Security Headers Middleware (Basic set, similar to some Helmet defaults)
-from starlette.middleware.headers import HeadersMiddleware
-app.add_middleware(
-    HeadersMiddleware,
-    headers={
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        # "Content-Security-Policy": "default-src 'self'; script-src 'self'; object-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;", # Example CSP - needs careful crafting
-        "X-XSS-Protection": "1; mode=block", # Deprecated by modern browsers but often still included
-        # "Strict-Transport-Security": "max-age=31536000; includeSubDomains", # If HTTPS is enforced
-        # "Referrer-Policy": "strict-origin-when-cross-origin",
-    }
-)
+# Security Headers Middleware (FastAPI style)
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    # response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; object-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"  # Example CSP
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    # response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 # Authentication Middleware (if gateway handles token validation)
-from app.middleware.auth import AuthMiddleware
 app.add_middleware(AuthMiddleware) # This will add user to request.state if token is valid
 
 # --- Health Check for the Gateway itself ---

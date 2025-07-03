@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional, Dict, Any
-from pydantic import AnyHttpUrl, model_validator
+from pydantic import AnyHttpUrl, model_validator, BaseModel
 from functools import lru_cache
 
 class ServiceURLMap(BaseModel):

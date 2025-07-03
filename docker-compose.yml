@@ -64,7 +64,7 @@ services:
       - REACT_APP_ENVIRONMENT=production
     networks:
       - dzinza-network
-    restart: unless-stopped
+    restart: no # unless-stopped
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`dzinza.local`)"
@@ -288,7 +288,7 @@ services:
       # Add other secrets if gateway directly needs them (e.g., for specific API key auth to downstream)
     networks:
       - dzinza-network
-    restart: unless-stopped
+    restart: no #  unless-stopped
     depends_on: # Depends on all downstream services it proxies to
       - auth_service
       - genealogy_service
@@ -473,7 +473,7 @@ services:
       - MONGO_USER=${DB_USER:-dzinza_user} # Using the same user as other DBs for simplicity
       - MONGO_PASSWORD_FILE=/run/secrets/mongo_password
 
-      - S3_ENDPOINT_URL=http://garage:3900
+      - S3_ENDPOINT_URL=http://garage:39000
       - AWS_ACCESS_KEY_ID=admin
       - AWS_SECRET_ACCESS_KEY=admin-token
       - S3_BUCKET_NAME=dzinza-storage-bucket
@@ -505,26 +505,6 @@ services:
       retries: 3
 
   # Garage S3-compatible Service
-  garage:
-    image: dxflrs/garage:v2.0.0
-    container_name: dzinza-garage
-    ports:
-      - "3900:3900" # S3 API
-      - "3901:3901" # Garage web admin
-    environment:
-      - GARAGE_ADMIN_TOKEN=admin-token
-      - GARAGE_API_BIND_ADDR=0.0.0.0:3900
-      - GARAGE_WEB_ADMIN_BIND_ADDR=0.0.0.0:3901
-      - GARAGE_DATA_DIR=/data
-      - GARAGE_METADATA_DIR=/metadata
-    volumes:
-      - garage_data:/data
-      - garage_metadata:/metadata
-      - ./garage.toml:/etc/garage.toml
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-
   garage1:
     image: dxflrs/garage:v2.0.0
     container_name: dzinza-garage1
@@ -534,7 +514,7 @@ services:
       - "39011:39011" # RPC
       - "39021:39021" # Web admin
     volumes:
-      - ./garage1.toml:/etc/garage.toml
+      - ./garage/garage1.toml:/etc/garage.toml
       - garage1_data:/var/lib/garage/data1
       - garage1_meta:/var/lib/garage/meta1
     networks:
@@ -550,7 +530,7 @@ services:
       - "39012:39012" # RPC
       - "39022:39022" # Web admin
     volumes:
-      - ./garage2.toml:/etc/garage.toml
+      - ./garage/garage2.toml:/etc/garage.toml
       - garage2_data:/var/lib/garage/data2
       - garage2_meta:/var/lib/garage/meta2
     networks:
@@ -566,7 +546,7 @@ services:
       - "39013:39013" # RPC
       - "39023:39023" # Web admin
     volumes:
-      - ./garage3.toml:/etc/garage.toml
+      - ./garage/garage3.toml:/etc/garage.toml
       - garage3_data:/var/lib/garage/data3
       - garage3_meta:/var/lib/garage/meta3
     networks:
