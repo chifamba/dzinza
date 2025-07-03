@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException, status as http_status
+from fastapi import FastAPI, Request, HTTPException, status as http_status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response # Added Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -100,9 +100,6 @@ async def add_security_headers(request: Request, call_next):
     # response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
-# Authentication Middleware (if gateway handles token validation)
-app.add_middleware(AuthMiddleware) # This will add user to request.state if token is valid
-
 # --- Health Check for the Gateway itself ---
 # Note: If the gateway router is mounted at root "/", this /health endpoint needs to be defined
 # *before* the gateway router is included, or it needs its own distinct prefix
@@ -115,9 +112,15 @@ async def health_check():
 
 # --- Main Proxy Router ---
 from app.api.api_v1.api import api_router as v1_api_router # Import the v1 api_router which includes the gateway catch-all
+
+# Create a separate router for protected routes
+protected_router = APIRouter()
+protected_router.add_middleware(AuthMiddleware)
+protected_router.include_router(v1_api_router)
+
 # Mount the main v1 router. If settings.API_V1_STR is "/api/v1", then requests to
 # /api/v1/auth/*, /api/v1/genealogy/* etc. will be handled.
-app.include_router(v1_api_router, prefix=settings.API_V1_STR)
+app.include_router(protected_router, prefix=settings.API_V1_STR)
 
 
 # Global Exception Handlers (similar to other services)

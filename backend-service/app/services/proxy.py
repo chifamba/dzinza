@@ -55,10 +55,10 @@ def get_target_service_url(path: str) -> Optional[Tuple[str, str]]:
     return None
 
 
-def _filter_headers(incoming_headers: httpx.Headers, request_host: str) -> Dict[str, str]:
+def _filter_headers(request: Request, request_host: str) -> Dict[str, str]:
     """Filters headers for forwarding to downstream service."""
     headers_to_forward = {}
-    for name, value in incoming_headers.items():
+    for name, value in request.headers.items():
         if name.lower() not in HOP_BY_HOP_HEADERS and name.lower() not in GATEWAY_MANAGED_HEADERS:
             headers_to_forward[name] = value
 
@@ -70,9 +70,9 @@ def _filter_headers(incoming_headers: httpx.Headers, request_host: str) -> Dict[
     if hasattr(request.state, "user") and request.state.user:
         user_state = request.state.user
         headers_to_forward["X-User-ID"] = str(user_state.id)
-        if user_state.email: # Add email if available
+        if hasattr(user_state, "email") and user_state.email: # Add email if available
              headers_to_forward["X-User-Email"] = str(user_state.email)
-        if user_state.roles: # Add roles if available
+        if hasattr(user_state, "roles") and user_state.roles: # Add roles if available
             headers_to_forward["X-User-Roles"] = ",".join(user_state.roles)
 
     if request_host:
@@ -118,7 +118,7 @@ async def reverse_proxy(request: Request, path: str):
     # Headers
     # Get original request host for X-Forwarded-Host
     request_host = request.headers.get("host", "")
-    headers = _filter_headers(request.headers, request_host=request_host)
+    headers = _filter_headers(request, request_host=request_host)
     if "x-forwarded-for" not in headers: # Add X-Forwarded-For if not already present
         client_host = request.client.host if request.client else "unknown"
         headers["x-forwarded-for"] = client_host
