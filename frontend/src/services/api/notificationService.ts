@@ -6,7 +6,6 @@ export async function fetchNotifications() {
 }
 
 export async function markNotificationRead(notificationId: string) {
-  // Backend route is PATCH /api/v1/notifications/{notification_id}/mark-read
-  const res = await apiClient.patch(`/api/v1/notifications/${notificationId}/mark-read`);
+  const res = await apiClient.post(`/api/v1/notifications/${notificationId}/read`);
   return res.data;
 }

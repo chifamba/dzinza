@@ -1,12 +1,41 @@
 // src/services/api/genealogyService.ts
 import { apiClient } from "./client"; // Assuming client.ts is in the same directory
 import {
-  FamilyTree,
+  FamilyTree as FrontendFamilyTreeType, // Alias for clarity
   FamilyMember,
   Relationship,
   Event,
 } from "../../types/genealogy"; // Adjust path as needed
 import { AxiosResponse } from "axios";
+
+// Represents the data structure from GET /api/v1/family-trees/{tree_id}
+// and potentially GET /api/v1/genealogy/family-tree
+interface ApiFamilyTreeMetaData {
+  id: string;
+  name: string;
+  owner_id: string; // snake_case from backend
+  description?: string;
+  privacy?: string;
+  // Add other relevant metadata fields from backend's FamilyTreeRead/models_main.FamilyTree if needed
+  // e.g. settings, statistics objects if they are returned.
+}
+
+// Maps backend FamilyTreeRead (metadata only) to the frontend FamilyTree type (metadata part)
+const mapApiFamilyTreeMetaDataToFrontendFamilyTree = (apiTreeData: ApiFamilyTreeMetaData): Partial<FrontendFamilyTreeType> => {
+  return {
+    id: apiTreeData.id,
+    name: apiTreeData.name,
+    ownerId: apiTreeData.owner_id, // Map snake_case to camelCase
+    description: apiTreeData.description,
+    // members and relationships would be empty or undefined here,
+    // as this function only maps the metadata from the specific backend endpoint.
+    // The frontend will need to fetch these separately if this model is used directly.
+    members: [], // Default to empty, actual population requires separate calls
+    relationships: [], // Default to empty
+    // Map other fields like privacy, settings, statistics if they are part of ApiFamilyTreeMetaData
+    // and FrontendFamilyTreeType
+  };
+};
 
 // Define response structure for paginated persons if not already defined elsewhere
 export interface PaginatedPersonsResponse {
@@ -32,84 +61,69 @@ export interface PaginatedEventsResponse {
 }
 
 class GenealogyService {
-  // Corrected base URLs to include /api/v1/ prefix for the gateway
-  private treeBaseURL = "/api/v1/family-trees";
-  private personBaseURL = "/api/v1/persons";
-  private relationshipBaseURL = "/api/v1/relationships";
-  private eventsBaseURL = "/api/v1/events";
+  private treeBaseURL = "/api/v1/family-trees"; // Base URL for family tree operations
+  private personBaseURL = "/api/v1/persons"; // Base URL for person operations
+  private relationshipBaseURL = "/api/v1/relationships"; // Base URL for relationship operations
+  private eventsBaseURL = "/api/v1/events"; // Base URL for events
 
   // Family Tree Methods
-  async getFamilyTree(treeId?: string): Promise<FamilyTree | null> {
+  async getFamilyTree(treeId?: string): Promise<Partial<FrontendFamilyTreeType>> {
+    // New backend API endpoint - gets user's default family tree
     if (!treeId) {
-      // Fetch the list of family trees.
-      // The backend's read_family_trees in family_tree.py returns: {"items": trees, "total": -1}
-      // or a proper FamilyTreeList if pagination is fully implemented.
-      // Assuming FamilyTreeList has an 'items' property.
-      const response: AxiosResponse<{ items: FamilyTree[]; total: number } | FamilyTree[]> =
-        await apiClient.get(`${this.treeBaseURL}/`); // GET /api/v1/family-trees/
-
-      const trees = Array.isArray(response.data) ? response.data : response.data.items;
-
-      if (trees && trees.length > 0) {
-        return trees[0]; // Return the first tree as "default"
-      }
-      return null; // No trees found
+      // This path /api/v1/genealogy/family-tree needs to be defined in backend.
+      // Assuming it would also return ApiFamilyTreeMetaData like structure for the default tree.
+      const response = await apiClient.get<ApiFamilyTreeMetaData>(
+        "/api/v1/genealogy/family-tree"
+      );
+      return mapApiFamilyTreeMetaDataToFrontendFamilyTree(response.data);
     }
 
-    // Fetch specific tree ID
-    const response: AxiosResponse<FamilyTree> = await apiClient.get(
-      `${this.treeBaseURL}/${treeId}` // e.g. GET /api/v1/family-trees/{treeId}
+    // API endpoint for specific tree ID (returns metadata only)
+    const response = await apiClient.get<ApiFamilyTreeMetaData>(
+      `${this.treeBaseURL}/${treeId}` // treeBaseURL is /api/v1/family-trees
+
     );
-    return response.data;
+    return mapApiFamilyTreeMetaDataToFrontendFamilyTree(response.data);
   }
 
   async createFamilyTree(
-    data: Pick<FamilyTree, "name" | "description" | "privacy">
-  ): Promise<FamilyTree> {
-    const response: AxiosResponse<FamilyTree> = await apiClient.post(
-      `${this.treeBaseURL}/`, // Ensure trailing slash if backend expects it for POST to collection
+    data: Pick<FrontendFamilyTreeType, "name" | "description" | "privacy">
+    // TODO: The backend expects owner_id implicitly. This function's response should be mapped.
+  ): Promise<Partial<FrontendFamilyTreeType>> { // Return mapped partial type
+    const response = await apiClient.post<ApiFamilyTreeMetaData>( // Assuming backend create returns metadata similar to read
+      this.treeBaseURL,
       data
     );
-    return response.data;
+    return mapApiFamilyTreeMetaDataToFrontendFamilyTree(response.data);
   }
 
   async listFamilyTrees(params?: {
     page?: number;
     limit?: number;
     search?: string;
-  }): Promise<{ trees: FamilyTree[]; pagination: PaginationInfo }> {
-    // Assuming backend returns { items: FamilyTree[], total: number } or similar
-    // and we adapt it or the backend matches this structure.
-    // For now, let's assume the backend might return items directly or nested.
-    // The FamilyTreeList schema in family_tree.py was:
-    // return {"items": trees, "total": -1}
-    // So, this matches { items: FamilyTree[], total: number }
-    const response: AxiosResponse<{ items: FamilyTree[]; total: number; pagination?: PaginationInfo }> = // pagination might be calculated or passed
-      await apiClient.get(`${this.treeBaseURL}/`, { params });
-
-    // Adapt if backend doesn't provide pagination info directly in this format
+    // TODO: The response items here are likely ApiFamilyTreeMetaData[], map them.
+  }): Promise<{ trees: Partial<FrontendFamilyTreeType>[]; pagination: PaginationInfo }> {
+    const response = await apiClient.get<{ items: ApiFamilyTreeMetaData[]; total: number }>( // Assuming backend list returns items and total
+      this.treeBaseURL, { params }
+    );
     return {
-        trees: response.data.items,
-        pagination: response.data.pagination || {
-            page: params?.page || 1,
-            limit: params?.limit || 0,
-            total: response.data.total,
-            pages: response.data.total > 0 && params?.limit ? Math.ceil(response.data.total / params.limit) : 1
-        }
+      trees: response.data.items.map(mapApiFamilyTreeMetaDataToFrontendFamilyTree),
+      pagination: { ...params, total: response.data.total, pages: Math.ceil(response.data.total / (params?.limit || 1)) } // Basic pagination calc
     };
   }
 
   async updateFamilyTree(
     treeId: string,
     data: Partial<
-      Pick<FamilyTree, "name" | "description" | "privacy" | "settings">
+      Pick<FrontendFamilyTreeType, "name" | "description" | "privacy" | "settings">
     >
-  ): Promise<FamilyTree> {
-    const response: AxiosResponse<FamilyTree> = await apiClient.put(
+    // TODO: The response should be mapped.
+  ): Promise<Partial<FrontendFamilyTreeType>> { // Return mapped partial type
+    const response = await apiClient.put<ApiFamilyTreeMetaData>( // Assuming backend update returns metadata similar to read
       `${this.treeBaseURL}/${treeId}`,
       data
     );
-    return response.data;
+    return mapApiFamilyTreeMetaDataToFrontendFamilyTree(response.data);
   }
 
   async deleteFamilyTree(treeId: string): Promise<void> {
@@ -160,12 +174,9 @@ class GenealogyService {
       "id" | "parentIds" | "childIds" | "spouseIds"
     > & { familyTreeId?: string } // Allow familyTreeId in personData
   ): Promise<FamilyMember> {
-    // If familyTreeId needs to be part of the personData for the backend:
-    if (!personData.familyTreeId && familyTreeId) {
-        (personData as FamilyMember).familyTreeId = familyTreeId;
-    }
+    // Corrected path to use the endpoint for creating a person within a specific tree
     const response: AxiosResponse<FamilyMember> = await apiClient.post(
-      `${this.personBaseURL}/`, // POST /api/v1/persons/
+      `/api/v1/trees/${familyTreeId}/persons`,
       personData
     );
     return response.data;
@@ -177,8 +188,9 @@ class GenealogyService {
     personId: string,
     personData: Partial<FamilyMember>
   ): Promise<FamilyMember> {
+    // Corrected path to use the endpoint for updating a specific person
     const response: AxiosResponse<FamilyMember> = await apiClient.put(
-      `${this.personBaseURL}/${personId}`, // PUT /api/v1/persons/{personId}
+      `/api/v1/persons/${personId}`,
       personData
     );
     return response.data;
@@ -288,7 +300,7 @@ class GenealogyService {
     // familyTreeId might be part of personData or a query param, depends on backend.
     // Let's assume it's part of personData for this example if backend supports it.
     const response: AxiosResponse<FamilyMember> = await apiClient.post(
-      `${this.personBaseURL}/`, // POST /api/v1/persons/
+      "/api/v1/genealogy/members",
       personData
     );
     return response.data;
@@ -302,7 +314,7 @@ class GenealogyService {
   }): Promise<Relationship> {
     // Align with addRelationship by using relationshipBaseURL
     const response: AxiosResponse<Relationship> = await apiClient.post(
-      `${this.relationshipBaseURL}/`, // POST /api/v1/relationships/
+      "/api/v1/genealogy/relationships",
       relationshipData
     );
     return response.data;

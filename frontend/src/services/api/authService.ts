@@ -39,10 +39,35 @@ export interface FrontendAuthResponse {
 }
 
 // Helper to map API user to Frontend UserData if needed
-const mapApiUserToUserData = (apiUser: ApiUser): UserData => {
+const mapApiUserToUserData = (apiUserFromServer: any): UserData => { // Treat apiUserFromServer as raw data from server
+  const serverPreferences = apiUserFromServer.preferences || {};
+  // Ensure all fields expected by UserData (which extends ApiUser) are mapped
   return {
-    ...apiUser,
-    name: `${apiUser.firstName || ""} ${apiUser.lastName || ""}`.trim(),
+    // Explicitly map fields from potential snake_case (server) to camelCase (frontend UserData/ApiUser type)
+    // and handle missing fields from server with defaults if appropriate.
+    id: apiUserFromServer.id,
+    email: apiUserFromServer.email,
+    firstName: apiUserFromServer.first_name || apiUserFromServer.firstName || "", // Map from first_name or firstName
+    lastName: apiUserFromServer.last_name || apiUserFromServer.lastName || "",   // Map from last_name or lastName
+    preferredLanguage: apiUserFromServer.preferred_language || apiUserFromServer.preferredLanguage || "en",
+    emailVerified: apiUserFromServer.emailVerified,
+    roles: apiUserFromServer.roles || [],
+    profilePhoto: apiUserFromServer.profilePhoto, // Keep if backend adds it or if it could be on apiUserFromServer
+    dateOfBirth: apiUserFromServer.dateOfBirth,   // Keep if backend adds it
+    isActive: apiUserFromServer.isActive,
+    mfaEnabled: apiUserFromServer.mfaEnabled,
+    preferences: {
+        notifications: serverPreferences.notifications || { email: false, push: false, newsletter: false },
+        privacy: serverPreferences.privacy || { profileVisibility: "private", allowMessages: false, showOnlineStatus: false },
+        theme: serverPreferences.theme || "light",
+        // Prioritize root timezone from server if available, else from server's preferences, else default
+        timezone: apiUserFromServer.timezone || serverPreferences.timezone || "UTC",
+    },
+    createdAt: apiUserFromServer.createdAt,
+    updatedAt: apiUserFromServer.updatedAt,
+
+    // Add the composite 'name' field using the mapped names
+    name: `${apiUserFromServer.first_name || apiUserFromServer.firstName || ""} ${apiUserFromServer.last_name || apiUserFromServer.lastName || ""}`.trim(),
   };
 };
 
