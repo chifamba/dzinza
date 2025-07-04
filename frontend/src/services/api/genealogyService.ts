@@ -67,21 +67,32 @@ class GenealogyService {
   private eventsBaseURL = "/api/v1/events"; // Base URL for events
 
   // Family Tree Methods
-  async getFamilyTree(treeId?: string): Promise<Partial<FrontendFamilyTreeType>> {
-    // New backend API endpoint - gets user's default family tree
+  async getFamilyTree(treeId?: string): Promise<Partial<FrontendFamilyTreeType> | null> {
     if (!treeId) {
-      // This path /api/v1/genealogy/family-tree needs to be defined in backend.
-      // Assuming it would also return ApiFamilyTreeMetaData like structure for the default tree.
-      const response = await apiClient.get<ApiFamilyTreeMetaData>(
-        "/api/v1/genealogy/family-tree"
-      );
-      return mapApiFamilyTreeMetaDataToFrontendFamilyTree(response.data);
+      // No specific treeId provided, try to fetch the user's first tree as a default.
+      console.log("No treeId provided to getFamilyTree, attempting to load first tree from list.");
+      try {
+        const listResponse = await this.listFamilyTrees({ page: 1, limit: 1 });
+        if (listResponse.trees && listResponse.trees.length > 0) {
+          console.log("Found user trees, returning first one:", listResponse.trees[0]);
+          // The listFamilyTrees method already maps to FrontendFamilyTreeType
+          return listResponse.trees[0];
+        } else {
+          console.log("No family trees found for the user.");
+          return null; // No trees found
+        }
+      } catch (error) {
+        console.error("Error fetching list of family trees:", error);
+        // Rethrow or handle as per application's error handling strategy
+        // For now, rethrowing to be caught by the caller
+        throw error;
+      }
     }
 
-    // API endpoint for specific tree ID (returns metadata only)
+    // Specific treeId provided, fetch that tree.
+    console.log(`Fetching specific family tree with ID: ${treeId}`);
     const response = await apiClient.get<ApiFamilyTreeMetaData>(
-      `${this.treeBaseURL}/${treeId}` // treeBaseURL is /api/v1/family-trees
-
+      `${this.treeBaseURL}/${treeId}`
     );
     return mapApiFamilyTreeMetaDataToFrontendFamilyTree(response.data);
   }
