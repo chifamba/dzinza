@@ -32,24 +32,33 @@ export interface PaginatedEventsResponse {
 }
 
 class GenealogyService {
-  private treeBaseURL = "/api/family-trees"; // Base URL for family tree operations
-  private personBaseURL = "/api/persons"; // Base URL for person operations
-  private relationshipBaseURL = "/api/relationships"; // Base URL for relationship operations
-  private eventsBaseURL = "/api/events"; // Base URL for events
+  // Corrected base URLs to include /api/v1/ prefix for the gateway
+  private treeBaseURL = "/api/v1/family-trees";
+  private personBaseURL = "/api/v1/persons";
+  private relationshipBaseURL = "/api/v1/relationships";
+  private eventsBaseURL = "/api/v1/events";
 
   // Family Tree Methods
-  async getFamilyTree(treeId?: string): Promise<FamilyTree> {
-    // New backend API endpoint - gets user's default family tree
+  async getFamilyTree(treeId?: string): Promise<FamilyTree | null> {
     if (!treeId) {
-      const response: AxiosResponse<FamilyTree> = await apiClient.get(
-        "/api/genealogy/family-tree"
-      );
-      return response.data;
+      // Fetch the list of family trees.
+      // The backend's read_family_trees in family_tree.py returns: {"items": trees, "total": -1}
+      // or a proper FamilyTreeList if pagination is fully implemented.
+      // Assuming FamilyTreeList has an 'items' property.
+      const response: AxiosResponse<{ items: FamilyTree[]; total: number } | FamilyTree[]> =
+        await apiClient.get(`${this.treeBaseURL}/`); // GET /api/v1/family-trees/
+
+      const trees = Array.isArray(response.data) ? response.data : response.data.items;
+
+      if (trees && trees.length > 0) {
+        return trees[0]; // Return the first tree as "default"
+      }
+      return null; // No trees found
     }
 
-    // Legacy API endpoint for specific tree ID
+    // Fetch specific tree ID
     const response: AxiosResponse<FamilyTree> = await apiClient.get(
-      `${this.treeBaseURL}/${treeId}`
+      `${this.treeBaseURL}/${treeId}` // e.g. GET /api/v1/family-trees/{treeId}
     );
     return response.data;
   }
@@ -58,7 +67,7 @@ class GenealogyService {
     data: Pick<FamilyTree, "name" | "description" | "privacy">
   ): Promise<FamilyTree> {
     const response: AxiosResponse<FamilyTree> = await apiClient.post(
-      this.treeBaseURL,
+      `${this.treeBaseURL}/`, // Ensure trailing slash if backend expects it for POST to collection
       data
     );
     return response.data;
@@ -69,11 +78,25 @@ class GenealogyService {
     limit?: number;
     search?: string;
   }): Promise<{ trees: FamilyTree[]; pagination: PaginationInfo }> {
-    const response: AxiosResponse<{
-      trees: FamilyTree[];
-      pagination: PaginationInfo;
-    }> = await apiClient.get(this.treeBaseURL, { params });
-    return response.data;
+    // Assuming backend returns { items: FamilyTree[], total: number } or similar
+    // and we adapt it or the backend matches this structure.
+    // For now, let's assume the backend might return items directly or nested.
+    // The FamilyTreeList schema in family_tree.py was:
+    // return {"items": trees, "total": -1}
+    // So, this matches { items: FamilyTree[], total: number }
+    const response: AxiosResponse<{ items: FamilyTree[]; total: number; pagination?: PaginationInfo }> = // pagination might be calculated or passed
+      await apiClient.get(`${this.treeBaseURL}/`, { params });
+
+    // Adapt if backend doesn't provide pagination info directly in this format
+    return {
+        trees: response.data.items,
+        pagination: response.data.pagination || {
+            page: params?.page || 1,
+            limit: params?.limit || 0,
+            total: response.data.total,
+            pages: response.data.total > 0 && params?.limit ? Math.ceil(response.data.total / params.limit) : 1
+        }
+    };
   }
 
   async updateFamilyTree(
@@ -95,62 +118,67 @@ class GenealogyService {
 
   // Person Methods
   async getPersons(
-    familyTreeId: string,
+    familyTreeId: string, // This might be a query param for filtering persons by tree
     search?: string,
     page?: number,
     limit?: number
   ): Promise<PaginatedPersonsResponse> {
     const params: {
-      familyTreeId: string;
+      familyTreeId?: string; // Changed to optional as persons might be global or filtered
       page?: number;
       limit?: number;
       search?: string;
-    } = { familyTreeId, page, limit };
-    if (search) {
-      params.search = search;
-    }
-    // Assuming the backend endpoint is /api/persons and supports these query params
+    } = { page, limit };
+    if (familyTreeId) params.familyTreeId = familyTreeId; // Add if provided
+    if (search) params.search = search;
+
+    // Endpoint for persons: /api/v1/persons
+    // Query params like familyTreeId, search, page, limit should be handled by backend.
     const response: AxiosResponse<PaginatedPersonsResponse> =
-      await apiClient.get(this.personBaseURL, { params });
+      await apiClient.get(`${this.personBaseURL}/`, { params }); // GET /api/v1/persons/
     return response.data;
   }
 
   async getPersonDetails(
     personId: string,
-    treeId?: string
+    treeId?: string // Optional treeId for context if needed by backend
   ): Promise<FamilyMember> {
-    // If treeId is relevant for namespacing or auth, backend should handle it.
-    // Endpoint might be /api/persons/:personId or /api/family-trees/:treeId/persons/:personId
+    const params = treeId ? { familyTreeId: treeId } : {};
     const response: AxiosResponse<FamilyMember> = await apiClient.get(
-      `${this.personBaseURL}/${personId}${
-        treeId ? `?familyTreeId=${treeId}` : ""
-      }`
+      `${this.personBaseURL}/${personId}`, // GET /api/v1/persons/{personId}
+      { params }
     );
     return response.data;
   }
 
+  // This method uses "/api/genealogy/members" which is not standard.
+  // Assuming "members" are "persons" and should use the personBaseURL.
   async addPersonToTree(
-    familyTreeId: string,
+    familyTreeId: string, // May be used in personData or as a query param if API supports it
     personData: Omit<
       FamilyMember,
       "id" | "parentIds" | "childIds" | "spouseIds"
-    >
+    > & { familyTreeId?: string } // Allow familyTreeId in personData
   ): Promise<FamilyMember> {
-    // Use the genealogy members endpoint
+    // If familyTreeId needs to be part of the personData for the backend:
+    if (!personData.familyTreeId && familyTreeId) {
+        (personData as FamilyMember).familyTreeId = familyTreeId;
+    }
     const response: AxiosResponse<FamilyMember> = await apiClient.post(
-      `/api/genealogy/members`,
+      `${this.personBaseURL}/`, // POST /api/v1/persons/
       personData
     );
     return response.data;
   }
 
+  // This method uses "/api/genealogy/members" which is not standard.
+  // Assuming "members" are "persons" and should use the personBaseURL.
   async updatePersonInTree(
     personId: string,
     personData: Partial<FamilyMember>
   ): Promise<FamilyMember> {
-    // Use the genealogy members endpoint instead of the persons endpoint
     const response: AxiosResponse<FamilyMember> = await apiClient.put(
-      `/api/genealogy/members/${personId}`,
+      `${this.personBaseURL}/${personId}`, // PUT /api/v1/persons/{personId}
       personData
     );
     return response.data;
@@ -158,13 +186,12 @@ class GenealogyService {
 
   async deletePersonFromTree(
     personId: string,
-    familyTreeId?: string
+    familyTreeId?: string // Optional: for context or if backend requires it as query param
   ): Promise<void> {
-    // familyTreeId might be passed as query param or in body if needed by backend for auth/scoping
+    const params = familyTreeId ? { familyTreeId: familyTreeId } : {};
     await apiClient.delete(
-      `${this.personBaseURL}/${personId}${
-        familyTreeId ? `?familyTreeId=${familyTreeId}` : ""
-      }`
+      `${this.personBaseURL}/${personId}`, // DELETE /api/v1/persons/{personId}
+      { params }
     );
   }
 
@@ -173,62 +200,44 @@ class GenealogyService {
     relationshipData: Omit<Relationship, "id">
   ): Promise<Relationship> {
     const response: AxiosResponse<Relationship> = await apiClient.post(
-      this.relationshipBaseURL,
+      `${this.relationshipBaseURL}/`, // POST /api/v1/relationships/
       relationshipData
     );
     return response.data;
   }
 
   async deleteRelationship(
-    // treeId is often implicit if relationship IDs are global or person IDs are global.
-    // If backend requires treeId for auth/scoping, it might be part of the path or query.
-    // For now, assuming relationship ID is sufficient or backend resolves tree from person IDs.
-    // The previous mock service had person1Id, person2Id, type. A real API might use a relationshipId.
-    // Let's assume for now we need to identify relationship by participants and type if no direct ID.
-    // This is a placeholder and needs to match the actual backend API for deleting relationships.
-    // A more common pattern is DELETE /api/relationships/:relationshipId
-    // For this example, I'll assume we need person IDs and type as per the mock structure
-    // and that the backend can find the relationship this way.
-    // This is NOT a RESTful standard for deletion usually.
-    person1Id: string,
-    person2Id: string,
-    type: Relationship["type"],
-    familyTreeId: string // Assuming familyTreeId is needed for context
+    relationshipId: string, // Standard RESTful way is by ID
+    familyTreeId?: string // Optional context
   ): Promise<void> {
-    // This endpoint is hypothetical based on the mock.
-    // A real API would likely be DELETE /api/relationships/{relationshipId}
-    // Or DELETE /api/family-trees/{treeId}/relationships/{relationshipId}
-    // For now, let's assume a custom endpoint or that the backend can figure it out.
-    // This is a complex deletion signature.
-    await apiClient.delete(this.relationshipBaseURL, {
-      data: { person1Id, person2Id, type, familyTreeId },
-    });
+     const params = familyTreeId ? { familyTreeId: familyTreeId } : {};
+    await apiClient.delete(`${this.relationshipBaseURL}/${relationshipId}`, { params }); // DELETE /api/v1/relationships/{relationshipId}
   }
 
   // Event Methods
   async getEventsForPerson(
-    personId: string,
+    personId: string, // This implies filtering events by a person
     familyTreeId?: string,
     page?: number,
     limit?: number
   ): Promise<PaginatedEventsResponse> {
     const params: {
-      relatedPersonId: string;
+      relatedPersonId?: string; // Backend should know how to filter by this
       familyTreeId?: string;
       page?: number;
       limit?: number;
-    } = { relatedPersonId: personId, page, limit };
-    if (familyTreeId) {
-      params.familyTreeId = familyTreeId;
-    }
+    } = { page, limit };
+    if (personId) params.relatedPersonId = personId;
+    if (familyTreeId) params.familyTreeId = familyTreeId;
+
     const response: AxiosResponse<PaginatedEventsResponse> =
-      await apiClient.get(this.eventsBaseURL, { params });
+      await apiClient.get(`${this.eventsBaseURL}/`, { params }); // GET /api/v1/events/
     return response.data;
   }
 
   async addEvent(eventData: Omit<Event, "id">): Promise<Event> {
     const response: AxiosResponse<Event> = await apiClient.post(
-      this.eventsBaseURL,
+      `${this.eventsBaseURL}/`, // POST /api/v1/events/
       eventData
     );
     return response.data;
@@ -239,18 +248,23 @@ class GenealogyService {
     eventData: Partial<Omit<Event, "id">>
   ): Promise<Event> {
     const response: AxiosResponse<Event> = await apiClient.put(
-      `${this.eventsBaseURL}/${eventId}`,
+      `${this.eventsBaseURL}/${eventId}`, // PUT /api/v1/events/{eventId}
       eventData
     );
     return response.data;
   }
 
   async deleteEvent(eventId: string): Promise<void> {
-    await apiClient.delete(`${this.eventsBaseURL}/${eventId}`);
+    await apiClient.delete(`${this.eventsBaseURL}/${eventId}`); // DELETE /api/v1/events/{eventId}
   }
 
   // New Backend API Methods - Compatible with our genealogy endpoints
-  async addFamilyMember(personData: {
+  // These methods seem redundant if the above are corrected to use standard REST paths.
+  // For example, addFamilyMember can be addPersonToTree if paths are aligned.
+  // I will assume these were attempts to use different paths and will align them with the
+  // personBaseURL and relationshipBaseURL.
+
+  async addFamilyMember(personData: { // This is essentially addPersonToTree
     name?: string;
     firstName?: string;
     middleName?: string;
@@ -268,21 +282,27 @@ class GenealogyService {
     phoneNumbers?: any[];
     emailAddresses?: any[];
     addresses?: any[];
+    familyTreeId?: string; // Ensure familyTreeId can be passed
   }): Promise<FamilyMember> {
+    // Align with addPersonToTree by using personBaseURL
+    // familyTreeId might be part of personData or a query param, depends on backend.
+    // Let's assume it's part of personData for this example if backend supports it.
     const response: AxiosResponse<FamilyMember> = await apiClient.post(
-      "/api/genealogy/members",
+      `${this.personBaseURL}/`, // POST /api/v1/persons/
       personData
     );
     return response.data;
   }
 
-  async createRelationship(relationshipData: {
+  async createRelationship(relationshipData: { // This is essentially addRelationship
     person1Id: string;
     person2Id: string;
     type: "SPOUSE" | "PARENT_CHILD" | "SIBLING";
+    familyTreeId?: string; // Optional context
   }): Promise<Relationship> {
+    // Align with addRelationship by using relationshipBaseURL
     const response: AxiosResponse<Relationship> = await apiClient.post(
-      "/api/genealogy/relationships",
+      `${this.relationshipBaseURL}/`, // POST /api/v1/relationships/
       relationshipData
     );
     return response.data;
