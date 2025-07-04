@@ -23,7 +23,7 @@ module.exports = function (api) {
           env: {
             VITE_JWT_STORAGE_KEY: "test-jwt-storage-key",
             VITE_REFRESH_TOKEN_KEY: "test-refresh-token-key",
-            VITE_API_BASE_URL: "http://localhost:3001/api",
+            VITE_API_BASE_URL: "http://localhost:3000/api",
             VITE_APP_NAME: "Dzinza Test",
             VITE_DEFAULT_LANGUAGE: "en",
             VITE_SUPPORTED_LANGUAGES: "en,sn,nd",

@@ -10,6 +10,13 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      "/api/genealogy": {
+        target: "http://localhost:3004",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) =>
+          path.replace(/^\/api\/genealogy/, "/api/v1/genealogy"),
+      },
       "/api": {
         target: "http://localhost:3001",
         changeOrigin: true,

@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm # For standard login form
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
 import uuid
+import pyotp
 from typing import Optional
 
 from app import crud, models, schemas, utils
@@ -12,7 +13,7 @@ from app.dependencies import get_current_user, get_current_active_user # Will cr
 
 router = APIRouter()
 
-@router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=schemas.LoginResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(user_in: schemas.RegisterRequest, db: Session = Depends(get_db)):
     """
     Register a new user.
@@ -20,23 +21,68 @@ async def register_user(user_in: schemas.RegisterRequest, db: Session = Depends(
     - Hashes the password.
     - Creates the user in the database.
     - Sends a verification email (mocked for now).
+    - Returns user data and tokens for immediate login.
     """
-    if user_in.username:
-        db_user_by_username = crud.get_user_by_username(db, username=user_in.username)
-        if db_user_by_username:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already registered.",
-            )
+    # Map frontend field names to backend expected field names
+    user_in_dict = user_in.dict()
+    user_in_dict['first_name'] = user_in_dict.pop('firstName')
+    user_in_dict['last_name'] = user_in_dict.pop('lastName')
+    user_in_dict['preferred_language'] = user_in_dict.pop('preferredLanguage')
+    adjusted_user_in = schemas.UserCreate(**user_in_dict)
 
-    db_user_by_email = crud.get_user_by_email(db, email=user_in.email)
+    db_user_by_email = crud.get_user_by_email(db, email=adjusted_user_in.email)
     if db_user_by_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered.",
         )
 
-    user = crud.create_user(db=db, user=user_in)
+    user = crud.create_user(db=db, user=adjusted_user_in)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = utils.create_access_token(
+        subject={"user_id": str(user.id), "email": user.email, "role": user.role.value},
+        expires_delta=access_token_expires
+    )
+    refresh_jti = utils.generate_jti()
+    refresh_token_expires_delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    refresh_token = utils.create_refresh_token(
+        subject={"user_id": str(user.id)},
+        jti=refresh_jti,
+        expires_delta=refresh_token_expires_delta
+    )
+    crud.create_refresh_token(
+        db,
+        user_id=user.id,
+        token_jti=refresh_jti,
+        expires_at=datetime.utcnow() + refresh_token_expires_delta,
+        ip_address="mock_ip",
+        user_agent="mock_ua"
+    )
+    tokens = schemas.AuthTokens(
+        accessToken=access_token,
+        refreshToken=refresh_token,
+        expiresIn=int(access_token_expires.total_seconds())
+    )
+    return schemas.LoginResponse(
+        message="Registration successful",
+        user=schemas.UserResponse(
+            id=user.id,
+            email=user.email,
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            preferred_language=user.preferred_language,
+            isActive=user.is_active,
+            isSuperuser=user.role == schemas.UserRole.ADMIN,
+            roles=[user.role.value] if user.role else [],
+            emailVerified=user.email_verified,
+            mfaEnabled=user.mfa_enabled if hasattr(user, 'mfa_enabled') else False,
+            lastLoginAt=user.last_login_at if hasattr(user, 'last_login_at') else None,
+            createdAt=user.created_at if hasattr(user, 'created_at') else datetime.utcnow(),
+            updatedAt=user.updated_at if hasattr(user, 'updated_at') else datetime.utcnow()
+        ),
+        tokens=tokens
+    )
 
     # Send verification email
     # verification_token = crud.set_email_verification_token(db, db_user=user)
@@ -63,7 +109,7 @@ async def register_user(user_in: schemas.RegisterRequest, db: Session = Depends(
     return user
 
 
-@router.post("/login", response_model=schemas.Token)
+@router.post("/login", response_model=schemas.LoginResponse)
 async def login_for_access_token(
     request: Request,
     response: Response, # To set cookies
@@ -71,7 +117,7 @@ async def login_for_access_token(
     db: Session = Depends(get_db)  # To get IP and User-Agent
 ):
     """
-    Authenticate user and return JWT tokens.
+    Authenticate user and return JWT tokens along with user data.
     Now uses a JSON body defined by schemas.LoginRequest.
     Includes MFA check if enabled for the user.
     """
@@ -96,24 +142,35 @@ async def login_for_access_token(
 
     # MFA Check
     if user.mfa_enabled:
-        if not login_data.mfa_code:
-            # Potentially log this specific state: password correct, but MFA code missing
-            # For now, return a specific error. Some APIs might return 200 OK with a "mfa_required" flag.
-            # Here, we'll demand it if enabled.
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, # Or 401/403 with specific detail
-                detail="MFA code is required for this account."
+        if not login_data.mfaCode:
+            return schemas.LoginResponse(
+                message="MFA required",
+                requireMfa=True,
+                user=schemas.UserResponse(
+                    id=user.id,
+                    email=user.email,
+                    username=user.username,
+                    first_name=user.first_name,
+                    last_name=user.last_name,
+                    preferred_language=user.preferred_language,
+                    isActive=user.is_active,
+                    isSuperuser=user.role == schemas.UserRole.ADMIN,
+                    roles=[user.role.value] if user.role else [],
+                    emailVerified=user.email_verified,
+                    mfaEnabled=user.mfa_enabled if hasattr(user, 'mfa_enabled') else False,
+                    lastLoginAt=user.last_login_at if hasattr(user, 'last_login_at') else None,
+                    createdAt=user.created_at if hasattr(user, 'created_at') else datetime.utcnow(),
+                    updatedAt=user.updated_at if hasattr(user, 'updated_at') else datetime.utcnow()
+                )
             )
 
         if not user.mfa_secret: # Should not happen if mfa_enabled is true
-            # Log this server-side error condition
-            # logger.error(f"User {user.id} has MFA enabled but no MFA secret stored.")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="MFA configuration error.")
 
         totp = pyotp.TOTP(user.mfa_secret)
-        if not totp.verify(login_data.mfa_code):
+        if not totp.verify(login_data.mfaCode):
             # Primary TOTP failed, try as a backup code
-            if not crud.verify_and_consume_backup_code(db, db_user=user, backup_code_plain=login_data.mfa_code):
+            if not crud.verify_and_consume_backup_code(db, db_user=user, backup_code_plain=login_data.mfaCode):
                 # Both TOTP and backup code failed
                 crud.increment_failed_login_attempts(db, user)
                 raise HTTPException(
@@ -121,12 +178,6 @@ async def login_for_access_token(
                     detail="Invalid MFA code or backup code.",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-            # If backup code was successful, it's consumed. Log this specific event.
-            # crud.create_audit_log(db, user_id=user.id, action=schemas.AuditLogAction.MFA_BACKUP_CODE_USED, ...)
-        # If TOTP or backup code is valid, proceed.
-
-    ip_address = request.client.host if request.client else "unknown_ip"
-    user_agent = request.headers.get("user-agent", "unknown_ua")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = utils.create_access_token(
@@ -147,11 +198,11 @@ async def login_for_access_token(
         user_id=user.id,
         token_jti=refresh_jti,
         expires_at=datetime.utcnow() + refresh_token_expires_delta,
-        ip_address="mock_ip", # TODO: Get IP from request headers
-        user_agent="mock_ua" # TODO: Get User-Agent from request headers
+        ip_address=request.client.host,
+        user_agent=request.headers.get("User-Agent", "unknown")
     )
 
-    crud.update_last_login(db, db_user=user, ip_address="mock_ip")
+    crud.update_last_login(db, db_user=user, ip_address=request.client.host)
 
     # Set tokens in HTTPOnly cookies (more secure for web clients)
     response.set_cookie(
@@ -171,14 +222,33 @@ async def login_for_access_token(
         secure=not settings.DEBUG
     )
 
-    return schemas.Token(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=int(access_token_expires.total_seconds()),
-        refresh_token=refresh_token # Also return in body for non-web clients
+    tokens = schemas.AuthTokens(
+        accessToken=access_token,
+        refreshToken=refresh_token,
+        expiresIn=int(access_token_expires.total_seconds())
+    )
+    return schemas.LoginResponse(
+        message="Login successful",
+        user=schemas.UserResponse(
+            id=user.id,
+            email=user.email,
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            preferred_language=user.preferred_language,
+            isActive=user.is_active,
+            isSuperuser=user.role == schemas.UserRole.ADMIN,
+            roles=[user.role.value] if user.role else [],
+            emailVerified=user.email_verified,
+            mfaEnabled=user.mfa_enabled if hasattr(user, 'mfa_enabled') else False,
+            lastLoginAt=user.last_login_at if hasattr(user, 'last_login_at') else None,
+            createdAt=user.created_at if hasattr(user, 'created_at') else datetime.utcnow(),
+            updatedAt=user.updated_at if hasattr(user, 'updated_at') else datetime.utcnow()
+        ),
+        tokens=tokens
     )
 
-@router.post("/refresh", response_model=schemas.Token)
+@router.post("/refresh", response_model=schemas.AuthTokens)
 async def refresh_access_token(
     response: Response,
     refresh_token_data: schemas.RefreshTokenRequest, # Expect refresh token in body
@@ -187,7 +257,7 @@ async def refresh_access_token(
     """
     Refresh an access token using a valid refresh token.
     """
-    token_payload = utils.decode_token(refresh_token_data.refresh_token, settings.ASSEMBLED_JWT_REFRESH_SECRET)
+    token_payload = utils.decode_token(refresh_token_data.refreshToken, settings.ASSEMBLED_JWT_REFRESH_SECRET)
     if not token_payload or not token_payload.user_id or not token_payload.jti:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -217,27 +287,8 @@ async def refresh_access_token(
         expires_delta=access_token_expires
     )
 
-    # Optionally, implement refresh token rotation:
-    # 1. Revoke the old refresh token
-    # crud.revoke_refresh_token(db, db_refresh_token)
-    # 2. Issue a new refresh token
-    # new_refresh_jti = utils.generate_jti()
-    # new_refresh_token_expires_delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    # new_refresh_token = utils.create_refresh_token(
-    #     subject={"user_id": str(user.id)},
-    #     jti=new_refresh_jti,
-    #     expires_delta=new_refresh_token_expires_delta
-    # )
-    # crud.create_refresh_token(
-    #     db, user_id=user.id, token_jti=new_refresh_jti,
-    #     expires_at=datetime.utcnow() + new_refresh_token_expires_delta,
-    #     ip_address="mock_ip", user_agent="mock_ua"
-    # )
-    # response.set_cookie(key="refresh_token_cookie", value=new_refresh_token, ...)
-    # refreshed_token_to_return = new_refresh_token
-
-    # For simplicity now, reuse existing refresh token until it expires.
-    refreshed_token_to_return = refresh_token_data.refresh_token
+    # For simplicity, reuse existing refresh token until it expires.
+    refreshed_token_to_return = refresh_token_data.refreshToken
 
     response.set_cookie(
         key="access_token_cookie",
@@ -248,11 +299,10 @@ async def refresh_access_token(
         secure=not settings.DEBUG
     )
 
-    return schemas.Token(
-        access_token=new_access_token,
-        token_type="bearer",
-        expires_in=int(access_token_expires.total_seconds()),
-        refresh_token=refreshed_token_to_return
+    return schemas.AuthTokens(
+        accessToken=new_access_token,
+        refreshToken=refreshed_token_to_return,
+        expiresIn=int(access_token_expires.total_seconds())
     )
 
 

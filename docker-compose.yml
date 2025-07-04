@@ -271,12 +271,15 @@ services:
       - GENEALOGY_SERVICE_URL=http://genealogy_service:8000/api/v1
       - SEARCH_SERVICE_URL=http://search_service:8000/api/v1
       - STORAGE_SERVICE_URL=http://storage_service:8000/api/v1
-
+      # Add these for the proxy to work correctly inside Docker:
+      - AUTH_SERVICE_BASE_URL=http://auth_service:8000
+      - GENEALOGY_SERVICE_BASE_URL=http://genealogy_service:8000
+      - SEARCH_SERVICE_BASE_URL=http://search_service:8000
+      - STORAGE_SERVICE_BASE_URL=http://storage_service:8000
       # JWT settings if gateway validates tokens
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
       - JWT_ALGORITHM=HS256 # Ensure this matches auth-service
       - JWT_AUDIENCE=dzinza-app # Ensure this matches auth-service
-
       - OTEL_SERVICE_NAME=api-gateway
       - JAEGER_ENDPOINT=${JAEGER_ENDPOINT}
       - PYTHONUNBUFFERED=1

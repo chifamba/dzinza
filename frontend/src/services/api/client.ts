@@ -9,7 +9,7 @@ import axios, {
 // In development, use relative URLs to leverage Vite proxy
 // In production, use the environment variable
 const BASE_URL = import.meta.env.PROD
-  ? import.meta.env.VITE_AUTH_SERVICE_URL || "http://localhost:3002"
+  ? import.meta.env.VITE_AUTH_SERVICE_URL || "http://localhost:3000"
   : ""; // Use relative URLs in development to leverage proxy
 const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
 
@@ -43,7 +43,7 @@ class ApiClient {
   private setupInterceptors() {
     // Request interceptor to add auth token
     this.instance.interceptors.request.use(
-      (config: AxiosRequestConfig) => {
+      (config) => {
         const tokenKey =
           import.meta.env.VITE_JWT_STORAGE_KEY || "dzinza_access_token";
         const token = localStorage.getItem(tokenKey);
@@ -202,7 +202,7 @@ class ApiClient {
   async uploadFile<T = unknown>(
     url: string,
     file: File,
-    onUploadProgress?: (progressEvent: ProgressEvent) => void,
+    onUploadProgress?: (progressEvent: any) => void,
     additionalData?: Record<string, any>
   ): Promise<AxiosResponse<T>> {
     const formData = new FormData();

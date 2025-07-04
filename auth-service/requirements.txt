@@ -6,6 +6,7 @@ sqlalchemy==2.0.28
 psycopg2-binary==2.9.9 # For PostgreSQL
 redis==5.0.3 # For Redis
 python-jose[cryptography]==3.3.0 # For JWT
+pyotp==2.8.0 # For MFA
 passlib[bcrypt]==1.7.4 # For password hashing
 python-multipart==0.0.9 # For form data (e.g., if supporting OAuth form posts)
 email-validator==2.1.1 # For email validation

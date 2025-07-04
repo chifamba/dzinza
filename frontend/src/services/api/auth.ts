@@ -1,12 +1,12 @@
-import { AxiosResponse } from 'axios'; // Removed unused axios default import
-import { apiClient } from './client';
+import { AxiosResponse } from "axios"; // Removed unused axios default import
+import { apiClient } from "./client";
 
 export interface RegisterData {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
-  preferredLanguage: 'en' | 'sn' | 'nd';
+  preferredLanguage: "en" | "sn" | "nd";
 }
 
 export interface LoginData {
@@ -20,7 +20,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  preferredLanguage: 'en' | 'sn' | 'nd';
+  preferredLanguage: "en" | "sn" | "nd";
   emailVerified: boolean;
   roles: string[];
   profilePhoto?: string;
@@ -34,11 +34,11 @@ export interface User {
       newsletter: boolean;
     };
     privacy: {
-      profileVisibility: 'public' | 'family' | 'private';
+      profileVisibility: "public" | "family" | "private";
       allowMessages: boolean;
       showOnlineStatus: boolean;
     };
-    theme: 'light' | 'dark' | 'auto';
+    theme: "light" | "dark" | "auto";
     timezone: string;
   };
   createdAt: string;
@@ -88,8 +88,8 @@ export interface UpdateProfileData {
   firstName?: string;
   lastName?: string;
   dateOfBirth?: string;
-  preferredLanguage?: 'en' | 'sn' | 'nd';
-  preferences?: Partial<User['preferences']>;
+  preferredLanguage?: "en" | "sn" | "nd";
+  preferences?: Partial<User["preferences"]>;
 }
 
 export interface EmailVerificationData {
@@ -107,7 +107,7 @@ export interface MfaVerifyData {
 }
 
 class AuthAPI {
-  private baseURL = '/api/auth';
+  private baseURL = "/api/v1/auth";
 
   async register(data: RegisterData): Promise<AuthResponse> {
     const response: AxiosResponse<AuthResponse> = await apiClient.post(
@@ -167,7 +167,9 @@ class AuthAPI {
     return response.data;
   }
 
-  async requestPasswordReset(data: PasswordResetData): Promise<{ message: string }> {
+  async requestPasswordReset(
+    data: PasswordResetData
+  ): Promise<{ message: string }> {
     const response: AxiosResponse<{ message: string }> = await apiClient.post(
       `${this.baseURL}/forgot-password`,
       data
@@ -175,7 +177,9 @@ class AuthAPI {
     return response.data;
   }
 
-  async resetPassword(data: PasswordResetConfirmData): Promise<{ message: string }> {
+  async resetPassword(
+    data: PasswordResetConfirmData
+  ): Promise<{ message: string }> {
     const response: AxiosResponse<{ message: string }> = await apiClient.post(
       `${this.baseURL}/reset-password`,
       data
@@ -199,11 +203,11 @@ class AuthAPI {
     return response.data;
   }
 
-  async verifyMfa(data: MfaVerifyData): Promise<{ message: string; backupCodes: string[] }> {
-    const response: AxiosResponse<{ message: string; backupCodes: string[] }> = await apiClient.post(
-      `${this.baseURL}/mfa/verify`,
-      data
-    );
+  async verifyMfa(
+    data: MfaVerifyData
+  ): Promise<{ message: string; backupCodes: string[] }> {
+    const response: AxiosResponse<{ message: string; backupCodes: string[] }> =
+      await apiClient.post(`${this.baseURL}/mfa/verify`, data);
     return response.data;
   }
 
@@ -216,9 +220,8 @@ class AuthAPI {
   }
 
   async regenerateBackupCodes(): Promise<{ backupCodes: string[] }> {
-    const response: AxiosResponse<{ backupCodes: string[] }> = await apiClient.post(
-      `${this.baseURL}/mfa/backup-codes/regenerate`
-    );
+    const response: AxiosResponse<{ backupCodes: string[] }> =
+      await apiClient.post(`${this.baseURL}/mfa/backup-codes/regenerate`);
     return response.data;
   }
 
@@ -234,13 +237,15 @@ class AuthAPI {
   async exportData(): Promise<Blob> {
     const response: AxiosResponse<Blob> = await apiClient.get(
       `${this.baseURL}/export-data`,
-      { responseType: 'blob' }
+      { responseType: "blob" }
     );
     return response.data;
   }
 
   // Social Authentication
-  async initiateOAuth(provider: 'google' | 'facebook'): Promise<{ authUrl: string }> {
+  async initiateOAuth(
+    provider: "google" | "facebook"
+  ): Promise<{ authUrl: string }> {
     const response: AxiosResponse<{ authUrl: string }> = await apiClient.get(
       `${this.baseURL}/oauth/${provider}`
     );
@@ -248,7 +253,7 @@ class AuthAPI {
   }
 
   async handleOAuthCallback(
-    provider: 'google' | 'facebook',
+    provider: "google" | "facebook",
     code: string,
     state: string
   ): Promise<AuthResponse> {
@@ -267,14 +272,15 @@ class AuthAPI {
     // If backend expects a different field name, apiClient.post with FormData might be more direct.
     // Assuming backend consuming /api/auth/profile/avatar expects the file under field name 'avatar':
     const formData = new FormData();
-    formData.append('avatar', file); // Ensure backend expects 'avatar'
+    formData.append("avatar", file); // Ensure backend expects 'avatar'
 
-    const response: AxiosResponse<{ user: User }> = await apiClient.post( // Using .post for explicit field name
+    const response: AxiosResponse<{ user: User }> = await apiClient.post(
+      // Using .post for explicit field name
       `${this.baseURL}/profile/avatar`,
       formData,
       {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       }
     );

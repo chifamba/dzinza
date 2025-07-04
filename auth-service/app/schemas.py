@@ -11,6 +11,11 @@ class Token(BaseModel):
     expires_in: int # seconds
     refresh_token: Optional[str] = None
 
+class AuthTokens(BaseModel):
+    accessToken: str
+    refreshToken: str
+    expiresIn: int
+
 class TokenPayload(BaseModel):
     sub: str
     exp: Optional[int] = None
@@ -59,17 +64,37 @@ class UserUpdate(UserBase):
 
 class UserResponse(UserBase):
     id: uuid.UUID
-    is_active: bool
-    is_superuser: bool
-    role: UserRole
-    email_verified: bool
-    mfa_enabled: bool
-    last_login_at: Optional[datetime.datetime] = None
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
+    isActive: bool
+    isSuperuser: bool
+    roles: List[str]
+    emailVerified: bool
+    mfaEnabled: bool
+    lastLoginAt: Optional[datetime.datetime] = None
+    createdAt: datetime.datetime
+    updatedAt: datetime.datetime
+    preferences: dict = {
+        "notifications": {
+            "email": False,
+            "push": False,
+            "newsletter": False
+        },
+        "privacy": {
+            "profileVisibility": "private",
+            "allowMessages": False,
+            "showOnlineStatus": False
+        },
+        "theme": "light",
+        "timezone": "UTC"
+    }
 
     class Config:
         from_attributes = True
+
+class LoginResponse(BaseModel):
+    message: str = "Login successful"
+    user: Optional[UserResponse] = None
+    tokens: Optional[AuthTokens] = None
+    requireMfa: Optional[bool] = False
 
 class UserPublicResponse(BaseModel):
     id: uuid.UUID
@@ -82,12 +107,28 @@ class UserPublicResponse(BaseModel):
 
 # Auth Schemas
 class LoginRequest(BaseModel): # Changed from OAuth2PasswordRequestForm to Pydantic model
-    email: EmailStr # 'username' in OAuth2PasswordRequestForm, mapping to email
+    email: EmailStr
     password: str
-    mfa_code: Optional[str] = Field(None, min_length=6, max_length=6)
+    mfaCode: Optional[str] = Field(None, min_length=6, max_length=6)
 
-class RegisterRequest(UserCreate):
-    pass
+class RegisterRequest(BaseModel):
+    firstName: str
+    lastName: str
+    email: EmailStr
+    password: constr(min_length=8)
+    preferredLanguage: str = "en"
+
+    @validator('password')
+    def validate_password_strength(cls, v):
+        if not any(char.islower() for char in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not any(char.isupper() for char in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Password must contain at least one digit')
+        if not any(char in '!@#$%^&*()_+-=[]{};\':",./<>?`~' for char in v):
+            raise ValueError('Password must contain at least one special character')
+        return v
 
 class PasswordChangeRequest(BaseModel):
     current_password: str
@@ -164,7 +205,7 @@ class RefreshTokenCreate(BaseModel):
     user_agent: Optional[str] = None
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    refreshToken: str
 
 # Audit Log Schemas
 class AuditLogBase(BaseModel):
