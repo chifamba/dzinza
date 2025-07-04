@@ -47,7 +47,7 @@ export interface UpdateMediaMetadataPayload {
 
 
 class MediaService {
-  private baseURL = '/api/files'; // Assuming '/api/files' is the base for storage-service via gateway
+  private baseURL = '/api/v1/files'; // Assuming '/api/v1/files' is the base for storage-service via gateway
 
   async uploadMedia(formData: FormData): Promise<ApiFile> {
     // apiClient.uploadFile might be an option if it's already configured for FormData
