@@ -18,6 +18,9 @@ FROM python:3.11-slim
 
 WORKDIR /home/app/web
 
+# Install curl for healthchecks
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 # Create a non-root user and group
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 

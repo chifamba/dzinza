@@ -12,8 +12,9 @@ def get_redis_password():
 
 redis_password = get_redis_password()
 
-broker_url = f"redis://:{redis_password}@dzinza-redis:6379/0"
-backend_url = f"redis://:{redis_password}@dzinza-redis:6379/1"
+redis_host = os.environ.get("REDIS_HOST", "redis")
+broker_url = f"redis://:{redis_password}@{redis_host}:6379/0"
+backend_url = f"redis://:{redis_password}@{redis_host}:6379/1"
 
 celery_app = Celery(
     "genealogy",

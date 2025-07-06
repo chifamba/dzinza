@@ -26,7 +26,8 @@ async def create_family_tree(
     created_tree = await crud_family_tree.create_tree(db=db, tree_in=tree_in, owner_id=current_user.id)
     return created_tree
 
-@router.get("/", response_model=schemas.FamilyTreeList) # Or List[schemas.FamilyTreeRead] / FamilyTreeSummary
+@router.get("", response_model=schemas.FamilyTreeList) # For path without trailing slash
+@router.get("/", response_model=schemas.FamilyTreeList) # For path with trailing slash
 async def read_family_trees(
     db: AsyncIOMotorDatabase = Depends(get_database),
     skip: int = Query(0, ge=0),

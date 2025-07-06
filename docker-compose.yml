@@ -64,10 +64,15 @@ services:
       - REACT_APP_ENVIRONMENT=production
     networks:
       - dzinza-network
-    restart: no # unless-stopped
+    restart: unless-stopped
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`dzinza.local`)"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # PostgreSQL Database
   postgres:
@@ -144,7 +149,7 @@ services:
 
   # Elasticsearch for Search
   elasticsearch:
-    image: elasticsearch:9.0.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
     container_name: elasticsearch
     ports:
       - "9200:9200"
@@ -153,6 +158,19 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "bootstrap.memory_lock=true"
+      - "cluster.name=dzinza-elasticsearch"
+      - "http.cors.enabled=true"
+      - 'http.cors.allow-origin="*"'
+      - "indices.recovery.max_bytes_per_sec=100mb"
+      - "action.destructive_requires_name=false"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     networks:
@@ -244,12 +262,12 @@ services:
       - google_client_secret
     networks:
       - dzinza-network
-    restart: no #unless-stopped
+    restart: unless-stopped
     depends_on:
       - postgres
       - redis
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"] # Adjust port and path
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -291,7 +309,7 @@ services:
       # Add other secrets if gateway directly needs them (e.g., for specific API key auth to downstream)
     networks:
       - dzinza-network
-    restart: no #  unless-stopped
+    restart: unless-stopped
     depends_on: # Depends on all downstream services it proxies to
       - auth_service
       - genealogy_service
@@ -299,12 +317,7 @@ services:
       - search_service
       - storage_service
     healthcheck:
-      # Health check path for gateway itself (e.g., /api/v1/gateway/health)
-      test:
-        [
-          "CMD-SHELL",
-          "curl -f http://localhost:8000/api/v1/gateway/health || exit 1",
-        ]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/gateway/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -314,6 +327,7 @@ services:
       context: ./genealogy-service # Path to the Python service code
       dockerfile: Dockerfile # Service-specific Dockerfile (uses base image)
     container_name: dzinza-genealogy-service
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "${GENEALOGY_SERVICE_PORT:-3004}:8000" # Expose port, maps to 8000 in container
     volumes:
@@ -322,22 +336,17 @@ services:
     environment:
       - DEBUG=${DEBUG:-false}
       - DB_USER=${DB_USER:-dzinza_user}
-      - DB_PASSWORD=${MONGO_PASSWORD:-mongo_secure_password}
       # MongoDB settings - constructed to match what Pydantic settings in config.py expects
       # Assumes MONGO_INITDB_ROOT_USERNAME and MONGO_INITDB_ROOT_PASSWORD_FILE are used for auth.
       # The MONGO_INITDB_ROOT_USERNAME is set to 'dzinza_user' by default in mongodb service.
-      - MONGODB_URL=mongodb://${DB_USER:-dzinza_user}:${MONGO_PASSWORD:-mongo_secure_password_456}@mongodb:27017
+      - MONGODB_URL=mongodb://${DB_USER:-dzinza_user}:${MONGO_PASSWORD:-mongo_secure_password_456}@mongodb:27017/${MONGODB_GENEALOGY_DB:-dzinza_genealogy}?authSource=admin
       - MONGODB_DATABASE_NAME=${MONGODB_GENEALOGY_DB:-dzinza_genealogy}
       - MONGODB_PASSWORD_FILE=/run/secrets/mongo_password # Path to the secret file for the app to read
 
       # Celery settings - constructed for Redis broker/backend
-      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD_FILE_CONTENT}@redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD_FILE_CONTENT}@redis:6379/1
-      # Note: REDIS_PASSWORD_FILE_CONTENT is a placeholder for how the app would read the secret.
-      # The app's config.py needs to be able to read from /run/secrets/redis_password.
-      # For Celery, it's often easier if the full URL includes the password.
-      # So, the app's config.py will need to read /run/secrets/redis_password and build the URL.
-      # Let's simplify here and assume config.py handles reading the secret file for Celery URLs.
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-redis_secure_password_789}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-redis_secure_password_789}@redis:6379/1
+      # Note: The application should read the Redis password from /run/secrets/redis_password and construct the URLs.
       - REDIS_PASSWORD_FILE=/run/secrets/redis_password # App reads this file
       - REDIS_HOST=redis # For Celery config in app
 
@@ -352,12 +361,14 @@ services:
       - redis_password # Grant access to Redis password secret
     networks:
       - dzinza-network
-    restart: no #  unless-stopped
+    restart: unless-stopped
     depends_on:
-      - mongodb
-      - redis
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -374,15 +385,13 @@ services:
         "worker",
         "-l",
         "info",
-        "-P",
-        "eventlet",
-      ] # Example command
+      ] # Updated command
     volumes:
       - ./genealogy-service:/home/app/web # Mount code for development
       - shared_config:/etc/shared-config
     environment:
       - DEBUG=${DEBUG:-false}
-      - MONGODB_URL=mongodb://${DB_USER:-dzinza_user}@mongodb:27017
+      - MONGODB_URL=mongodb://${DB_USER:-dzinza_user}:${MONGO_PASSWORD:-mongo_secure_password_456}@mongodb:27017/${MONGODB_GENEALOGY_DB:-dzinza_genealogy}?authSource=admin
       - MONGODB_DATABASE_NAME=${MONGODB_GENEALOGY_DB:-dzinza_genealogy}
       - MONGODB_PASSWORD_FILE=/run/secrets/mongo_password
       - REDIS_PASSWORD_FILE=/run/secrets/redis_password
@@ -392,12 +401,13 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
       - SHARED_CONFIG_PATH=/etc/shared-config/genealogy.yaml
+      # Note: The application should read the Redis password from /run/secrets/redis_password for Celery URLs.
     secrets:
       - mongo_password
       - redis_password
     networks:
       - dzinza-network
-    restart: no #  unless-stopped
+    restart: unless-stopped
     depends_on:
       - mongodb
       - redis
@@ -427,7 +437,7 @@ services:
 
       # MongoDB for Analytics (if enabled in app config)
       - MONGODB_ANALYTICS_ENABLED=${MONGODB_ANALYTICS_ENABLED:-false}
-      - MONGODB_URL_ANALYTICS=mongodb://${DB_USER:-dzinza_user}@mongodb:27017/${MONGODB_SEARCH_DB:-dzinza_search_analytics}
+      - MONGODB_URL_ANALYTICS=mongodb://${DB_USER:-dzinza_user}@mongodb:27017/${MONGODB_SEARCH_DB:-dzinza_search_analytics}?authSource=admin
       - MONGODB_PASSWORD_FILE_ANALYTICS=/run/secrets/mongo_password
 
       - JWT_SECRET_FILE=/run/secrets/jwt_secret # For token validation if endpoints are protected
@@ -448,15 +458,18 @@ services:
       # - es_username
     networks:
       - dzinza-network
-    restart: no #  unless-stopped
+    restart: unless-stopped
     depends_on:
-      - elasticsearch
-      - mongodb # If analytics enabled and uses MongoDB
+      elasticsearch:
+        condition: service_healthy
+      mongodb: # If analytics enabled and uses MongoDB
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
-      timeout: 10s
-      retries: 3
+      timeout: 15s
+      retries: 5
+      start_period: 30s
 
   storage_service:
     build:
@@ -476,11 +489,14 @@ services:
       - MONGO_USER=${DB_USER:-dzinza_user} # Using the same user as other DBs for simplicity
       - MONGO_PASSWORD_FILE=/run/secrets/mongo_password
 
-      - S3_ENDPOINT_URL=http://garage:39000
-      - AWS_ACCESS_KEY_ID=admin
-      - AWS_SECRET_ACCESS_KEY=admin-token
+      - AWS_REGION=${AWS_REGION:-garage} # Add AWS_REGION to environment
+      - S3_ENDPOINT_URL=http://garage1:39000
+      - AWS_ACCESS_KEY_ID_FILE=/run/secrets/aws_access_key_id
+      - AWS_SECRET_ACCESS_KEY_FILE=/run/secrets/aws_secret_access_key
       - S3_BUCKET_NAME=dzinza-storage-bucket
       - S3_FORCE_PATH_STYLE=true
+      - S3_CREATE_BUCKET_IF_NOT_EXISTS=true
+      # Note: Ensure the bucket 'dzinza-storage-bucket' exists in Garage or is created on startup by the application.
 
       - JWT_SECRET_FILE=/run/secrets/jwt_secret # For token validation
       - JWT_ALGORITHM=HS256 # Must match auth-service
@@ -498,11 +514,12 @@ services:
       - jwt_secret # For token validation
     networks:
       - dzinza-network
-    restart: no # unless-stopped
+    restart: unless-stopped
     depends_on:
       - mongodb
+      - garage1
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3

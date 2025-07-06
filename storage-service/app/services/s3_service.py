@@ -70,20 +70,35 @@ class S3ServiceClass:
             self.s3_resource = session.resource('s3', **resource_args)
 
             try:
-                # Boto3 client operations are synchronous.
-                # For FastAPI startup, this is generally acceptable.
-                # If it becomes a bottleneck, consider `run_in_threadpool`.
-                self.s3_client.head_bucket(Bucket=self.bucket_name)
-                logger.info(f"Successfully connected to S3 bucket: {self.bucket_name}")
-                self._is_connected = True
-            except ClientError as e:
-                error_code = e.response.get("Error", {}).get("Code")
-                if error_code == '404' or error_code == 'NoSuchBucket':
-                    logger.error(f"S3 bucket '{self.bucket_name}' not found.")
-                elif error_code == '403':
-                    logger.error(f"Access denied to S3 bucket '{self.bucket_name}'. Check credentials and permissions.")
+                # A more robust way for S3-compatible storage: try to create the bucket
+                # and handle the case where it already exists.
+                if settings.S3_CREATE_BUCKET_IF_NOT_EXISTS:
+                    try:
+                        # For non-AWS S3, a LocationConstraint is often needed, even if empty for some like MinIO
+                        # For AWS, the region from the client is used and this is not needed unless it's not us-east-1
+                        create_bucket_config = {}
+                        if settings.AWS_REGION != 'us-east-1':
+                            create_bucket_config['CreateBucketConfiguration'] = {
+                                'LocationConstraint': settings.AWS_REGION
+                            }
+                        self.s3_client.create_bucket(Bucket=self.bucket_name, **create_bucket_config)
+                        logger.info(f"S3 bucket '{self.bucket_name}' created successfully.")
+                        self._is_connected = True
+                    except ClientError as e:
+                        # If the bucket already exists, it's not an error for us.
+                        if e.response.get("Error", {}).get("Code") == 'BucketAlreadyOwnedByYou':
+                            logger.info(f"S3 bucket '{self.bucket_name}' already exists and is owned by you.")
+                            self._is_connected = True
+                        else:
+                            logger.error(f"Failed to create or verify S3 bucket '{self.bucket_name}': {e}", exc_info=True)
+                            self._is_connected = False
                 else:
-                    logger.error(f"Error connecting to S3 bucket '{self.bucket_name}': {e}")
+                    # If not set to create, just check for existence as before.
+                    self.s3_client.head_bucket(Bucket=self.bucket_name)
+                    logger.info(f"Successfully connected to existing S3 bucket: {self.bucket_name}")
+                    self._is_connected = True
+            except ClientError as e:
+                logger.error(f"S3 ClientError during bucket check: {e}", exc_info=True)
                 self._is_connected = False
         except (NoCredentialsError, PartialCredentialsError):
             logger.error("AWS S3 credentials not found or incomplete.")

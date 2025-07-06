@@ -8,6 +8,9 @@ ENV PYTHONUNBUFFERED 1
 # Create a non-root user and group (copied from base/Dockerfile logic)
 RUN addgroup --system app && adduser --system --group app
 
+# Install curl for healthchecks
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /home/app/web
 
 # Create a virtual environment

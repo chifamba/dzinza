@@ -16,7 +16,7 @@ bootstrap_peers = [
 ]
 
 [s3_api]
-s3_region = "garage"
+s3_region = "garage1"
 api_bind_addr = "0.0.0.0:39002"
 root_domain = ".s3.garage"
 

@@ -33,20 +33,31 @@ def get_target_service_url(path: str) -> Optional[Tuple[str, str]]:
     first_segment = path_segments[0]
 
     if first_segment in settings.SERVICE_BASE_URLS_BY_PREFIX:
-        # This is the scheme://host:port of the downstream service (e.g., "http://auth-service-py:8000")
+        # This is the scheme://host:port of the downstream service
         service_base_url = settings.SERVICE_BASE_URLS_BY_PREFIX[first_segment]
 
-        # The rest of the path, including the matched first_segment, forms the path for the downstream service's API.
-        # All downstream services are expected to host their APIs under /api/v1/
-        # So, if original path was "auth/login", downstream path is "/api/v1/auth/login"
-        # If original path was "family-trees/ID", downstream path is "/api/v1/family-trees/ID"
-
-        downstream_path = "/api/v1/" + "/".join(path_segments) # e.g., /api/v1/auth/login
-                                                          # or /api/v1/family-trees/id/persons
+        # Special case handling for genealogy-related paths
+        if first_segment == "genealogy":
+            # If path starts with "genealogy", remove it and use the rest
+            # Example: "genealogy/family-trees" -> "/family-trees"
+            downstream_path = "/"
+            if len(path_segments) > 1:
+                downstream_path += "/".join(path_segments[1:])
+        elif first_segment in [
+            "family-trees", "persons", "relationships", "events",
+            "notifications", "merge-suggestions", "person-history"
+        ]:
+            # For direct genealogy-related endpoints (without "genealogy" prefix)
+            # Example: "family-trees" -> "/family-trees"
+            downstream_path = "/" + "/".join(path_segments)
+        else:
+            # Default case - keep the path as is
+            downstream_path = "/" + "/".join(path_segments)
 
         logger.debug(
             f"Path mapping: original_path='{path}', matched_prefix='{first_segment}', "
-            f"target_service_base_url='{service_base_url}', path_on_target_service='{downstream_path}'"
+            f"target_service_base_url='{service_base_url}', "
+            f"path_on_target_service='{downstream_path}'"
         )
         # Return the service's base URL (scheme://host:port) and the full path for its API
         return service_base_url, downstream_path

@@ -23,6 +23,10 @@ export default defineConfig({
         secure: false,
       },
     },
+    host: "0.0.0.0", // Allow external connections
+    watch: {
+      usePolling: true, // Needed for Docker volumes
+    },
   },
   resolve: {
     alias: {

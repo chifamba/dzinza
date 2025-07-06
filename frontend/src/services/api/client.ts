@@ -7,11 +7,11 @@ import axios, {
 
 // Base configuration
 // In development, use relative URLs to leverage Vite proxy
-// In production, use the environment variable
+// In production, use the environment variable or default to relative path
 const BASE_URL = import.meta.env.PROD
-  ? import.meta.env.VITE_AUTH_SERVICE_URL || "http://localhost:3000"
-  : ""; // Use relative URLs in development to leverage proxy
-const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
+  ? import.meta.env.VITE_API_BASE_URL || ""
+  : ""; // Use relative URLs to leverage proxy
+const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 30000; // Increased timeout for docker environments
 
 interface ApiError {
   error: string;
