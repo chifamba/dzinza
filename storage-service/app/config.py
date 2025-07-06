@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     S3_BUCKET_NAME: str = "your-dzinza-storage-bucket"
     S3_ENDPOINT_URL: Optional[str] = None # For S3-compatible storage like MinIO
     S3_FORCE_PATH_STYLE: bool = False # For MinIO if needed
+    S3_CREATE_BUCKET_IF_NOT_EXISTS: bool = False # Add this line
     S3_PRESIGNED_URL_EXPIRATION: int = 3600 # Seconds (1 hour)
 
     # File Upload Limits (from service perspective, multer limits are separate)

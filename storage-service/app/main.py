@@ -84,7 +84,7 @@ if settings.ALLOWED_ORIGINS:
     )
 
 # Include the API router from app.api
-app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router, prefix="/v1")
 
 
 # Basic Health Check

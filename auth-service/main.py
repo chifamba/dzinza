@@ -23,10 +23,10 @@ app.add_middleware(
 )
 
 # OAuth2 scheme for token authentication
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="v1/auth/login")
 
 
-# Health check endpoint
+# Health check endpoint - remains at root level
 @app.get("/health")
 async def health_check():
     return {
@@ -36,18 +36,24 @@ async def health_check():
         "version": os.getenv("VERSION", "1.0.0")
     }
 
+# Include the auth router with v1 prefix
+app.include_router(auth_router, prefix="/v1")
 
-# Placeholder for auth routes
+# Add fallback routes to handle direct requests without going through API Gateway
+# These will simply redirect to the v1 prefixed routes
 @app.post("/auth/register")
-async def register():
+async def register_redirect():
     raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Registration functionality not yet implemented"
+        status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+        headers={"Location": "/v1/auth/register"}
     )
 
-
 @app.post("/auth/login")
-async def login():
+async def login_redirect():
+    raise HTTPException(
+        status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+        headers={"Location": "/v1/auth/login"}
+    )
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="Login functionality not yet implemented"

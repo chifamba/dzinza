@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
+import structlog
 
 from app.services.proxy import reverse_proxy
 from app.core.config import settings # For rate limit strings
 from app.middleware.rate_limiter import limiter # Import the limiter instance
 
 router = APIRouter()
+logger = structlog.get_logger(__name__)
 
 # This catch-all route should be last if you have other specific routes in this router.
 # It will match any path not caught by preceding routes.
@@ -24,24 +26,27 @@ async def gateway_proxy_all(
     then 'path' will be "auth/login".
     """
     # request.state.user = current_user # Make user available to proxy logic if needed for headers
-
-    # The reverse_proxy function expects the path relative to the service mapping prefixes.
-    # If this gateway router is mounted at root "/", then `path` is directly usable.
-    # If this router is mounted at e.g. `/gateway_api_prefix`, then `path` here would be
-    # `actual_service_path_segment/...`. `settings.SERVICE_URLS_BY_PREFIX` should map
-    # `actual_service_path_segment` to the downstream service.
-
-    # Example: Request to http://localhost:3001/auth/login
-    # If this router is mounted at `/` in main.py, then `path` = "auth/login"
-    # `get_target_service_url("auth/login")` will be called.
-
-    # Example: Request to http://localhost:3001/api/v1/gateway/auth/login
-    # If this router is mounted at `/api/v1/gateway` in main.py, then `path` = "auth/login"
-    # `get_target_service_url("auth/login")` will be called.
-
-    # It's important that `path` passed to `reverse_proxy` is what `get_target_service_url` expects
-    # (i.e., starting with the prefix key like "auth", "genealogy", etc.).
-
+    
+    # Log original path for debugging
+    original_path = path
+    logger.debug(f"Gateway received path: {original_path}, URL: {request.url}")
+    
+    # We no longer strip v1/ prefix - instead, downstream services should expect it
+    # Only handle legacy redirects for any non-v1 prefixed paths that might still be in use
+    
+    # Check if path is a health check and forward as is
+    if path == "health" or path.endswith("/health"):
+        return await reverse_proxy(request, path)
+    
+    # For all other paths, ensure they have the v1 prefix when forwarded to services
+    # Don't modify paths that already have v1 prefix
+    if not path.startswith("v1/"):
+        # Add the v1 prefix to the path before forwarding
+        path_with_v1 = f"v1/{path}"
+        logger.debug(f"Adding v1 prefix: {original_path} -> {path_with_v1}")
+        return await reverse_proxy(request, path_with_v1)
+    
+    # Path already has v1 prefix, forward as is
     return await reverse_proxy(request, path)
 
 # Example: If you had specific gateway-level non-proxied endpoints, they would go above the catch-all.

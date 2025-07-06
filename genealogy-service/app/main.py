@@ -31,7 +31,8 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.PROJECT_VERSION,
     debug=settings.DEBUG,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    redirect_slashes=False
 )
 
 @app.on_event("startup")

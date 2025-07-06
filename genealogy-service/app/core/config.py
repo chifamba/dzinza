@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: Optional[str] = None
 
     # API settings
-    API_V1_STR: str = "/api/v1"
+    API_V1_STR: str = "/v1"
     ALLOWED_ORIGINS: List[str] = ["*"] # Adjust in production
 
     # JWT Secret for internal validation if needed (prefer gateway validation)

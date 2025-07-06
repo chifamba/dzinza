@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     MONGODB_PASSWORD_FILE_ANALYTICS: Optional[str] = None # Path to password file for analytics DB
 
     # API settings
-    API_V1_STR: str = "/api/v1"
+    API_V1_STR: str = "/v1"
     ALLOWED_ORIGINS: List[str] = ["*"] # Adjust in production
 
     # JWT Settings (if validating tokens locally)
