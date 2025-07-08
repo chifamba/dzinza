@@ -1,0 +1,71 @@
+# Notification Schemas
+
+# Base Notification structure
+NotificationBase:
+  type: object
+  properties:
+    user_id: # ID of the user who should receive the notification
+      type: string
+      # format: uuid # If user IDs are UUIDs
+      description: User ID of the recipient.
+    type:
+      type: string
+      maxLength: 50
+      description: Type of notification (e.g., 'merge_suggestion', 'new_collaborator', 'event_reminder').
+      example: "new_merge_suggestion"
+    message:
+      type: string
+      maxLength: 500
+      description: The content of the notification message.
+    data: # Optional payload for frontend actions or additional context
+      type: object
+      nullable: true
+      additionalProperties: true # Allows any structure for data payload
+      description: Additional data associated with the notification.
+      example:
+        suggestion_id: "suggestion-uuid-456"
+        person_name: "John Doe"
+        tree_id: "tree-uuid-123"
+    read:
+      type: boolean
+      default: false
+      description: Whether the notification has been read by the user.
+  required:
+    - user_id
+    - type
+    - message
+
+# Schema for creating a Notification (typically internal use by services)
+NotificationCreate:
+  allOf:
+    - $ref: '#/NotificationBase'
+    # No additional fields for create beyond base, system sets id/timestamps
+
+# Schema for updating a Notification (e.g., marking as read)
+NotificationUpdate:
+  type: object
+  properties:
+    read:
+      type: boolean
+      nullable: true
+  minProperties: 1
+
+# Schema for reading/returning a Notification
+NotificationRead:
+  allOf:
+    - $ref: './GenealogyCommon.yaml#/DBModelMixinEffect' # id, created_at, updated_at
+    - $ref: '#/NotificationBase'
+
+# Schema for a list of Notifications
+NotificationListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/NotificationRead'
+    total:
+      type: integer
+  required:
+    - items
+    - total

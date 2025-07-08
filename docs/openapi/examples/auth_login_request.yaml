@@ -1,0 +1,6 @@
+value:
+  email: "test@dzinza.com"
+  password: "TestPassword123!"
+  # mfaCode: "123456" # Optional, include if MFA is enabled for the user
+summary: Example login request for a test user.
+description: Provides credentials for user authentication. Include `mfaCode` if MFA is active.

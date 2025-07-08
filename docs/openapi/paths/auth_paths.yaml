@@ -1,0 +1,609 @@
+# Paths for Authentication Service
+
+/auth/register:
+  post:
+    tags:
+      - Authentication
+    summary: Register a new user
+    description: Creates a new user account and returns authentication tokens for immediate login.
+    operationId: registerUser
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/User.yaml#/RegisterRequest'
+    responses:
+      '201':
+        description: User registered successfully. Returns user details and tokens.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/Auth.yaml#/LoginResponse'
+      '400':
+        description: Validation error (e.g., email already registered, password complexity not met).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '422':
+        description: Unprocessable Entity (validation error from Pydantic).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/auth/login:
+  post:
+    tags:
+      - Authentication
+    summary: User login
+    description: Authenticates a user with email and password. Handles MFA if enabled. Returns user details and tokens.
+    operationId: loginUser
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/Auth.yaml#/LoginRequest'
+          examples:
+            default: # Default example for request
+              $ref: '../examples/auth_login_request.yaml'
+    responses:
+      '200':
+        description: Login successful.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/Auth.yaml#/LoginResponse'
+            examples:
+              default: # Default example for successful response
+                $ref: '../examples/auth_login_response.yaml'
+        headers:
+          Set-Cookie:
+            schema:
+              type: string
+              example: access_token_cookie=...; Max-Age=...; Path=/; HttpOnly; SameSite=Lax
+            description: Sets access_token_cookie and refresh_token_cookie (HttpOnly).
+      '400':
+        description: Bad request (e.g., user account inactive).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '401':
+        description: Unauthorized (e.g., incorrect credentials, invalid MFA code).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '403':
+        description: Forbidden (e.g., account locked).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '422':
+        description: Unprocessable Entity (validation error).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/auth/refresh:
+  post:
+    tags:
+      - Authentication
+    summary: Refresh access token
+    description: Obtains a new access token using a valid refresh token.
+    operationId: refreshToken
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/Token.yaml#/RefreshTokenRequest'
+    responses:
+      '200':
+        description: Access token refreshed successfully.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/Token.yaml#/AuthTokens'
+        headers:
+          Set-Cookie:
+            schema:
+              type: string
+              example: access_token_cookie=...; Max-Age=...; Path=/; HttpOnly; SameSite=Lax
+            description: Sets a new access_token_cookie (HttpOnly).
+      '401':
+        description: Unauthorized (e.g., invalid or expired refresh token, user inactive).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+/auth/logout:
+  post:
+    tags:
+      - Authentication
+    summary: User logout
+    description: Logs out the current user by invalidating their refresh token (if provided) and clearing token cookies.
+    operationId: logoutUser
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/Token.yaml#/RefreshTokenRequest'
+    responses:
+      '200':
+        description: Logout successful.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/MessageResponse'
+        headers:
+          Set-Cookie:
+            schema:
+              type: string
+              example: access_token_cookie=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax
+            description: Clears access_token_cookie and refresh_token_cookie.
+    security:
+      - bearerAuth: []
+
+/auth/request-email-verification:
+  post:
+    tags:
+      - Authentication
+    summary: Request email verification
+    description: Sends an email verification link to the currently authenticated user if their email is not yet verified.
+    operationId: requestEmailVerification
+    responses:
+      '200':
+        description: Verification email sent.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/MessageResponse'
+      '400':
+        description: Bad request (e.g., email already verified).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '401':
+        description: Unauthorized (user not authenticated).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    security:
+      - bearerAuth: []
+
+/auth/verify-email:
+  post:
+    tags:
+      - Authentication
+    summary: Verify email address
+    description: Verifies a user's email address using a token sent via email.
+    operationId: verifyEmail
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/Auth.yaml#/EmailVerificationConfirmRequest'
+    responses:
+      '200':
+        description: Email verified successfully.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/MessageResponse'
+      '400':
+        description: Bad request (e.g., invalid or expired token).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    security: []
+
+/auth/request-password-reset:
+  post:
+    tags:
+      - Authentication
+    summary: Request password reset
+    description: Sends a password reset link to the user's email address if the account exists.
+    operationId: requestPasswordReset
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/Auth.yaml#/PasswordResetRequest'
+    responses:
+      '200':
+        description: If an account with that email exists, a password reset link has been sent.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/MessageResponse'
+    security: []
+
+/auth/reset-password:
+  post:
+    tags:
+      - Authentication
+    summary: Reset password
+    description: Resets the user's password using a token and a new password.
+    operationId: resetPassword
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/Auth.yaml#/PasswordResetConfirmRequest'
+    responses:
+      '200':
+        description: Password has been reset successfully.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/MessageResponse'
+      '400':
+        description: Bad request (e.g., invalid/expired token, password complexity not met).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    security: []
+
+/auth/change-password:
+  post:
+    tags:
+      - Authentication
+    summary: Change password
+    description: Allows an authenticated user to change their current password.
+    operationId: changePassword
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/Auth.yaml#/PasswordChangeRequest'
+    responses:
+      '200':
+        description: Password changed successfully.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/MessageResponse'
+      '400':
+        description: Bad request (e.g., incorrect current password, new password complexity not met).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '401':
+        description: Unauthorized.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    security:
+      - bearerAuth: []
+
+/mfa/enable-mfa-request:
+  post:
+    tags:
+      - Authentication
+    summary: Initiate MFA enablement
+    description: Generates a TOTP secret and returns it along with an otpauth URI for QR code generation by the client.
+    operationId: enableMfaRequest
+    responses:
+      '200':
+        description: MFA enablement initiated.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/MFA.yaml#/MFAEnableResponse'
+      '400':
+        description: Bad request (e.g., MFA already enabled).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '401':
+        description: Unauthorized.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    security:
+      - bearerAuth: []
+
+/mfa/verify-mfa-enable:
+  post:
+    tags:
+      - Authentication
+    summary: Verify and finalize MFA enablement
+    description: Verifies a TOTP code. If successful, marks MFA as enabled and returns backup codes.
+    operationId: verifyMfaAndFinalizeEnable
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/MFA.yaml#/MFAVerifyRequest'
+    responses:
+      '200':
+        description: MFA enabled successfully. Returns backup codes.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/MFA.yaml#/MFASetupCompleteResponse'
+      '400':
+        description: Bad request (e.g., invalid MFA code).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '401':
+        description: Unauthorized.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    security:
+      - bearerAuth: []
+
+/mfa/disable:
+  post:
+    tags:
+      - Authentication
+    summary: Disable MFA
+    description: Disables MFA for the current user. Requires current password OR a valid MFA code.
+    operationId: disableMfa
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/MFA.yaml#/MFADisableRequest'
+    responses:
+      '200':
+        description: MFA disabled successfully.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/MessageResponse'
+      '400':
+        description: Bad request (e.g., MFA not enabled).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '401':
+        description: Unauthorized (e.g., invalid credentials for disabling).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    security:
+      - bearerAuth: []
+
+/users/me:
+  get:
+    tags:
+      - Users
+    summary: Get current user profile
+    operationId: getCurrentUserProfile
+    responses:
+      '200':
+        description: Successful retrieval of user profile.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/User.yaml#/UserResponse'
+      '401':
+        description: Unauthorized.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    security:
+      - bearerAuth: []
+  put:
+    tags:
+      - Users
+    summary: Update current user profile
+    operationId: updateCurrentUserProfile
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/User.yaml#/UserUpdate'
+    responses:
+      '200':
+        description: User profile updated successfully.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/User.yaml#/UserResponse'
+      '400':
+        description: Bad request.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '401':
+        description: Unauthorized.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '403':
+        description: Forbidden.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '422':
+        description: Unprocessable Entity.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    security:
+      - bearerAuth: []
+
+/users:
+  get:
+    tags:
+      - Users
+      - Admin
+    summary: List users (Admin)
+    operationId: listUsersAdmin
+    parameters:
+      - name: skip
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 100
+    responses:
+      '200':
+        description: A list of users.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/User.yaml#/UserListResponse'
+      '401':
+        description: Unauthorized.
+      '403':
+        description: Forbidden.
+    security:
+      - bearerAuth: []
+
+/users/{user_id}:
+  get:
+    tags:
+      - Users
+      - Admin
+    summary: Get user by ID (Admin)
+    operationId: getUserByIdAdmin
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: User details.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/User.yaml#/UserResponse'
+      '401':
+        description: Unauthorized.
+      '403':
+        description: Forbidden.
+      '404':
+        description: User not found.
+    security:
+      - bearerAuth: []
+  put:
+    tags:
+      - Users
+      - Admin
+    summary: Update user by ID (Admin)
+    operationId: updateUserByIdAdmin
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/User.yaml#/AdminUserUpdateRequest'
+    responses:
+      '200':
+        description: User updated successfully.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/User.yaml#/UserResponse'
+      '400':
+        description: Bad request.
+      '401':
+        description: Unauthorized.
+      '403':
+        description: Forbidden.
+      '404':
+        description: User not found.
+      '422':
+        description: Unprocessable Entity.
+    security:
+      - bearerAuth: []
+  delete:
+    tags:
+      - Users
+      - Admin
+    summary: Delete user by ID (Admin)
+    operationId: deleteUserByIdAdmin
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '204':
+        description: User deleted successfully.
+      '401':
+        description: Unauthorized.
+      '403':
+        description: Forbidden.
+      '404':
+        description: User not found.
+    security:
+      - bearerAuth: []
+
+/auth/health:
+  get:
+    tags:
+      - System
+      - Authentication
+    summary: Auth Service Health Check
+    description: Checks the operational status of the Authentication Service.
+    operationId: getAuthServiceHealth
+    responses:
+      '200':
+        description: Auth Service is healthy.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/MessageResponse'
+      '503':
+        description: Auth Service is unhealthy.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    security: []

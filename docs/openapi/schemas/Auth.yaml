@@ -1,0 +1,127 @@
+# Authentication Related Schemas
+
+# Request body for user login
+LoginRequest:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+      description: User's registered email address.
+    password:
+      type: string
+      format: password
+      description: User's password.
+    mfaCode:
+      type: string
+      minLength: 6
+      maxLength: 6
+      nullable: true
+      description: Multi-Factor Authentication code, if MFA is enabled for the user.
+      example: "123456"
+
+# Response body for successful login (includes user details and tokens)
+LoginResponse:
+  type: object
+  properties:
+    message:
+      type: string
+      default: "Login successful"
+    user:
+      $ref: './User.yaml#/UserResponse' # Reference UserResponse schema
+      nullable: true
+    tokens:
+      $ref: './Token.yaml#/AuthTokens'  # Reference AuthTokens schema
+      nullable: true
+    requireMfa:
+      type: boolean
+      default: false
+      description: If true, MFA is required and the 'mfaCode' must be provided in a subsequent login attempt or with the initial one. The 'user' object might be partially populated.
+
+# Request body for changing password (authenticated user)
+PasswordChangeRequest:
+  type: object
+  required:
+    - current_password
+    - new_password
+  properties:
+    current_password:
+      type: string
+      format: password
+      description: User's current password.
+    new_password:
+      type: string
+      format: password
+      minLength: 8
+      description: New password. Must meet complexity requirements.
+
+# Request body for initiating a password reset
+PasswordResetRequest:
+  type: object
+  required:
+    - email
+  properties:
+    email:
+      type: string
+      format: email
+      description: Email address of the account for which to reset the password.
+
+# Request body for confirming a password reset
+PasswordResetConfirmRequest:
+  type: object
+  required:
+    - token
+    - new_password
+  properties:
+    token:
+      type: string
+      description: The password reset token received via email.
+    new_password:
+      type: string
+      format: password
+      minLength: 8
+      description: New password. Must meet complexity requirements.
+
+# Request body for initiating email verification (already authenticated, but email not verified)
+# Not typically needed as a separate request body if endpoint uses current_user context.
+# If an endpoint /request-email-verification takes an email:
+# EmailVerificationRequest:
+#   type: object
+#   required:
+#     - email
+#   properties:
+#     email:
+#       type: string
+#       format: email
+#       description: Email address to verify.
+
+# Request body for confirming email verification
+EmailVerificationConfirmRequest:
+  type: object
+  required:
+    - token
+  properties:
+    token:
+      type: string
+      description: The email verification token received via email.
+
+# Request body for social login
+SocialLoginRequest:
+  type: object
+  required:
+    - provider
+    - token
+  properties:
+    provider:
+      type: string
+      enum: [google, facebook, apple] # Example providers
+      description: The social login provider.
+    token:
+      type: string
+      description: The authentication token (e.g., ID token, access token) from the social provider.
+    # May include other provider-specific fields like `authorizationCode` for some flows.
+  x-implementation-status: "planned" # Example if not yet implemented
+  x-planned-version: "1.1"

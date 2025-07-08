@@ -189,7 +189,7 @@ We welcome contributions to the Dzinza platform! Please follow these general gui
 
 *   **Python (Backend):**
     *   Follow PEP 8 guidelines.
-    *   Use modern Python features (Python 3.11+).
+    *   Use modern Python features (Python 3.9+).
     *   Type hinting is mandatory.
     *   Structure code logically within services (e.g., separate files for models, schemas, CRUD operations, API endpoints).
     *   Write clear and concise comments where necessary.

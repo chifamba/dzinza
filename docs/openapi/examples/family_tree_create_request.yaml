@@ -1,0 +1,12 @@
+value:
+  name: "The Doe Family Legacy"
+  description: "A comprehensive tree tracing the Doe family lineage, focusing on European and North American branches."
+  privacy: "private" # Options: public, private, family
+  settings:
+    allow_collaboration: true
+    show_living_persons: false # To non-collaborators
+    default_person_privacy: "family_tree_only"
+    theme: "classic"
+  # root_person_id: "uuid-of-root-person" # Optional: if creating tree with a pre-existing root person
+summary: Example request to create a new family tree.
+description: Provides initial details for a family tree, including name, description, privacy, and settings.
