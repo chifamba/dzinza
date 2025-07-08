@@ -1,0 +1,85 @@
+# Multi-Factor Authentication (MFA) Schemas
+
+# Response for MFA enablement initiation
+MFAEnableResponse:
+  type: object
+  required:
+    - otp_secret
+    - otp_auth_url
+  properties:
+    otp_secret:
+      type: string
+      description: The base32 encoded TOTP secret key for manual entry into an authenticator app.
+      example: "JBSWY3DPEHPK3PXP"
+    otp_auth_url:
+      type: string
+      format: uri
+      description: The otpauth:// URI for generating a QR code for authenticator apps.
+      example: "otpauth://totp/Dzinza:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Dzinza"
+
+# Request for verifying an MFA code (used during MFA setup/enablement)
+MFAVerifyRequest:
+  type: object
+  required:
+    - mfa_code
+  properties:
+    mfa_code:
+      type: string
+      minLength: 6
+      maxLength: 6
+      pattern: "^[0-9]{6}$"
+      description: The 6-digit TOTP code from the authenticator app.
+      example: "123456"
+
+# Response for successful MFA setup (includes backup codes)
+MFASetupCompleteResponse:
+  type: object
+  required:
+    - message
+    - backup_codes
+  properties:
+    message:
+      type: string
+      example: "MFA has been successfully enabled. Please store your backup codes securely."
+    backup_codes:
+      type: array
+      items:
+        type: string
+      description: A list of one-time backup codes to be stored securely by the user.
+      example: ["abcdef123456", "123456abcdef"]
+
+# Request for disabling MFA
+MFADisableRequest:
+  type: object
+  properties:
+    password:
+      type: string
+      format: password
+      nullable: true
+      description: User's current password. Required if not providing an MFA code.
+    mfa_code:
+      type: string
+      minLength: 6
+      maxLength: 6
+      pattern: "^[0-9]{6}$"
+      nullable: true
+      description: A current TOTP code or a backup code. Required if not providing the password.
+  description: To disable MFA, either the current password or a valid MFA code (TOTP or backup) must be provided.
+
+# Optional: Response for generating new MFA recovery/backup codes
+MFARecoveryCodesResponse:
+  type: object
+  required:
+    - recovery_codes
+    - message
+  properties:
+    recovery_codes:
+      type: array
+      items:
+        type: string
+      description: A new list of one-time backup codes.
+    message:
+      type: string
+      example: "New backup codes generated. Previous codes are invalidated."
+  x-implementation-status: "planned"
+  x-planned-version: "1.1"

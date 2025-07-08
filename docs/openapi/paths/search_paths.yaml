@@ -1,0 +1,172 @@
+# Paths for Search Service
+
+/search:
+  post:
+    tags:
+      - Search
+    summary: Perform a search across platform data
+    operationId: performSearch
+    description: |
+      Executes a search query against indexed Dzinza records.
+      Supports querying text, filtering by record types and specific fields,
+      pagination, sorting, highlighting, and faceting.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/Search.yaml#/SearchQuery'
+          examples:
+            searchForPerson:
+              summary: Search for a person named John Doe
+              value:
+                query_string: "John Doe"
+                record_types: ["person"]
+                page: 1
+                size: 10
+                request_highlighting: true
+            searchWithFiltersAndFacets:
+              summary: Search events in a specific tree, requesting facets
+              value:
+                query_string: "wedding"
+                record_types: ["event"]
+                filters:
+                  - field: "tree_id.keyword" # Assuming tree_id is indexed as keyword
+                    value: "tree-uuid-123"
+                  - field: "event_type.keyword"
+                    value: "marriage"
+                request_facets: ["place.keyword", "year_bucket_for_event_date"] # Example facet fields
+            genericSearchExample:
+              $ref: '../examples/search_query_request.yaml'
+    responses:
+      '200':
+        description: Search results matching the query.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/Search.yaml#/SearchResponse'
+            examples:
+              default:
+                $ref: '../examples/search_response.yaml'
+      '400':
+        description: Invalid search query structure or parameters.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '422':
+        description: Validation error in search query.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: Internal server error during search execution.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '503':
+        description: Search service temporarily unavailable (e.g., datastore connection issue).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    # Security: Open for now, but could be secured if all searches require auth
+    # security:
+    #   - bearerAuth: [] # If searches are user-contextual or results are permissioned
+
+/search/suggest:
+  get:
+    tags:
+      - Search
+    summary: Get search suggestions (type-ahead)
+    operationId: getSearchSuggestions
+    description: Provides search suggestions based on partial text input.
+    parameters:
+      - name: text
+        in: query
+        required: true
+        description: Partial text input for suggestions.
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 100
+      - name: limit
+        in: query
+        required: false
+        description: Maximum number of suggestions to return.
+        schema:
+          type: integer
+          default: 5
+          minimum: 1
+          maximum: 20
+      # - name: record_types # Optional: filter suggestions by record types
+      #   in: query
+      #   required: false
+      #   description: Comma-separated list of record types to filter suggestions.
+      #   schema:
+      #     type: array
+      #     items:
+      #       type: string
+    responses:
+      '200':
+        description: A list of search suggestions.
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/Search.yaml#/SuggestionResponse'
+      '400':
+        description: Invalid input (e.g., text too short).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      '500':
+        description: Internal server error during suggestion generation.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+    # security: [] # Typically public
+
+# Search Service Health Check
+/search/health:
+  get:
+    tags:
+      - System
+      - Search
+    summary: Search Service Health Check
+    operationId: getSearchServiceHealth
+    description: Checks the operational status of the Search Service, including Elasticsearch connectivity.
+    responses:
+      '200':
+        description: Search Service is healthy.
+        content:
+          application/json:
+            schema:
+              type: object # Actual response from service health
+              properties:
+                status: { type: string, example: "healthy" }
+                service: { type: string, example: "Search Service" }
+                version: { type: string }
+                dependencies:
+                  type: object
+                  properties:
+                    elasticsearch:
+                      type: object
+                      properties:
+                        status: { type: string, example: "connected" }
+                        details: { type: string, example: "OK"}
+                    mongodb_analytics: # If enabled
+                      type: object
+                      properties:
+                        status: { type: string, example: "connected" }
+                        details: { type: string, example: "OK"}
+      '503':
+        description: Search Service is unhealthy.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse' # Or the detailed health response with "unhealthy" status
+    security: []

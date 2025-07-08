@@ -1,0 +1,27 @@
+value:
+  id: "f47ac10b-58cc-4372-a567-0e02b2c3d479" # Example UUID
+  name: "The Doe Family Legacy"
+  description: "A comprehensive tree tracing the Doe family lineage, focusing on European and North American branches."
+  owner_id: "user-12345-abcdef"
+  root_person_id: "person-abcdef-12345" # Example UUID
+  collaborators:
+    - user_id: "user-67890-ghijkl"
+      role: "editor"
+      added_at: "2023-05-10T14:30:00Z"
+      accepted_at: "2023-05-11T09:15:00Z"
+  privacy: "private"
+  settings:
+    allow_collaboration: true
+    show_living_persons: false
+    default_person_privacy: "family_tree_only"
+    theme: "classic"
+  statistics:
+    total_persons: 152
+    total_generations: 7
+    completeness_score: 65.5
+  last_gedcom_import: null
+  last_gedcom_export: "2023-09-01T18:00:00Z"
+  created_at: "2023-01-20T10:00:00Z"
+  updated_at: "2023-10-28T12:00:00Z"
+summary: Example response for a family tree.
+description: Shows the detailed structure of a family tree record.
