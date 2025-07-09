@@ -7,6 +7,7 @@ from app.services.celery_app import celery_app
 from app.models_main import Person, PersonName
 from app.schemas.merge_suggestion import MergeSuggestionCreate
 from app.core.config import settings # For DB connection details
+from app.db.base import PERSONS_COLLECTION, MERGE_SUGGESTIONS_COLLECTION  # Add collection constants
 # Note: Directly using CRUD functions from within Celery tasks can be tricky if they depend on FastAPI's
 # request scope or specific dependency injection patterns not available in a Celery worker context.
 # For this reason, tasks often re-establish their own DB connections or use a shared, globally accessible DB client.
@@ -120,11 +121,19 @@ async def _async_find_duplicate_persons(db: AsyncIOMotorDatabase, target_person:
 
 
 # --- Celery Task Definition ---
-@celery_app.task(name="app.services.tasks.find_duplicate_persons_task", bind=True, max_retries=3, default_retry_delay=60)
+@celery_app.task(
+    name="app.services.tasks.find_duplicate_persons_task", 
+    bind=True, 
+    max_retries=3, 
+    default_retry_delay=60,
+    task_time_limit=300,  # 5 minutes hard timeout
+    task_soft_time_limit=240  # 4 minutes soft timeout
+)
 def find_duplicate_persons_task(self, person_id_str: str): # `self` is the task instance when bind=True
     """
     Celery task to find and suggest merges for duplicate persons.
     person_id_str: The string representation of the Person's UUID.
+    Includes timeout handling to prevent hanging tasks.
     """
     logger.info(f"Received task: find_duplicate_persons_task for person_id: {person_id_str}")
 
@@ -154,22 +163,34 @@ def find_duplicate_persons_task(self, person_id_str: str): # `self` is the task 
         return "Task failed: DB not initialized for worker."
 
     try:
-        # Fetch the target person
-        target_person_doc = loop.run_until_complete(
-            db_instance[PERSONS_COLLECTION].find_one({"_id": person_id})
-        )
+        # Add timeout handling to the async operations
+        async def run_with_timeout():
+            # Fetch the target person
+            target_person_doc = await asyncio.wait_for(
+                db_instance[PERSONS_COLLECTION].find_one({"_id": person_id}),
+                timeout=30  # 30 second timeout for single DB operation
+            )
 
-        if not target_person_doc:
-            logger.warning(f"Task: Person with ID {person_id} not found. Cannot perform duplicate check.")
-            return f"Person {person_id} not found."
+            if not target_person_doc:
+                logger.warning(f"Task: Person with ID {person_id} not found. Cannot perform duplicate check.")
+                return f"Person {person_id} not found."
 
-        target_person = Person(**target_person_doc)
+            target_person = Person(**target_person_doc)
 
-        num_suggestions_processed = loop.run_until_complete(
-            _async_duplicate_detection_logic(db_instance, target_person)
-        )
-        return f"Duplicate check for {person_id} processed {num_suggestions_processed} suggestions."
+            # Run duplicate detection with timeout
+            num_suggestions_processed = await asyncio.wait_for(
+                _async_duplicate_detection_logic(db_instance, target_person),
+                timeout=200  # 200 second timeout for duplicate detection logic
+            )
+            return f"Duplicate check for {person_id} processed {num_suggestions_processed} suggestions."
 
+        # Run the async operations with overall timeout
+        result = loop.run_until_complete(run_with_timeout())
+        return result
+
+    except asyncio.TimeoutError:
+        logger.error(f"Task timeout: find_duplicate_persons_task for {person_id} exceeded timeout limits")
+        return f"Task timed out for {person_id}"
     except Exception as e:
         logger.error(f"Task Error: find_duplicate_persons_task for {person_id} failed: {e}", exc_info=True)
         try:

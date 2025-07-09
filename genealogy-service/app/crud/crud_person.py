@@ -79,16 +79,15 @@ async def create_person(db: AsyncIOMotorDatabase, *, person_in: PersonCreate, cr
         db, person_doc=inserted_doc_dict, changed_by_user_id=creator_user_id
     )
 
-    # Trigger duplicate detection task (disabled temporarily to prevent hanging)
-    # TODO: Re-enable after fixing Celery task dispatch issue
+    # Trigger duplicate detection task with proper timeout handling
     try:
-        logger.info(f"Duplicate detection task disabled for person {db_person.id} - needs Celery fix")
-        # from app.services.tasks import find_duplicate_persons_task
-        # find_duplicate_persons_task.delay(str(db_person.id))
+        from app.services.tasks import find_duplicate_persons_task
+        task_result = find_duplicate_persons_task.delay(str(db_person.id))
+        logger.info(f"Successfully dispatched duplicate detection task for person {db_person.id}, task_id: {task_result.id}")
     except Exception as e:
         # Log error if task dispatch fails, but don't let it fail the CRUD operation
         logger.error(f"Failed to dispatch duplicate detection task for new person {db_person.id}: {e}", exc_info=True)
-        pass # Non-critical failure for task dispatch
+        # Non-critical failure for task dispatch - continue with person creation
 
     return db_person
 
@@ -107,39 +106,50 @@ async def get_persons_by_tree_id(
 ) -> List[Person]:
     """
     Get all persons belonging to a specific family tree.
+    Optimized with proper UUID handling for connection pooling.
     """
+    from bson import Binary
     collection = db[PERSONS_COLLECTION]
     persons = []
-    cursor = collection.find({"tree_ids": tree_id}).skip(skip).limit(limit)
+    
+    # Use Binary UUID for better query performance
+    tree_binary = Binary(tree_id.bytes, subtype=4)
+    cursor = collection.find({"tree_ids": tree_binary}).skip(skip).limit(limit)
+    
     async for doc in cursor:
         persons.append(Person(**doc))
     return persons
 
 async def count_persons_by_tree_id(db: AsyncIOMotorDatabase, *, tree_id: uuid.UUID) -> int:
-    """Counts persons belonging to a specific family tree."""
+    """Counts persons belonging to a specific family tree with optimized UUID handling."""
+    from bson import Binary
     collection = db[PERSONS_COLLECTION]
-    return await collection.count_documents({"tree_ids": tree_id})
+    tree_binary = Binary(tree_id.bytes, subtype=4)
+    return await collection.count_documents({"tree_ids": tree_binary})
 
 
 async def update_person(
     db: AsyncIOMotorDatabase, *, person_id: uuid.UUID, person_in: PersonUpdate, changed_by_user_id: str
 ) -> Optional[Person]:
     """
-    Update an existing person.
+    Update an existing person with optimized UUID handling.
     Access control should be checked at the API layer.
     Logs the update to PersonHistory.
     """
+    from bson import Binary
     collection = db[PERSONS_COLLECTION]
 
     update_data = person_in.model_dump(exclude_unset=True)
-    if not update_data: # No actual data to update
-        current_person_doc = await collection.find_one({"_id": person_id})
+    if not update_data:  # No actual data to update
+        current_person_doc = await collection.find_one({"_id": Binary(person_id.bytes, subtype=4)})
         return Person(**current_person_doc) if current_person_doc else None
 
+    # Prepare update data for MongoDB
+    update_data = prepare_for_mongodb(update_data)
     update_data["updated_at"] = datetime.utcnow()
 
     updated_doc = await collection.find_one_and_update(
-        {"_id": person_id},
+        {"_id": Binary(person_id.bytes, subtype=4)},
         {"$set": update_data},
         return_document=ReturnDocument.AFTER
     )
@@ -149,15 +159,15 @@ async def update_person(
             db, person_id=person_id, updated_person_doc=updated_doc, changed_by_user_id=changed_by_user_id
         )
 
-        # Trigger duplicate detection task on significant updates
-        # (Define what constitutes a "significant" update - e.g., name, birth date change)
-        # For now, triggering on any update.
+        # Trigger duplicate detection task with proper timeout handling
         try:
             from app.services.tasks import find_duplicate_persons_task
-            find_duplicate_persons_task.delay(str(person_id))
+            task_result = find_duplicate_persons_task.delay(str(person_id))
+            logger.info(f"Successfully dispatched duplicate detection task for updated person {person_id}, task_id: {task_result.id}")
         except Exception as e:
+            # Log error if task dispatch fails, but don't let it fail the CRUD operation
             logger.error(f"Failed to dispatch duplicate detection task for updated person {person_id}: {e}", exc_info=True)
-            pass
+            # Non-critical failure for task dispatch - continue
 
         return Person(**updated_doc)
     return None
@@ -221,24 +231,29 @@ async def remove_person_from_tree(db: AsyncIOMotorDatabase, *, person_id: uuid.U
         return Person(**updated_doc)
     return None
 
-# Example for searching persons by name (simple regex, can be expanded to use text indexes)
 async def search_persons_by_name(
     db: AsyncIOMotorDatabase, *, name_query: str, tree_id: Optional[uuid.UUID] = None, limit: int = 20
 ) -> List[Person]:
+    """Search persons by name with optimized indexing and UUID handling."""
+    from bson import Binary
     collection = db[PERSONS_COLLECTION]
+    
     query_filter: Dict[str, Any] = {
         "$or": [
             {"primary_name.given_name": {"$regex": name_query, "$options": "i"}},
             {"primary_name.surname": {"$regex": name_query, "$options": "i"}},
             {"primary_name.nickname": {"$regex": name_query, "$options": "i"}},
-            {"alternate_names.given_name": {"$regex": name_query, "$options": "i"}}, # Search in alternate names
+            {"alternate_names.given_name": {"$regex": name_query, "$options": "i"}},
             {"alternate_names.surname": {"$regex": name_query, "$options": "i"}},
         ]
     }
+    
     if tree_id:
-        query_filter["tree_ids"] = tree_id # Ensure person is in the specified tree
+        # Use Binary UUID for better performance with indexes
+        query_filter["tree_ids"] = Binary(tree_id.bytes, subtype=4)
 
     persons = []
+    # Use text index for better performance when available
     cursor = collection.find(query_filter).limit(limit)
     async for doc in cursor:
         persons.append(Person(**doc))

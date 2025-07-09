@@ -3,10 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exceptions import RequestValidationError
+from datetime import datetime
 import structlog
+from datetime import datetime
 
 from app.core.config import settings
-from app.db.base import connect_to_mongo, close_mongo_connection, get_database # Import DB functions
+from app.db.base import connect_to_mongo, close_mongo_connection, get_database, get_connection_pool_stats, check_database_health  # Import DB functions
 from app.api.api_v1.api import api_router as v1_api_router # Import the main v1 API router
 # from app.services.celery_app import startup_celery_worker, shutdown_celery_worker # For Celery
 
@@ -72,22 +74,24 @@ app.include_router(v1_api_router, prefix=settings.API_V1_STR)
 
 @app.get("/health", tags=["System"])
 async def health_check():
+    """Health check endpoint with connection pool monitoring."""
     logger.debug("Health check accessed")
-    db_status = "connected"
-    db_details = {}
-    try:
-        db = get_database() # Get DB instance from DataStorage
-        await db.command('ping') # Ping MongoDB
-        logger.debug("MongoDB ping successful in health check.")
-    except Exception as e:
-        db_status = "error"
-        db_details = {"error": str(e)}
-        logger.error("MongoDB ping failed in health check.", error=str(e), exc_info=True)
-
-    # TODO: Add Celery broker health check if applicable
-
-    if db_status == "connected": # Add other critical services to this check
-        return {"status": "healthy", "service": settings.PROJECT_NAME, "version": settings.PROJECT_VERSION, "mongodb": db_status}
+    
+    # Check database health
+    db_health = await check_database_health()
+    
+    # Get connection pool statistics
+    pool_stats = await get_connection_pool_stats()
+    
+    if db_health["status"] == "healthy":
+        return {
+            "status": "healthy",
+            "service": settings.PROJECT_NAME,
+            "version": settings.PROJECT_VERSION,
+            "mongodb": "connected",
+            "database_health": db_health,
+            "connection_pool": pool_stats
+        }
     else:
         return JSONResponse(
             status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -95,11 +99,29 @@ async def health_check():
                 "status": "unhealthy",
                 "service": settings.PROJECT_NAME,
                 "version": settings.PROJECT_VERSION,
-                "mongodb": db_status,
-                "mongodb_details": db_details if db_status == "error" else "N/A"
-                # "celery_broker": "TODO"
+                "mongodb": "error",
+                "database_health": db_health,
+                "connection_pool": pool_stats
             }
         )
+
+@app.get("/health/database", tags=["System"])
+async def database_health():
+    """Detailed database health and connection pool information."""
+    db_health = await check_database_health()
+    pool_stats = await get_connection_pool_stats()
+    
+    return {
+        "database_health": db_health,
+        "connection_pool": pool_stats,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
+@app.get("/health/pool", tags=["System"])
+async def connection_pool_stats():
+    """Get current connection pool statistics."""
+    return await get_connection_pool_stats()
 
 # Global Exception Handlers (similar to other services)
 @app.exception_handler(StarletteHTTPException)

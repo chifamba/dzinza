@@ -12,6 +12,16 @@ class Settings(BaseSettings):
     MONGODB_URL: str = "mongodb://localhost:27017"
     MONGODB_DATABASE_NAME: str = "dzinza_genealogy" # Or from shared config
     MONGODB_PASSWORD_FILE: Optional[str] = None # Path to MongoDB password file
+    
+    # MongoDB Connection Pool settings
+    MONGODB_MIN_POOL_SIZE: int = Field(default=10, description="Minimum connections in the pool")
+    MONGODB_MAX_POOL_SIZE: int = Field(default=100, description="Maximum connections in the pool")
+    MONGODB_MAX_IDLE_TIME_MS: int = Field(default=30000, description="Max idle time for connections (ms)")
+    MONGODB_CONNECT_TIMEOUT_MS: int = Field(default=10000, description="Connection timeout (ms)")
+    MONGODB_SERVER_SELECTION_TIMEOUT_MS: int = Field(default=30000, description="Server selection timeout (ms)")
+    MONGODB_SOCKET_TIMEOUT_MS: int = Field(default=20000, description="Socket timeout (ms)")
+    MONGODB_WAIT_QUEUE_TIMEOUT_MS: int = Field(default=10000, description="Wait queue timeout (ms)")
+    MONGODB_HEARTBEAT_FREQUENCY_MS: int = Field(default=10000, description="Heartbeat frequency (ms)")
 
     # Redis settings (for Celery and potentially caching)
     REDIS_HOST: str = "localhost"
