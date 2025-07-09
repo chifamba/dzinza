@@ -1,37 +1,5 @@
 value:
-  message: "Login successful"
-  user:
-    email: "test@dzinza.com"
-    username: "testuser"
-    first_name: "Test"
-    last_name: "User"
-    preferred_language: "en"
-    timezone: "UTC"
-    id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" # Example UUID
-    isActive: true
-    isSuperuser: false
-    roles:
-      - "user"
-    emailVerified: true
-    mfaEnabled: false
-    lastLoginAt: "2023-10-27T10:20:30Z"
-    createdAt: "2023-01-15T09:00:00Z"
-    updatedAt: "2023-10-27T10:20:30Z"
-    preferences:
-      notifications:
-        email: true
-        push: false
-        newsletter: false
-      privacy:
-        profileVisibility: "private"
-        allowMessages: true
-        showOnlineStatus: true
-      theme: "dark"
-      timezone: "America/New_York"
-  tokens:
-    accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTBlZWJjOTktOWMwYi00ZWY4LWJiNmQtNmJiOWJkMzgwYTExIiwiZW1haWwiOiJ0ZXN0QGR6aW56YS5jb20iLCJyb2xlIjoidXNlciIsImV4cCI6MTcwMDAwMzYwMH0.exampletokenpart2"
-    refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTBlZWJjOTktOWMwYi00ZWY4LWJiNmQtNmJiOWJkMzgwYTExIiwianRpIjoiZXhhbXBsZXJlZnJlc2hqdGkiLCJleHAiOjE3MDYwNTAwMDB9.example_refresh_token_part2"
-    expiresIn: 1800
-  requireMfa: false
+  access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMGVlYmM5OS05YzBiLTRlZjgtYmI2ZC02YmI5YmQzODBhMTEiLCJlbWFpbCI6InRlc3RAZG9pemEuY29tIiwiZXhwIjoxNjk4NDA5MjMwfQ.example"
+  token_type: "bearer"
 summary: Example successful login response.
-description: Contains user details, access and refresh tokens, and MFA status.
+description: Returns access token for API authentication. Refresh token is set as HTTP-only cookie.
