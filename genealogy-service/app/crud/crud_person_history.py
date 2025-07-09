@@ -21,13 +21,14 @@ async def create_person_history_entry(
     Create a new person history entry.
     If version is not provided, it calculates the next version number.
     """
+    from bson import Binary
     history_collection = db[PERSON_HISTORY_COLLECTION]
     now = datetime.utcnow()
 
     if version is None:
         # Find the latest version for this person and increment
         latest_history = await history_collection.find_one(
-            {"person_id": person_id},
+            {"person_id": Binary(person_id.bytes, subtype=4)},
             sort=[("version", -1)] # Sort by version descending
         )
         current_version = latest_history["version"] if latest_history else 0
@@ -69,8 +70,9 @@ async def get_person_version(
     """
     Get a specific version of a person's history.
     """
+    from bson import Binary
     collection = db[PERSON_HISTORY_COLLECTION]
-    doc = await collection.find_one({"person_id": person_id, "version": version})
+    doc = await collection.find_one({"person_id": Binary(person_id.bytes, subtype=4), "version": version})
     return PersonHistory(**doc) if doc else None
 
 async def get_latest_person_version_number(

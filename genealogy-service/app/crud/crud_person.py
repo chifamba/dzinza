@@ -79,10 +79,12 @@ async def create_person(db: AsyncIOMotorDatabase, *, person_in: PersonCreate, cr
         db, person_doc=inserted_doc_dict, changed_by_user_id=creator_user_id
     )
 
-    # Trigger duplicate detection task
+    # Trigger duplicate detection task (disabled temporarily to prevent hanging)
+    # TODO: Re-enable after fixing Celery task dispatch issue
     try:
-        from app.services.tasks import find_duplicate_persons_task
-        find_duplicate_persons_task.delay(str(db_person.id))
+        logger.info(f"Duplicate detection task disabled for person {db_person.id} - needs Celery fix")
+        # from app.services.tasks import find_duplicate_persons_task
+        # find_duplicate_persons_task.delay(str(db_person.id))
     except Exception as e:
         # Log error if task dispatch fails, but don't let it fail the CRUD operation
         logger.error(f"Failed to dispatch duplicate detection task for new person {db_person.id}: {e}", exc_info=True)
@@ -95,8 +97,9 @@ async def get_person_by_id(db: AsyncIOMotorDatabase, *, person_id: uuid.UUID) ->
     Get a person by their ID.
     Privacy/tree access checks should be done at the service/API layer.
     """
+    from bson import Binary
     collection = db[PERSONS_COLLECTION]
-    doc = await collection.find_one({"_id": person_id})
+    doc = await collection.find_one({"_id": Binary(person_id.bytes, subtype=4)})
     return Person(**doc) if doc else None
 
 async def get_persons_by_tree_id(
@@ -165,10 +168,11 @@ async def delete_person(db: AsyncIOMotorDatabase, *, person_id: uuid.UUID, chang
     Logs the deletion to PersonHistory *before* actual deletion.
     IMPORTANT: Cascading deletes for relationships, events etc. must be handled by service layer.
     """
+    from bson import Binary
     collection = db[PERSONS_COLLECTION]
 
     # Fetch the document *before* deletion for logging
-    person_to_delete_doc = await collection.find_one({"_id": person_id})
+    person_to_delete_doc = await collection.find_one({"_id": Binary(person_id.bytes, subtype=4)})
     if not person_to_delete_doc:
         return False # Person not found
 
@@ -177,15 +181,16 @@ async def delete_person(db: AsyncIOMotorDatabase, *, person_id: uuid.UUID, chang
         db, person_id=person_id, last_known_person_doc=person_to_delete_doc, changed_by_user_id=changed_by_user_id
     )
 
-    result = await collection.delete_one({"_id": person_id})
+    result = await collection.delete_one({"_id": Binary(person_id.bytes, subtype=4)})
     return result.deleted_count > 0
 
 async def add_person_to_tree(db: AsyncIOMotorDatabase, *, person_id: uuid.UUID, tree_id: uuid.UUID, changed_by_user_id: str) -> Optional[Person]:
     """Adds a person to a family tree by adding the tree_id to their tree_ids list."""
+    from bson import Binary
     collection = db[PERSONS_COLLECTION]
     updated_doc = await collection.find_one_and_update(
-        {"_id": person_id},
-        {"$addToSet": {"tree_ids": tree_id}, "$set": {"updated_at": datetime.utcnow()}},
+        {"_id": Binary(person_id.bytes, subtype=4)},
+        {"$addToSet": {"tree_ids": Binary(tree_id.bytes, subtype=4)}, "$set": {"updated_at": datetime.utcnow()}},
         return_document=ReturnDocument.AFTER
     )
     if updated_doc:
@@ -198,10 +203,11 @@ async def add_person_to_tree(db: AsyncIOMotorDatabase, *, person_id: uuid.UUID, 
 
 async def remove_person_from_tree(db: AsyncIOMotorDatabase, *, person_id: uuid.UUID, tree_id: uuid.UUID, changed_by_user_id: str) -> Optional[Person]:
     """Removes a person from a family tree by removing the tree_id from their tree_ids list."""
+    from bson import Binary
     collection = db[PERSONS_COLLECTION]
     updated_doc = await collection.find_one_and_update(
-        {"_id": person_id},
-        {"$pull": {"tree_ids": tree_id}, "$set": {"updated_at": datetime.utcnow()}},
+        {"_id": Binary(person_id.bytes, subtype=4)},
+        {"$pull": {"tree_ids": Binary(tree_id.bytes, subtype=4)}, "$set": {"updated_at": datetime.utcnow()}},
         return_document=ReturnDocument.AFTER
     )
 
