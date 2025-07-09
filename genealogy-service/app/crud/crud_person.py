@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional, Dict, Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -12,6 +12,39 @@ from app.db.base import PERSONS_COLLECTION
 from app.crud import crud_person_history # Import PersonHistory CRUD operations
 
 logger = structlog.get_logger(__name__) # Define logger
+
+def prepare_for_mongodb(doc_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Prepare a document for MongoDB insertion by converting Python objects to MongoDB-compatible types.
+    """
+    from bson import Binary
+    
+    # Convert date objects to datetime, UUIDs to Binary, handle nulls
+    for key, value in doc_dict.items():
+        if isinstance(value, date):
+            # Convert date to datetime for MongoDB
+            doc_dict[key] = datetime.combine(value, datetime.min.time())
+        elif isinstance(value, uuid.UUID):
+            # Convert UUID to Binary for MongoDB
+            doc_dict[key] = Binary(value.bytes, subtype=4)
+        elif isinstance(value, list):
+            # Handle lists of UUIDs or other objects
+            doc_dict[key] = [
+                Binary(item.bytes, subtype=4) if isinstance(item, uuid.UUID) 
+                else item for item in value
+            ]
+        elif isinstance(value, dict):
+            # Recursively handle nested dictionaries
+            doc_dict[key] = prepare_for_mongodb(value)
+        elif value is None:
+            # Remove None values to avoid validation errors
+            # The validation schema seems to not allow nulls
+            continue
+    
+    # Remove None values from the top level
+    doc_dict = {k: v for k, v in doc_dict.items() if v is not None}
+    
+    return doc_dict
 
 async def create_person(db: AsyncIOMotorDatabase, *, person_in: PersonCreate, creator_user_id: str) -> Person: # Made creator_user_id mandatory
     """
@@ -35,7 +68,10 @@ async def create_person(db: AsyncIOMotorDatabase, *, person_in: PersonCreate, cr
         # tree_ids must be provided in person_in as per PersonCreate schema
     )
 
-    inserted_doc_dict = db_person.model_dump(by_alias=True) # Get dict before insert for logging
+    # Convert to dict and prepare for MongoDB
+    inserted_doc_dict = db_person.model_dump(by_alias=True)
+    inserted_doc_dict = prepare_for_mongodb(inserted_doc_dict)
+    
     await collection.insert_one(inserted_doc_dict)
 
     # Log history

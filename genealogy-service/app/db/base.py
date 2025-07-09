@@ -1,5 +1,8 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncIOMotorCollection
 from pymongo.errors import ConnectionFailure
+from pymongo import MongoClient
+from bson.codec_options import CodecOptions
+from bson.binary import UuidRepresentation
 import structlog
 
 from app.core.config import settings
@@ -17,7 +20,11 @@ async def connect_to_mongo():
         raise ValueError("MONGODB_URL not configured.")
 
     try:
-        DataStorage.client = AsyncIOMotorClient(settings.MONGODB_URL)
+        # Configure UUID representation to handle native UUIDs
+        DataStorage.client = AsyncIOMotorClient(
+            settings.MONGODB_URL,
+            uuidRepresentation="standard"
+        )
         # Verify connection by trying to fetch server info
         await DataStorage.client.admin.command('ping')
         DataStorage.db = DataStorage.client[settings.MONGODB_DATABASE_NAME]
@@ -30,7 +37,7 @@ async def connect_to_mongo():
         logger.error(f"MongoDB connection failed: {e}", exc_info=True)
         # Depending on policy, either raise error or handle reconnect logic
         raise
-    except Exception as e: # Catch other potential errors during client init
+    except Exception as e:  # Catch other potential errors during client init
         logger.error(f"An error occurred during MongoDB client initialization: {e}", exc_info=True)
         raise
 

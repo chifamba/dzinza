@@ -29,7 +29,7 @@ async def create_event(
     # Validate linked entities if necessary (e.g., do persons/relationship exist in this tree?)
     # This might be better handled at the API layer or service layer before calling CRUD.
 
-    await collection.insert_one(db_event.model_dump(by_alias=True))
+    await collection.insert_one(db_event.prepare_for_mongodb())
     return db_event
 
 async def get_event_by_id(

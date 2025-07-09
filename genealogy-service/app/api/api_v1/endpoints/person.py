@@ -280,4 +280,17 @@ async def search_persons(
     # Further filter results based on user's access to each person's trees/privacy if search was global
     # This is simplified here.
 
-    return [schemas.person.PersonSummary.model_validate(p) for p in persons]
+    # Convert Person objects to PersonSummary format
+    result = []
+    for person in persons:
+        summary = schemas.person.PersonSummary(
+            id=person.id,
+            primary_name=person.primary_name,
+            gender=person.gender,
+            is_living=person.is_living,
+            birth_date_string=person.birth_date_string,
+            death_date_string=person.death_date_string
+        )
+        result.append(summary)
+    
+    return result

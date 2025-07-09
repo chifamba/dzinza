@@ -311,12 +311,13 @@ class Person(DBModelMixin):
     @validator('is_living', always=True)
     def determine_living_status(cls, v, values):
         # If is_living is explicitly set, respect that value.
-        if 'is_living' in values.model_fields_set: # Pydantic v2 way to check if field was provided
+        # In Pydantic v2, we check if the field was explicitly provided differently
+        if v is not None:  # If is_living was explicitly provided
             return v
         # Otherwise, if death date is present, assume not living.
         if values.get('death_date_exact') or values.get('death_date_string'):
             return False
-        return True # Default to living if no death date and not explicitly set
+        return True  # Default to living if no death date and not explicitly set
 
 # --- Relationship Enums & Sub-models (from Node.js Relationship.ts) ---
 class RelationshipType(str, Enum): # Refined based on Node.js model's RelationshipType and ParentalRole/SpousalStatus
@@ -411,6 +412,36 @@ class Relationship(DBModelMixin):
             raise ValueError("person1_id and person2_id cannot be the same for a relationship.")
         return values
 
+    def prepare_for_mongodb(self) -> dict:
+        """Prepare model for MongoDB insertion by handling UUID and datetime serialization."""
+        from bson import Binary
+        import uuid
+        from datetime import datetime, date
+        
+        data = self.model_dump(by_alias=True)
+        result = {}
+        
+        for key, value in data.items():
+            if value is None:
+                # Skip None values to avoid MongoDB validation issues
+                continue
+            elif isinstance(value, uuid.UUID):
+                # Convert UUIDs to Binary for MongoDB storage
+                result[key] = Binary.from_uuid(value)
+            elif isinstance(value, date) and not isinstance(value, datetime):
+                # Convert date objects to datetime for MongoDB
+                result[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, datetime):
+                # Keep datetime objects as-is
+                result[key] = value
+            elif hasattr(value, 'value'):
+                # Handle enum types by extracting their value
+                result[key] = value.value
+            else:
+                result[key] = value
+        
+        return result
+
     class Config(DBModelMixin.Config):
         json_schema_extra = {
             "example": {
@@ -447,6 +478,37 @@ class Event(DBModelMixin): # This is my original Python Event, seems useful.
     def check_custom_event_name(cls, v, values):
         # This validator needs access to 'event_type' from values.
         # In Pydantic v2, for model_validator, values is the model instance.
+        return v
+        
+    def prepare_for_mongodb(self) -> dict:
+        """Prepare model for MongoDB insertion by handling UUID and datetime serialization."""
+        from bson import Binary
+        import uuid
+        from datetime import datetime, date
+        
+        data = self.model_dump(by_alias=True)
+        result = {}
+        
+        for key, value in data.items():
+            if value is None:
+                # Skip None values to avoid MongoDB validation issues
+                continue
+            elif isinstance(value, uuid.UUID):
+                # Convert UUIDs to Binary for MongoDB storage
+                result[key] = Binary.from_uuid(value)
+            elif isinstance(value, date) and not isinstance(value, datetime):
+                # Convert date objects to datetime for MongoDB
+                result[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, datetime):
+                # Keep datetime objects as-is
+                result[key] = value
+            elif hasattr(value, 'value'):
+                # Handle enum types by extracting their value
+                result[key] = value.value
+            else:
+                result[key] = value
+        
+        return result
         # For field validators, values is a dict of fields already processed.
         # This should be a model_validator or ensure event_type is processed first.
         # For simplicity, assuming event_type is available in `values.get('event_type')` context.
@@ -477,6 +539,36 @@ class Notification(DBModelMixin):
     data: Optional[Dict[str, Any]] = Field(None, description="Optional payload for frontend actions")
     read: bool = Field(default=False)
 
+    def prepare_for_mongodb(self) -> dict:
+        """Prepare model for MongoDB insertion by handling UUID and datetime serialization."""
+        from bson import Binary
+        import uuid
+        from datetime import datetime, date
+        
+        data = self.model_dump(by_alias=True)
+        result = {}
+        
+        for key, value in data.items():
+            if value is None:
+                # Skip None values to avoid MongoDB validation issues
+                continue
+            elif isinstance(value, uuid.UUID):
+                # Convert UUIDs to Binary for MongoDB storage
+                result[key] = Binary.from_uuid(value)
+            elif isinstance(value, date) and not isinstance(value, datetime):
+                # Convert date objects to datetime for MongoDB
+                result[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, datetime):
+                # Keep datetime objects as-is
+                result[key] = value
+            elif hasattr(value, 'value'):
+                # Handle enum types by extracting their value
+                result[key] = value.value
+            else:
+                result[key] = value
+        
+        return result
+
     class Config(DBModelMixin.Config):
         json_schema_extra = {
             "example": {
@@ -497,6 +589,36 @@ class MergeSuggestion(DBModelMixin):
     created_by_system: bool = Field(default=False, description="True if system-generated suggestion")
     # notified_users: List[str] = Field(default_factory=list, description="User IDs notified") # User IDs not ObjectIds
     # preview_tree: Optional[Dict[str, Any]] = Field(None, description="JSON snapshot of relevant parts for preview") # Complex, consider if needed
+
+    def prepare_for_mongodb(self) -> dict:
+        """Prepare model for MongoDB insertion by handling UUID and datetime serialization."""
+        from bson import Binary
+        import uuid
+        from datetime import datetime, date
+        
+        data = self.model_dump(by_alias=True)
+        result = {}
+        
+        for key, value in data.items():
+            if value is None:
+                # Skip None values to avoid MongoDB validation issues
+                continue
+            elif isinstance(value, uuid.UUID):
+                # Convert UUIDs to Binary for MongoDB storage
+                result[key] = Binary.from_uuid(value)
+            elif isinstance(value, date) and not isinstance(value, datetime):
+                # Convert date objects to datetime for MongoDB
+                result[key] = datetime.combine(value, datetime.min.time())
+            elif isinstance(value, datetime):
+                # Keep datetime objects as-is
+                result[key] = value
+            elif hasattr(value, 'value'):
+                # Handle enum types by extracting their value
+                result[key] = value.value
+            else:
+                result[key] = value
+        
+        return result
 
     class Config(DBModelMixin.Config):
         json_schema_extra = {

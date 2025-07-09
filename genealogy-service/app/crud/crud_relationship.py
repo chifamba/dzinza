@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -36,7 +36,7 @@ async def create_relationship(
     # For example, ensuring parental_role is set if type is PARENT_OF etc.
     # The model itself has some validators, but business logic might be here too.
 
-    await collection.insert_one(db_relationship.model_dump(by_alias=True))
+    await collection.insert_one(db_relationship.prepare_for_mongodb())
     return db_relationship
 
 async def get_relationship_by_id(
@@ -119,13 +119,35 @@ async def update_relationship(
     if relationship_in.events is not None: # Check if 'events' was explicitly provided (even if empty list)
         update_data["events"] = [RelationshipEvent(**event.model_dump()) for event in relationship_in.events]
 
+    # Serialize data for MongoDB
+    serialized_update_data = {}
+    for key, value in update_data.items():
+        if value is None:
+            # Skip None values to avoid MongoDB validation issues
+            continue
+        elif isinstance(value, uuid.UUID):
+            # Convert UUIDs to Binary for MongoDB storage
+            from bson import Binary
+            serialized_update_data[key] = Binary.from_uuid(value)
+        elif isinstance(value, date) and not isinstance(value, datetime):
+            # Convert date objects to datetime for MongoDB
+            serialized_update_data[key] = datetime.combine(value, datetime.min.time())
+        elif isinstance(value, datetime):
+            # Keep datetime objects as-is
+            serialized_update_data[key] = value
+        elif hasattr(value, 'value'):
+            # Handle enum types by extracting their value
+            serialized_update_data[key] = value.value
+        else:
+            serialized_update_data[key] = value
+
     query = {"_id": relationship_id}
     if tree_id: # Important for scoped updates
         query["tree_id"] = tree_id
 
     updated_doc = await collection.find_one_and_update(
         query,
-        {"$set": update_data},
+        {"$set": serialized_update_data},
         return_document=ReturnDocument.AFTER
     )
     return Relationship(**updated_doc) if updated_doc else None

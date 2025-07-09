@@ -12,6 +12,31 @@ from app.dependencies import AuthenticatedUser, get_current_active_user # Auth D
 
 router = APIRouter()
 
+class NotificationCreateData(BaseModel):
+    user_id: str
+    type: str
+    message: str
+    data: Optional[dict] = None
+
+@router.post("/", response_model=schemas.notification.NotificationRead, status_code=status.HTTP_201_CREATED)
+async def create_notification(
+    *,
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    notification_in: NotificationCreateData,
+    current_user: AuthenticatedUser = Depends(get_current_active_user)
+):
+    """
+    Create a new notification for a user.
+    """
+    notification = await crud_notification.create_notification(
+        db=db,
+        user_id=notification_in.user_id,
+        type=notification_in.type,
+        message=notification_in.message,
+        data=notification_in.data
+    )
+    return notification
+
 @router.get("/", response_model=schemas.notification.NotificationList)
 async def list_user_notifications(
     *,
