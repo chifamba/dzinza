@@ -24,6 +24,8 @@ class TokenPayload(BaseModel):
     user_id: Optional[str] = None
     email: Optional[EmailStr] = None
     role: Optional[UserRole] = None
+    jti: Optional[str] = None  # Added to fix missing jti attribute error
+    type: Optional[str] = None  # Token type (access/refresh)
 
 class RefreshTokenPayload(TokenPayload):
     jti: str
@@ -116,6 +118,7 @@ class RegisterRequest(BaseModel):
     lastName: str
     email: EmailStr
     password: constr(min_length=8)
+    username: Optional[str] = None  # Make username optional
     preferredLanguage: str = "en"
 
     @validator('password')
@@ -165,6 +168,9 @@ class PasswordResetConfirmRequest(BaseModel):
             raise ValueError('Password must contain at least one special character')
         return v
 
+class PasswordResetTokenRequest(BaseModel):
+    token: str
+
 class EmailVerificationRequest(BaseModel):
     email: EmailStr
 
@@ -206,6 +212,9 @@ class RefreshTokenCreate(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refreshToken: str
+
+class LogoutRequest(BaseModel):
+    refreshToken: Optional[str] = None  # Optional refresh token for logout
 
 # Audit Log Schemas
 class AuditLogBase(BaseModel):

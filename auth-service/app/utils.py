@@ -96,7 +96,9 @@ def decode_token(token: str, secret_key: str) -> Optional[TokenPayload]:
             "aud": payload.get("aud"),
             "user_id": payload.get("user_id", payload.get("sub")), # Fallback sub to user_id
             "email": payload.get("email"),
-            "role": payload.get("role")
+            "role": payload.get("role"),
+            "jti": payload.get("jti"),
+            "type": payload.get("type")
         }
         # Validate with Pydantic model
         return TokenPayload(**token_data)
