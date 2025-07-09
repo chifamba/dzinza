@@ -1,10 +1,10 @@
 import uuid
 from celery.utils.log import get_task_logger # Celery's own logger
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase # For direct DB access in task
+from motor.motor_asyncio import AsyncIOMotorDatabase # For direct DB access in task
 import asyncio # For running async CRUD operations from sync Celery task
 
 from app.services.celery_app import celery_app
-from app.models_main import Person, MergeSuggestionStatus, PersonName
+from app.models_main import Person, PersonName
 from app.schemas.merge_suggestion import MergeSuggestionCreate
 from app.core.config import settings # For DB connection details
 # Note: Directly using CRUD functions from within Celery tasks can be tricky if they depend on FastAPI's

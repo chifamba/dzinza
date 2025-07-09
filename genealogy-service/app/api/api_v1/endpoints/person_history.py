@@ -1,12 +1,11 @@
 import uuid
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models_main import PersonPrivacyOptions
 from app import schemas # API Schemas (specifically schemas.person_history)
-from app.crud import crud_person_history, crud_person, crud_family_tree # CRUD functions
+from app.crud import crud_person_history, crud_person # CRUD functions
 from app.db.base import get_database # DB Dependency
 from app.dependencies import AuthenticatedUser, get_current_active_user # Auth Dependency
 from .relationship import check_tree_permission # Re-use or adapt permission helper

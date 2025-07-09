@@ -130,9 +130,10 @@ def get_user_by_password_reset_token(db: Session, token: str) -> Optional[models
         models.User.password_reset_expires > datetime.utcnow()
     ).first()
 
-def update_last_login(db: Session, db_user: models.User, ip_address: Optional[str]) -> models.User:
+def update_last_login(db: Session, db_user: models.User, ip_address: Optional[str], user_agent: Optional[str] = None) -> models.User:
     db_user.last_login_at = datetime.utcnow()
     db_user.last_login_ip = ip_address
+    db_user.last_login_user_agent = user_agent
     db_user.failed_login_attempts = 0 # Reset on successful login
     db_user.locked_until = None
     db.commit()
@@ -148,13 +149,22 @@ def increment_failed_login_attempts(db: Session, db_user: models.User) -> models
     return db_user
 
 # Refresh Token CRUD
-def create_refresh_token(db: Session, user_id: uuid.UUID, token_jti: str, expires_at: datetime, ip_address: Optional[str], user_agent: Optional[str]) -> models.RefreshToken:
+def create_refresh_token(
+    db: Session,
+    user_id: uuid.UUID,
+    token_jti: str,
+    expires_at: datetime,
+    ip_address: Optional[str],
+    user_agent: Optional[str],
+    session_id: Optional[str] = None
+) -> models.RefreshToken:
     db_refresh_token = models.RefreshToken(
         user_id=user_id,
         token_jti=token_jti,
         expires_at=expires_at,
         ip_address=ip_address,
-        user_agent=user_agent
+        user_agent=user_agent,
+        session_id=session_id
     )
     db.add(db_refresh_token)
     db.commit()
@@ -318,3 +328,40 @@ def verify_and_consume_backup_code(db: Session, db_user: models.User, backup_cod
         return True
 
     return False
+
+def update_user_session_count(db: Session, db_user: models.User, session_count: int) -> models.User:
+    """Update the current session count for a user."""
+    db_user.current_session_count = session_count
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def increment_user_session_count(db: Session, db_user: models.User) -> models.User:
+    """Increment the current session count for a user."""
+    current_count = db_user.current_session_count or 0
+    db_user.current_session_count = current_count + 1
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def decrement_user_session_count(db: Session, db_user: models.User) -> models.User:
+    """Decrement the current session count for a user, ensuring it doesn't go below 0."""
+    current_count = db_user.current_session_count or 0
+    db_user.current_session_count = max(0, current_count - 1)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def update_refresh_token_session_info(db: Session, db_refresh_token: models.RefreshToken, 
+                                    session_id: Optional[str], 
+                                    device_fingerprint: Optional[str] = None,
+                                    location_info: Optional[str] = None) -> models.RefreshToken:
+    """Update session information for a refresh token."""
+    db_refresh_token.session_id = session_id
+    if device_fingerprint is not None:
+        db_refresh_token.device_fingerprint = device_fingerprint
+    if location_info is not None:
+        db_refresh_token.location_info = location_info
+    db.commit()
+    db.refresh(db_refresh_token)
+    return db_refresh_token

@@ -32,12 +32,34 @@ done
 
 # 4. Assign all nodes to the cluster layout (zone 1, capacity 1024)
 echo "Assigning nodes to cluster layout..."
-docker compose exec garage1 /garage layout assign -z 1 -c 1024 85bcad019552fd1c
-sleep 1
-docker compose exec garage1 /garage layout assign -z 1 -c 1024 cdad7c24f1067f3f
-sleep 1
-docker compose exec garage1 /garage layout assign -z 1 -c 1024 de5c19395377789b
-sleep 1
+# Dynamically get node IDs from status output
+GARAGE1_ID=$(docker compose exec garage1 /garage status | grep garage1 | awk '{print $1}')
+GARAGE2_ID=$(docker compose exec garage1 /garage status | grep garage2 | awk '{print $1}')
+GARAGE3_ID=$(docker compose exec garage1 /garage status | grep garage3 | awk '{print $1}')
+
+if [ -n "$GARAGE1_ID" ]; then
+  docker compose exec garage1 /garage layout assign -z 1 -c 1024 $GARAGE1_ID
+  sleep 1
+else
+  echo "Error: Could not retrieve garage1 node ID"
+  exit 1
+fi
+
+if [ -n "$GARAGE2_ID" ]; then
+  docker compose exec garage1 /garage layout assign -z 1 -c 1024 $GARAGE2_ID
+  sleep 1
+else
+  echo "Error: Could not retrieve garage2 node ID"
+  exit 1
+fi
+
+if [ -n "$GARAGE3_ID" ]; then
+  docker compose exec garage1 /garage layout assign -z 1 -c 1024 $GARAGE3_ID
+  sleep 1
+else
+  echo "Error: Could not retrieve garage3 node ID"
+  exit 1
+fi
 
 echo "Staged layout:"
 docker compose exec garage1 /garage layout show

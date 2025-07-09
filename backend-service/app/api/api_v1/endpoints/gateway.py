@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Request
 import structlog
 
 from app.services.proxy import reverse_proxy
@@ -26,7 +25,7 @@ async def gateway_proxy_all(
     then 'path' will be "auth/login".
     """
     # request.state.user = current_user # Make user available to proxy logic if needed for headers
-    
+
     # The 'path' variable (e.g., "auth/login", "auth/health", or even "health" if mapped directly)
     # is passed directly to reverse_proxy.
     # The reverse_proxy and get_target_service_url functions will handle

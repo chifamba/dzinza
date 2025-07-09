@@ -1,11 +1,10 @@
 import uuid
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
-from app import models # DB Models (needed for Notification model if not directly from schemas)
 from app import schemas # API Schemas (specifically schemas.notification)
 from app.crud import crud_notification # CRUD functions
 from app.db.base import get_database # DB Dependency

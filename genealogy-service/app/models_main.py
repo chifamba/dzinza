@@ -1,72 +1,72 @@
 import uuid
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, HttpUrl, EmailStr, validator, model_validator
+from pydantic import BaseModel, Field, HttpUrl, validator, model_validator
 from enum import Enum
 
 # --- Enums ---
 class Gender(str, Enum):
-    MALE = "male"
-    FEMALE = "female"
-    OTHER = "other"
-    UNKNOWN = "unknown"
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+    OTHER = "OTHER"
+    UNKNOWN = "UNKNOWN"
 
 class PrivacySetting(str, Enum):
-    PUBLIC = "public" # Viewable by anyone
-    PRIVATE = "private" # Viewable only by owner (and collaborators if feature exists)
-    SHARED = "shared" # Viewable by specific users/groups (future)
-    FAMILY = "family" # Viewable by members of the associated family tree(s)
+    PUBLIC = "PUBLIC" # Viewable by anyone
+    PRIVATE = "PRIVATE" # Viewable only by owner (and collaborators if feature exists)
+    SHARED = "SHARED" # Viewable by specific users/groups (future)
+    FAMILY = "FAMILY" # Viewable by members of the associated family tree(s)
 
 class RelationshipType(str, Enum):
     # Biological / Adoptive
-    PARENT = "parent" # Person1 is parent of Person2
-    CHILD = "child"   # Person1 is child of Person2 (inverse of parent)
-    SIBLING = "sibling" # Biological or adoptive sibling
-    HALF_SIBLING = "half_sibling"
-    STEP_PARENT = "step_parent"
-    STEP_CHILD = "step_child"
-    STEP_SIBLING = "step_sibling"
-    ADOPTIVE_PARENT = "adoptive_parent"
-    ADOPTED_CHILD = "adopted_child"
+    PARENT = "PARENT" # Person1 is parent of Person2
+    CHILD = "CHILD"   # Person1 is child of Person2 (inverse of parent)
+    SIBLING = "SIBLING" # Biological or adoptive sibling
+    HALF_SIBLING = "HALF_SIBLING"
+    STEP_PARENT = "STEP_PARENT"
+    STEP_CHILD = "STEP_CHILD"
+    STEP_SIBLING = "STEP_SIBLING"
+    ADOPTIVE_PARENT = "ADOPTIVE_PARENT"
+    ADOPTED_CHILD = "ADOPTED_CHILD"
 
     # Marital / Partnership
-    SPOUSE = "spouse" # Husband, wife, partner in marriage or civil union
-    PARTNER = "partner" # Non-marital long-term partnership
-    FORMER_SPOUSE = "former_spouse"
-    FIANCE = "fiance" # Engaged to be married
+    SPOUSE = "SPOUSE" # Husband, wife, partner in marriage or civil union
+    PARTNER = "PARTNER" # Non-marital long-term partnership
+    FORMER_SPOUSE = "FORMER_SPOUSE"
+    FIANCE = "FIANCE" # Engaged to be married
 
     # Other common genealogical relationships
-    GRANDPARENT = "grandparent"
-    GRANDCHILD = "grandchild"
-    AUNT_UNCLE = "aunt_uncle" # Aunt or Uncle
-    NIECE_NEPHEW = "niece_nephew"
-    COUSIN = "cousin"
-    GODPARENT = "godparent"
-    GODCHILD = "godchild"
+    GRANDPARENT = "GRANDPARENT"
+    GRANDCHILD = "GRANDCHILD"
+    AUNT_UNCLE = "AUNT_UNCLE" # Aunt or Uncle
+    NIECE_NEPHEW = "NIECE_NEPHEW"
+    COUSIN = "COUSIN"
+    GODPARENT = "GODPARENT"
+    GODCHILD = "GODCHILD"
 
     # For more complex or custom relationships
-    OTHER = "other"
-    UNKNOWN = "unknown"
+    OTHER = "OTHER"
+    UNKNOWN = "UNKNOWN"
 
 class EventType(str, Enum):
-    BIRTH = "birth"
-    DEATH = "death"
-    MARRIAGE = "marriage"
-    DIVORCE = "divorce"
-    ANNULMENT = "annulment"
-    ADOPTION = "adoption"
-    BAPTISM = "baptism" # Christening, etc.
-    BURIAL = "burial"
-    CREMATION = "cremation"
-    RESIDENCE = "residence"
-    EDUCATION = "education"
-    OCCUPATION = "occupation"
-    RETIREMENT = "retirement"
-    ENGAGEMENT = "engagement"
-    MIGRATION = "migration"
-    MILITARY_SERVICE = "military_service"
-    CUSTOM = "custom" # For user-defined events
-    OTHER = "other"
+    BIRTH = "BIRTH"
+    DEATH = "DEATH"
+    MARRIAGE = "MARRIAGE"
+    DIVORCE = "DIVORCE"
+    ANNULMENT = "ANNULMENT"
+    ADOPTION = "ADOPTION"
+    BAPTISM = "BAPTISM" # Christening, etc.
+    BURIAL = "BURIAL"
+    CREMATION = "CREMATION"
+    RESIDENCE = "RESIDENCE"
+    EDUCATION = "EDUCATION"
+    OCCUPATION = "OCCUPATION"
+    RETIREMENT = "RETIREMENT"
+    ENGAGEMENT = "ENGAGEMENT"
+    MIGRATION = "MIGRATION"
+    MILITARY_SERVICE = "MILITARY_SERVICE"
+    CUSTOM = "CUSTOM" # For user-defined events
+    OTHER = "OTHER"
 
 # --- Base Model for Timestamps and ID ---
 class DBModelMixin(BaseModel):
@@ -136,33 +136,33 @@ class Fact(BaseModel): # Generic fact or attribute about a person
 
 # --- Updated Enums based on Node.js models ---
 class Gender(str, Enum): # Updated
-    MALE = "male"
-    FEMALE = "female"
-    NON_BINARY = "non_binary"
-    OTHER = "other"
-    UNKNOWN = "unknown"
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+    NON_BINARY = "NON_BINARY"
+    OTHER = "OTHER"
+    UNKNOWN = "UNKNOWN"
 
 class CollaboratorRole(str, Enum):
-    VIEWER = "viewer"
-    EDITOR = "editor"
-    ADMIN = "admin"
+    VIEWER = "VIEWER"
+    EDITOR = "EDITOR"
+    ADMIN = "ADMIN"
 
 class PersonPrivacyOptions(str, Enum):
-    PUBLIC = "public"
-    FAMILY_TREE_ONLY = "family_tree_only" # Equivalent to 'family' in FamilyTree privacy
-    PRIVATE = "private"
+    PUBLIC = "PUBLIC"
+    FAMILY_TREE_ONLY = "FAMILY_TREE_ONLY" # Equivalent to 'family' in FamilyTree privacy
+    PRIVATE = "PRIVATE"
 
 class MergeSuggestionStatus(str, Enum):
-    PENDING = "pending"
-    ACCEPTED = "accepted"
-    DECLINED = "declined"
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    DECLINED = "DECLINED"
 
 class PersonHistoryChangeType(str, Enum):
-    CREATE = "create"
-    UPDATE = "update"
-    MERGE = "merge"
-    DELETE = "delete"
-    REVERT = "revert"
+    CREATE = "CREATE"
+    UPDATE = "UPDATE"
+    MERGE = "MERGE"
+    DELETE = "DELETE"
+    REVERT = "REVERT"
 
 # --- Sub-models for FamilyTree ---
 class Collaborator(BaseModel):
@@ -321,59 +321,59 @@ class Person(DBModelMixin):
 # --- Relationship Enums & Sub-models (from Node.js Relationship.ts) ---
 class RelationshipType(str, Enum): # Refined based on Node.js model's RelationshipType and ParentalRole/SpousalStatus
     # General Types
-    SPOUSE = "spouse" # Covers Married, DomesticPartnership, CustomaryUnion, LivingTogether from Node.js SpousalStatus
-    PARENT_OF = "parent_of" # Person1 is parent of Person2
-    CHILD_OF = "child_of"   # Person1 is child of Person2
-    SIBLING_OF = "sibling_of"
+    SPOUSE = "SPOUSE" # Covers Married, DomesticPartnership, CustomaryUnion, LivingTogether from Node.js SpousalStatus
+    PARENT_OF = "PARENT_OF" # Person1 is parent of Person2
+    CHILD_OF = "CHILD_OF"   # Person1 is child of Person2
+    SIBLING_OF = "SIBLING_OF"
 
     # More specific types that might imply roles or statuses
-    ADOPTIVE_PARENT_OF = "adoptive_parent_of"
-    ADOPTED_CHILD_OF = "adopted_child_of"
-    STEP_PARENT_OF = "step_parent_of"
-    STEP_CHILD_OF = "step_child_of"
-    GUARDIAN_OF = "guardian_of" # From Node.js GuardianChild
-    WARD_OF = "ward_of"         # Inverse of Guardian
+    ADOPTIVE_PARENT_OF = "ADOPTIVE_PARENT_OF"
+    ADOPTED_CHILD_OF = "ADOPTED_CHILD_OF"
+    STEP_PARENT_OF = "STEP_PARENT_OF"
+    STEP_CHILD_OF = "STEP_CHILD_OF"
+    GUARDIAN_OF = "GUARDIAN_OF" # From Node.js GuardianChild
+    WARD_OF = "WARD_OF"         # Inverse of Guardian
 
-    GODPARENT_OF = "godparent_of"
-    GODCHILD_OF = "godchild_of"
+    GODPARENT_OF = "GODPARENT_OF"
+    GODCHILD_OF = "GODCHILD_OF"
 
     # Sibling variations (can also be facts/attributes on a SIBLING_OF relationship)
-    HALF_SIBLING_OF = "half_sibling_of"
-    STEP_SIBLING_OF = "step_sibling_of"
-    # ADOPTIVE_SIBLING_OF = "adoptive_sibling_of" # Covered by SIBLING_OF + adoption events
-    # FOSTER_SIBLING_OF = "foster_sibling_of"
+    HALF_SIBLING_OF = "HALF_SIBLING_OF"
+    STEP_SIBLING_OF = "STEP_SIBLING_OF"
+    # ADOPTIVE_SIBLING_OF = "ADOPTIVE_SIBLING_OF" # Covered by SIBLING_OF + adoption events
+    # FOSTER_SIBLING_OF = "FOSTER_SIBLING_OF"
 
     # Spousal status can be an attribute on the SPOUSE relationship
-    # FIANCE_OF = "fiance_of" # Can be a state of SPOUSE relationship or separate type
+    # FIANCE_OF = "FIANCE_OF" # Can be a state of SPOUSE relationship or separate type
 
-    OTHER = "other"
-    UNKNOWN = "unknown"
+    OTHER = "OTHER"
+    UNKNOWN = "UNKNOWN"
 
 class SpousalStatus(str, Enum): # From Node.js model
-    MARRIED = "Married"
-    DIVORCED = "Divorced"
-    WIDOWED = "Widowed"
-    SEPARATED = "Separated"
-    ANNULLED = "Annulled"
-    DOMESTIC_PARTNERSHIP = "DomesticPartnership"
-    CUSTOMARY_UNION = "CustomaryUnion"
-    LIVING_TOGETHER = "LivingTogether"
-    ENGAGED = "Engaged"
-    OTHER = "Other"
+    MARRIED = "MARRIED"
+    DIVORCED = "DIVORCED"
+    WIDOWED = "WIDOWED"
+    SEPARATED = "SEPARATED"
+    ANNULLED = "ANNULLED"
+    DOMESTIC_PARTNERSHIP = "DOMESTIC_PARTNERSHIP"
+    CUSTOMARY_UNION = "CUSTOMARY_UNION"
+    LIVING_TOGETHER = "LIVING_TOGETHER"
+    ENGAGED = "ENGAGED"
+    OTHER = "OTHER"
 
 class ParentalRole(str, Enum): # From Node.js model
-    BIOLOGICAL_MOTHER = "BiologicalMother"
-    BIOLOGICAL_FATHER = "BiologicalFather"
-    ADOPTIVE_MOTHER = "AdoptiveMother"
-    ADOPTIVE_FATHER = "AdoptiveFather"
-    GUARDIAN = "Guardian"
-    STEP_MOTHER = "StepMother"
-    STEP_FATHER = "StepFather"
-    FOSTER_PARENT = "FosterParent"
-    SURROGATE_MOTHER = "SurrogateMother"
-    SPERM_DONOR = "SpermDonor"
-    EGG_DONOR = "EggDonor"
-    OTHER = "Other"
+    BIOLOGICAL_MOTHER = "BIOLOGICAL_MOTHER"
+    BIOLOGICAL_FATHER = "BIOLOGICAL_FATHER"
+    ADOPTIVE_MOTHER = "ADOPTIVE_MOTHER"
+    ADOPTIVE_FATHER = "ADOPTIVE_FATHER"
+    GUARDIAN = "GUARDIAN"
+    STEP_MOTHER = "STEP_MOTHER"
+    STEP_FATHER = "STEP_FATHER"
+    FOSTER_PARENT = "FOSTER_PARENT"
+    SURROGATE_MOTHER = "SURROGATE_MOTHER"
+    SPERM_DONOR = "SPERM_DONOR"
+    EGG_DONOR = "EGG_DONOR"
+    OTHER = "OTHER"
 
 class RelationshipEvent(BaseModel): # Embedded in Relationship
     event_type: str = Field(..., description="e.g., 'Marriage', 'Divorce', 'PartnershipStart'")

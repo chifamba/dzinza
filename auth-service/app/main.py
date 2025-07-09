@@ -1,13 +1,18 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 
-from . import models, schemas, crud, utils
-from .database import SessionLocal, engine, get_db # get_db is used by endpoints
+from . import schemas
 from .config import settings
 from .api_v1.api import api_router # Import the main API router
 from starlette_prometheus import PrometheusMiddleware, metrics # For Prometheus
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor # For OpenTelemetry
+
+# Apply patches to fix issues
+try:
+    from .patch_initializer import TokenPayload  # This will apply all patches
+    print("Auth service patches applied successfully.")
+except Exception as e:
+    print(f"Error applying auth service patches: {e}")
 
 # Create database tables if they don't exist (for local dev without Alembic initially)
 # In a production setup, Alembic migrations would handle this if not managed externally.

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app import schemas
-from app.crud import crud_event, crud_person, crud_family_tree
+from app.crud import crud_event, crud_person
 from app.db.base import get_database
 from app.dependencies import AuthenticatedUser, get_current_active_user
 from app.models_main import EventType, PersonPrivacyOptions

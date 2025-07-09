@@ -1,4 +1,4 @@
-from PIL import Image, ImageOps, ExifTags
+from PIL import Image, ExifTags
 import io
 from typing import List, Tuple, Dict, Optional, TypedDict, Any
 import logging

@@ -47,9 +47,18 @@ class User(Base):
 
     last_login_at = Column(DateTime, nullable=True)
     last_login_ip = Column(String, nullable=True)
+    last_login_user_agent = Column(Text, nullable=True)
+    
+    # Session tracking
+    current_session_count = Column(Integer, default=0)
+    max_concurrent_sessions = Column(Integer, default=5)  # Configurable
 
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    updated_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow
+    )
 
     preferred_language = Column(String, default="en")
     timezone = Column(String, default="UTC")
@@ -66,20 +75,30 @@ class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    token_jti = Column(String, unique=True, index=True, nullable=False) # JTI (JWT ID) of the refresh token
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False
+    )
+    token = Column(String, unique=True, index=True, nullable=True)
+    token_jti = Column(String, unique=True, index=True, nullable=False)
 
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     revoked_at = Column(DateTime, nullable=True)
 
+    # Enhanced tracking fields
     ip_address = Column(String, nullable=True)
-    user_agent = Column(String, nullable=True)
+    user_agent = Column(Text, nullable=True)
+    session_id = Column(String, nullable=True)  # Link to Redis session
+    device_fingerprint = Column(String, nullable=True)
+    location_info = Column(Text, nullable=True)  # JSON string for geo data
 
     user = relationship("User", back_populates="refresh_tokens")
 
     def __repr__(self):
-        return f"<RefreshToken(id={self.id}, user_id='{self.user_id}', jti='{self.token_jti}')>"
+        return (f"<RefreshToken(id={self.id}, "
+                f"user_id='{self.user_id}', jti='{self.token_jti}')>")
 
     @property
     def is_revoked(self) -> bool:

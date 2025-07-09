@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Request, status # Added status
 from elasticsearch import AsyncElasticsearch
 from motor.motor_asyncio import AsyncIOMotorDatabase # For analytics DB type hint
-from typing import List, Optional
+from typing import Optional
 
 from app import schemas
 from app.services import search_logic

@@ -1,9 +1,8 @@
 import uuid
-from datetime import datetime
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from typing import List
+from pydantic import BaseModel
 
-from app.models_main import PersonHistoryChangeType, PersonHistory as PersonHistoryDB
+from app.models_main import PersonHistory as PersonHistoryDB
 
 # --- PersonHistory Schemas ---
 

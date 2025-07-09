@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
 from app.models_main import Relationship, RelationshipEvent # DB Models
-from app.schemas.relationship import RelationshipCreateData, RelationshipUpdateData, RelationshipEventData # API Schemas
+from app.schemas.relationship import RelationshipCreateData, RelationshipUpdateData # API Schemas
 from app.db.base import RELATIONSHIPS_COLLECTION
 
 async def create_relationship(

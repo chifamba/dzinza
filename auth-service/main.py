@@ -10,6 +10,13 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("auth-service")
 
+# Import and apply patches
+try:
+    from app.patch_initializer import *
+    logger.info("Auth service patches applied successfully!")
+except ImportError:
+    logger.warning("Auth service patches not found or could not be applied.")
+
 app = FastAPI(title="Dzinza Auth Service")
 
 # CORS setup

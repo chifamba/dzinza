@@ -11,8 +11,8 @@ rpc_bind_addr = "0.0.0.0:39012"
 rpc_public_addr = "garage2:39012"
 rpc_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 bootstrap_peers = [
-  "cdad7c24f1067f3f0aca4bd173fdf4975031f203eed024a1aa5821d796ca6013@garage1:39011",
-  "de5c19395377789b2d56516441289363ec1125a8020781b99ea67342eb74966c@garage3:39013"
+  "dzinza-garage1:39011",
+  "dzinza-garage3:39013"
 ]
 
 [s3_api]

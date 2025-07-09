@@ -4,7 +4,6 @@ import uuid
 from datetime import datetime
 
 from app.models import FileRecord, FileUpdateSchema # Pydantic models
-from app.database import get_database # To get DB instance
 
 # It's good practice to define collection names centrally
 FILES_COLLECTION = "files"

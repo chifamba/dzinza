@@ -1,7 +1,7 @@
 import datetime
 import uuid
 from pydantic import BaseModel, Field, HttpUrl, validator
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List
 
 class Thumbnail(BaseModel):
     size_name: str # e.g., "small", "medium", "large", "thumb_100x100"

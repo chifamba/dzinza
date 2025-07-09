@@ -1,8 +1,5 @@
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter
 from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from fastapi import Request
-from starlette.applications import Starlette # For app type hint if needed, or FastAPI
 from app.core.config import settings # To get rate limit strings
 
 # Initialize the limiter

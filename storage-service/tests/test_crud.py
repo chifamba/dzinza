@@ -2,10 +2,9 @@ import pytest
 import pytest_asyncio # Required for async fixtures
 import uuid
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 from app import crud
-from app.models import FileRecord
 
 # Fixture for a mock database object
 @pytest_asyncio.fixture

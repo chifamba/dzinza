@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Optional, List, Dict, Any # Keep Any for generic fields if needed
+from typing import Optional, List # Keep Any for generic fields if needed
 from pydantic import BaseModel, Field
 
 # Import SearchFilter from schemas if it's used directly here, or redefine if model slightly differs

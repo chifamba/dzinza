@@ -2,7 +2,7 @@ from fastapi import Request, HTTPException, status
 from fastapi.responses import StreamingResponse, Response # Ensure Response is imported
 import httpx
 import structlog
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, Dict
 
 from app.core.config import settings
 

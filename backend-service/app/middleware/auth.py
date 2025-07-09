@@ -4,7 +4,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 import jwt # From PyJWT (python-jose also uses/wraps this or similar)
 import structlog
-from typing import Optional, List, Tuple
+from typing import Optional, List
 
 from app.core.config import settings
 # Define a simple user model for request.state, similar to other services' AuthenticatedUser

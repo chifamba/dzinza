@@ -1,9 +1,7 @@
 import uuid
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 
-from app import models # DB Models
 from app import schemas # API Schemas
 from app.crud import crud_family_tree # CRUD functions
 from app.db.base import get_database # DB Dependency

@@ -5,7 +5,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler  # For async schedul
 from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
-from app.database import get_database  # For background task DB instance
 from app.services.s3_service import S3Client  # For S3 operations
 from app import crud, models  # For soft-deleted records/model validation
 from app.database import AsyncIOMotorDatabase  # For type hinting

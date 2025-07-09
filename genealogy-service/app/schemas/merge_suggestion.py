@@ -1,6 +1,5 @@
 import uuid
-from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from pydantic import BaseModel, Field
 
 from app.models_main import MergeSuggestionStatus, MergeSuggestion as MergeSuggestionDB

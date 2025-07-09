@@ -1,10 +1,10 @@
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from elasticsearch import AsyncElasticsearch # For type hinting mocked client
 
 from app.services import search_logic
-from app.schemas.search import SearchQuery, SearchFilter, SearchResponse, SuggestionResponseItem
+from app.schemas.search import SearchQuery, SearchFilter
 
 # --- Tests for build_elasticsearch_query ---
 

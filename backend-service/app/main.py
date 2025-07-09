@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Request, HTTPException, status as http_status
+from fastapi import FastAPI, Request, status as http_status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response # Added Response
+from fastapi.responses import JSONResponse # Added Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exceptions import RequestValidationError
 import httpx # HTTP client for proxying
@@ -9,7 +9,6 @@ import time # For X-Response-Time header
 
 from app.core.config import settings
 # from app.services.proxy import reverse_proxy # To be created
-from app.middleware.auth import AuthMiddleware # Already added
 from app.middleware.rate_limiter import limiter as app_limiter # Import the limiter instance
 from slowapi.errors import RateLimitExceeded # Import the exception
 from slowapi import _rate_limit_exceeded_handler # Import the default handler
@@ -123,7 +122,7 @@ app.include_router(v1_api_router, prefix=settings.API_V1_STR)
 # Global Exception Handlers (similar to other services)
 @app.exception_handler(StarletteHTTPException)
 async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
-    logger.error(f"Gateway StarletteHTTPException", url=str(request.url), status_code=exc.status_code, detail=exc.detail)
+    logger.error("Gateway StarletteHTTPException", url=str(request.url), status_code=exc.status_code, detail=exc.detail)
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail, "error_source": "api-gateway"})
 
 @app.exception_handler(RequestValidationError)

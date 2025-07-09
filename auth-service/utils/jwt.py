@@ -1,6 +1,7 @@
 import os
+import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 import jwt
 
 # JWT configuration
@@ -22,14 +23,15 @@ def generate_access_token(data: Dict[str, str]) -> str:
     """
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire, "type": "access"})
+    jti = str(uuid.uuid4())  # Generate a unique token ID
+    to_encode.update({"exp": expire, "type": "access", "jti": jti})
     encoded_jwt = jwt.encode(
         to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM
     )
     return encoded_jwt
 
 
-def generate_refresh_token(data: Dict[str, str]) -> str:
+def generate_refresh_token(data: Dict[str, str]) -> Tuple[str, str]:
     """
     Generate a refresh token for the given data.
     
@@ -37,15 +39,16 @@ def generate_refresh_token(data: Dict[str, str]) -> str:
         data: Dictionary containing user data to encode in the token.
     
     Returns:
-        Encoded JWT refresh token.
+        Tuple of (encoded JWT refresh token, token JTI).
     """
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    jti = str(uuid.uuid4())  # Generate a unique token ID
+    to_encode.update({"exp": expire, "type": "refresh", "jti": jti})
     encoded_jwt = jwt.encode(
         to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM
     )
-    return encoded_jwt
+    return encoded_jwt, jti
 
 
 def verify_token(token: str) -> Optional[Dict[str, str]]:

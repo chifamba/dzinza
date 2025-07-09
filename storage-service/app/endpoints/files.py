@@ -9,12 +9,10 @@ from fastapi import (
     Query,  # Import Query
     Response  # Import Response
 )
-from sqlalchemy.orm import Session
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from typing import List, Optional, Dict, Any # Added Dict, Any
+from typing import List, Optional # Added Dict, Any
 import magic
 import uuid
-import logging # Will be replaced by structlog
 import structlog # Import structlog
 import datetime # Import datetime
 

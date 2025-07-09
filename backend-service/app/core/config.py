@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from pydantic import AnyHttpUrl, model_validator, BaseModel
 from functools import lru_cache
 
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # These can be set via environment variables, e.g., AUTH_SERVICE_BASE_URL
     AUTH_SERVICE_BASE_URL: AnyHttpUrl = "http://auth-service:8000" # No longer include /api/v1
     GENEALOGY_SERVICE_BASE_URL: AnyHttpUrl = "http://genealogy-service:8000"
-    SEARCH_SERVICE_BASE_URL: AnyHttpUrl = "http://search-service:8000" 
+    SEARCH_SERVICE_BASE_URL: AnyHttpUrl = "http://search-service:8000"
     STORAGE_SERVICE_BASE_URL: AnyHttpUrl = "http://storage-service:8000"
 
     # This mapping can be used by the proxy to determine target URLs based on path prefixes

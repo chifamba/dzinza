@@ -4,8 +4,8 @@ from typing import List, Optional, Dict, Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.models_main import PersonHistory, PersonHistoryChangeType, Person # DB Models
-from app.db.base import PERSON_HISTORY_COLLECTION, PERSONS_COLLECTION # Collection names
+from app.models_main import PersonHistory, PersonHistoryChangeType # DB Models
+from app.db.base import PERSON_HISTORY_COLLECTION # Collection names
 
 async def create_person_history_entry(
     db: AsyncIOMotorDatabase,

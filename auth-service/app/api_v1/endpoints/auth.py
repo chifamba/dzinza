@@ -11,6 +11,7 @@ from app import crud, models, schemas, utils
 from app.database import get_db
 from app.config import settings
 from app.dependencies import get_current_active_user, get_optional_current_user
+from app.session_manager import get_session_manager, SessionManager
 
 router = APIRouter()
 
@@ -143,33 +144,45 @@ async def register_user(
 @router.post("/login", response_model=schemas.LoginResponse)
 async def login_for_access_token(
     request: Request,
-    response: Response, # To set cookies
-    login_data: schemas.LoginRequest, # Use Pydantic model for request body
-    db: Session = Depends(get_db)  # To get IP and User-Agent
+    response: Response,
+    login_data: schemas.LoginRequest,
+    db: Session = Depends(get_db),
+    session_mgr: SessionManager = Depends(get_session_manager)
 ):
     """
     Authenticate user and return JWT tokens along with user data.
-    Now uses a JSON body defined by schemas.LoginRequest.
-    Includes MFA check if enabled for the user.
+    Enhanced with comprehensive session management and security tracking.
     """
     user = crud.get_user_by_email(db, email=login_data.email)
 
     if not user or not utils.verify_password(login_data.password, user.password_hash):
-        if user: # Only increment if user exists but password was wrong
+        if user:
             crud.increment_failed_login_attempts(db, user)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User account is inactive.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="User account is inactive."
+        )
 
     if user.locked_until and user.locked_until > datetime.utcnow():
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, # 403 Forbidden as account is locked
+            status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Account is temporarily locked. Please try again after {user.locked_until.isoformat()}.",
         )
+
+    # Check concurrent session limit
+    active_sessions = session_mgr.get_user_active_sessions(str(user.id))
+    if len(active_sessions) >= user.max_concurrent_sessions:
+        # Optionally revoke oldest session
+        if active_sessions:
+            oldest_session = min(active_sessions, key=lambda s: s['created_at'])
+            session_mgr.revoke_session(oldest_session['session_id'])
 
     # MFA Check
     if user.mfa_enabled:
@@ -188,21 +201,22 @@ async def login_for_access_token(
                     isSuperuser=user.role == schemas.UserRole.ADMIN,
                     roles=[user.role.value] if user.role else [],
                     emailVerified=user.email_verified,
-                    mfaEnabled=user.mfa_enabled if hasattr(user, 'mfa_enabled') else False,
-                    lastLoginAt=user.last_login_at if hasattr(user, 'last_login_at') else None,
-                    createdAt=user.created_at if hasattr(user, 'created_at') else datetime.utcnow(),
-                    updatedAt=user.updated_at if hasattr(user, 'updated_at') else datetime.utcnow()
+                    mfaEnabled=user.mfa_enabled,
+                    lastLoginAt=user.last_login_at,
+                    createdAt=user.created_at,
+                    updatedAt=user.updated_at
                 )
             )
 
-        if not user.mfa_secret: # Should not happen if mfa_enabled is true
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="MFA configuration error.")
+        if not user.mfa_secret:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                detail="MFA configuration error."
+            )
 
         totp = pyotp.TOTP(user.mfa_secret)
         if not totp.verify(login_data.mfaCode):
-            # Primary TOTP failed, try as a backup code
             if not crud.verify_and_consume_backup_code(db, db_user=user, backup_code_plain=login_data.mfaCode):
-                # Both TOTP and backup code failed
                 crud.increment_failed_login_attempts(db, user)
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -210,40 +224,59 @@ async def login_for_access_token(
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
+    # Generate tokens
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = utils.create_access_token(
-        subject={"user_id": str(user.id), "email": user.email, "role": user.role.value}, # Ensure role is string
+        subject={"user_id": str(user.id), "email": user.email, "role": user.role.value},
         expires_delta=access_token_expires
     )
 
     refresh_jti = utils.generate_jti()
-    # Handle case where generate_jti might return a tuple due to patches
     if isinstance(refresh_jti, tuple):
         refresh_jti = refresh_jti[0]
+    
     refresh_token_expires_delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token_result = utils.create_refresh_token(
         subject={"user_id": str(user.id)},
         jti=refresh_jti,
         expires_delta=refresh_token_expires_delta
     )
-    # Handle both tuple and string return types due to patches
+    
     if isinstance(refresh_token_result, tuple):
         refresh_token, _ = refresh_token_result
     else:
         refresh_token = refresh_token_result
 
+    # Create session in Redis with comprehensive tracking
+    session_id = session_mgr.create_session(
+        user=user,
+        request=request,
+        access_token=access_token,
+        refresh_token=refresh_token,
+        refresh_jti=refresh_jti
+    )
+
+    # Enhanced database tracking
+    client_info = session_mgr._get_client_info(request)
     crud.create_refresh_token(
         db,
         user_id=user.id,
         token_jti=refresh_jti,
         expires_at=datetime.utcnow() + refresh_token_expires_delta,
-        ip_address=request.client.host,
-        user_agent=request.headers.get("User-Agent", "unknown")
+        ip_address=client_info["ip_address"],
+        user_agent=client_info["user_agent"],
+        session_id=session_id
     )
 
-    crud.update_last_login(db, db_user=user, ip_address=request.client.host)
+    # Update user login info
+    crud.update_last_login(
+        db, 
+        db_user=user, 
+        ip_address=client_info["ip_address"],
+        user_agent=client_info["user_agent"]
+    )
 
-    # Set tokens in HTTPOnly cookies (more secure for web clients)
+    # Set secure cookies
     response.set_cookie(
         key="access_token_cookie",
         value=access_token,
@@ -289,6 +322,7 @@ async def login_for_access_token(
 
 @router.post("/refresh", response_model=schemas.AuthTokens)
 async def refresh_access_token(
+    request: Request,
     response: Response,
     refresh_token_data: schemas.RefreshTokenRequest, # Expect refresh token in body
     db: Session = Depends(get_db)
@@ -335,6 +369,30 @@ async def refresh_access_token(
                 detail="User not found or inactive",
             )
 
+        # Get session manager and validate session
+        session_manager = SessionManager()
+        client_ip = request.client.host if request.client else None
+        user_agent = request.headers.get("User-Agent")
+        
+        # Validate session security (IP/User Agent matching)
+        if db_refresh_token.session_id:
+            session_valid = session_manager.validate_session_security(
+                db_refresh_token.session_id, client_ip, user_agent
+            )
+            if not session_valid:
+                # Security violation - revoke token and session
+                crud.revoke_refresh_token(db, db_refresh_token)
+                if db_refresh_token.session_id:
+                    session_manager.revoke_session(db_refresh_token.session_id)
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Session security validation failed",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            
+            # Update session activity
+            session_manager.update_session_activity(db_refresh_token.session_id)
+
         # Create new access token
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         new_access_token = utils.create_access_token(
@@ -359,6 +417,8 @@ async def refresh_access_token(
             refreshToken=refreshed_token_to_return,
             expiresIn=int(access_token_expires.total_seconds())
         )
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"DEBUG: Refresh token error: {e}")
         raise HTTPException(
@@ -397,6 +457,7 @@ async def logout_user(
     """
     user_id = None
     logout_details = []
+    session_manager = SessionManager()
     
     try:
         # Method 1: Use current authenticated user (from Authorization header)
@@ -404,10 +465,23 @@ async def logout_user(
             user_id = current_user.id
             logout_details.append("access_token_revoked")
             
-            # Revoke all refresh tokens for security
-            revoked_count = crud.revoke_all_user_refresh_tokens(db, user_id=user_id)
+            # Revoke all refresh tokens and sessions for security
+            revoked_count = crud.revoke_all_user_refresh_tokens(
+                db, user_id=user_id
+            )
             logout_details.append(f"refresh_tokens_revoked({revoked_count})")
-             # Method 2: Use refresh token from request body
+            
+            # Revoke all user sessions
+            try:
+                session_revoked_count = session_manager.revoke_all_user_sessions(str(user_id))
+                logout_details.append(f"sessions_revoked({session_revoked_count})")
+            except Exception as e:
+                logout_details.append(f"session_revocation_warning: {str(e)}")
+                
+            # Update session count in database
+            crud.update_user_session_count(db, current_user, 0)
+            
+        # Method 2: Use refresh token from request body
         elif logout_data.refreshToken:
             token_payload = utils.decode_token(
                 logout_data.refreshToken,
@@ -417,35 +491,63 @@ async def logout_user(
             if token_payload and token_payload.jti and token_payload.user_id:
                 try:
                     user_id = uuid.UUID(token_payload.user_id)
-                    db_refresh_token = crud.get_refresh_token_by_jti(db, token_jti=token_payload.jti)
+                    db_refresh_token = crud.get_refresh_token_by_jti(
+                        db, token_jti=token_payload.jti
+                    )
                     
-                    if db_refresh_token and str(db_refresh_token.user_id) == str(user_id):
+                    if (db_refresh_token and
+                            str(db_refresh_token.user_id) == str(user_id)):
                         # Revoke the specific refresh token
                         crud.revoke_refresh_token(db, db_refresh_token)
                         logout_details.append("specific_refresh_token_revoked")
                         
-                        # Optionally revoke all tokens for this user for enhanced security
-                        # Uncomment the next line if you want to revoke ALL user tokens on logout
-                        # crud.revoke_all_user_refresh_tokens(db, user_id=user_id, current_jti=token_payload.jti)
+                        # Revoke the specific session if it exists
+                        if db_refresh_token.session_id:
+                            try:
+                                session_manager.revoke_session(
+                                    db_refresh_token.session_id
+                                )
+                                logout_details.append("session_revoked")
+                                
+                                # Update user session count
+                                user = crud.get_user(db, user_id)
+                                if user:
+                                    crud.decrement_user_session_count(db, user)
+                            except Exception as e:
+                                logout_details.append(
+                                    f"session_revocation_warning: {str(e)}"
+                                )
+                        
+                        # Optionally revoke all tokens for this user for
+                        # enhanced security. Uncomment the next line if you
+                        # want to revoke ALL user tokens on logout
+                        # crud.revoke_all_user_refresh_tokens(
+                        #     db, user_id=user_id, current_jti=token_payload.jti
+                        # )
                         
                     else:
-                        logout_details.append("refresh_token_not_found_or_invalid")
+                        logout_details.append(
+                            "refresh_token_not_found_or_invalid"
+                        )
                         
                 except (ValueError, TypeError) as e:
-                    logout_details.append(f"refresh_token_decode_error: {str(e)}")
+                    logout_details.append(
+                        f"refresh_token_decode_error: {str(e)}"
+                    )
             else:
                 logout_details.append("refresh_token_payload_invalid")
                 
-        # Method 3: Cookie-based logout (always clear cookies regardless of token validation)
+        # Method 3: Cookie-based logout (always clear cookies regardless of
+        # token validation)
         response.delete_cookie(
-            "access_token_cookie", 
-            samesite="lax", 
+            "access_token_cookie",
+            samesite="lax",
             secure=not settings.DEBUG,
             path="/"
         )
         response.delete_cookie(
-            "refresh_token_cookie", 
-            samesite="lax", 
+            "refresh_token_cookie",
+            samesite="lax",
             secure=not settings.DEBUG,
             path="/"
         )
@@ -508,12 +610,37 @@ async def logout_all_sessions(
         Success message with count of revoked tokens
     """
     try:
+        session_manager = SessionManager()
+        
         # Revoke all refresh tokens for this user
-        revoked_count = crud.revoke_all_user_refresh_tokens(db, user_id=current_user.id)
+        revoked_count = crud.revoke_all_user_refresh_tokens(
+            db, user_id=current_user.id
+        )
+        
+        # Revoke all user sessions
+        try:
+            session_manager.revoke_all_user_sessions(
+                str(current_user.id)
+            )
+        except Exception as e:
+            print(f"Session revocation warning: {str(e)}")
+        
+        # Update session count in database
+        crud.update_user_session_count(db, current_user, 0)
         
         # Clear cookies for this session
-        response.delete_cookie("access_token_cookie", samesite="lax", secure=not settings.DEBUG, path="/")
-        response.delete_cookie("refresh_token_cookie", samesite="lax", secure=not settings.DEBUG, path="/")
+        response.delete_cookie(
+            "access_token_cookie",
+            samesite="lax",
+            secure=not settings.DEBUG,
+            path="/"
+        )
+        response.delete_cookie(
+            "refresh_token_cookie",
+            samesite="lax",
+            secure=not settings.DEBUG,
+            path="/"
+        )
         
         # TODO: Create audit log entry
         # audit_data = {
@@ -526,19 +653,35 @@ async def logout_all_sessions(
         # crud.create_audit_log(db, schemas.AuditLogCreate(**audit_data))
         
         return {
-            "message": f"Successfully logged out from all sessions. {revoked_count} active sessions terminated.",
+            "message": (
+                f"Successfully logged out from all sessions. "
+                f"{revoked_count} active sessions terminated."
+            ),
             **({"revoked_tokens": revoked_count} if settings.DEBUG else {})
         }
         
     except Exception as e:
         # Still clear cookies for security
-        response.delete_cookie("access_token_cookie", samesite="lax", secure=not settings.DEBUG, path="/")
-        response.delete_cookie("refresh_token_cookie", samesite="lax", secure=not settings.DEBUG, path="/")
+        response.delete_cookie(
+            "access_token_cookie",
+            samesite="lax",
+            secure=not settings.DEBUG,
+            path="/"
+        )
+        response.delete_cookie(
+            "refresh_token_cookie",
+            samesite="lax",
+            secure=not settings.DEBUG,
+            path="/"
+        )
         
         print(f"Logout-all error: {str(e)}")  # Replace with proper logging
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred during logout. Cookies have been cleared for security."
+            detail=(
+                "An error occurred during logout. "
+                "Cookies have been cleared for security."
+            )
         )
 
 

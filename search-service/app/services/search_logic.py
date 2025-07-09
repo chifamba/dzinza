@@ -3,8 +3,7 @@ from typing import List, Dict, Any, Optional
 import structlog
 
 from app import schemas # Import the schemas module
-from app.schemas.search import SearchQuery, SearchHit, SearchResponse, SearchHitSource
-from app.services.elasticsearch_client import get_es_client_dependency # For type hint or direct use
+from app.schemas.search import SearchQuery, SearchHit, SearchResponse
 # from app.core.config import settings # If specific index names are in settings
 
 logger = structlog.get_logger(__name__)

@@ -1,7 +1,5 @@
-import uuid
-from datetime import datetime
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Optional, List
+from pydantic import BaseModel
 
 from app.models_main import Notification as NotificationDB # DB model for Read schema
 

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from elasticsearch import AsyncElasticsearch # For type hinting
 
 from app.main import app # Main FastAPI app for TestClient
-from app.schemas.search import SearchQuery, SearchResponse, SuggestionQuery, SuggestionResponse, SearchHit
+from app.schemas.search import SearchQuery
 from app.services import elasticsearch_client # To mock the singleton's get_client
 
 client = TestClient(app)

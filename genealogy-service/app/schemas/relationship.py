@@ -7,7 +7,6 @@ from app.models_main import (
     RelationshipType,
     SpousalStatus,
     ParentalRole,
-    RelationshipEvent,
     Relationship as RelationshipDB # DB model for Read schema
 )
 

@@ -6,10 +6,9 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models_main import MergeSuggestionStatus
 from app import schemas # API Schemas (specifically schemas.merge_suggestion)
-from app.crud import crud_merge_suggestion, crud_person, crud_family_tree # CRUD functions
+from app.crud import crud_merge_suggestion, crud_person # CRUD functions
 from app.db.base import get_database # DB Dependency
-from app.dependencies import AuthenticatedUser, get_current_active_user, require_role # Auth Dependency
-from .relationship import check_tree_permission # Re-use or adapt permission helper
+from app.dependencies import AuthenticatedUser, get_current_active_user # Auth Dependency
 
 router = APIRouter()
 
