@@ -1,88 +1,144 @@
-from elasticsearch import AsyncElasticsearch, ConnectionError
-from elasticsearch.exceptions import TransportError
+"""
+Elasticsearch client singleton for search service.
+"""
 from typing import Optional
 import structlog
+from elasticsearch import Elasticsearch, NotFoundError
+from fastapi import HTTPException, status
 
-from app.core.config import settings
+from ..core.config import settings
 
 logger = structlog.get_logger(__name__)
 
 class ElasticsearchClientSingleton:
-    client: Optional[AsyncElasticsearch] = None
-
-    @classmethod
-    async def initialize(cls):
-        if cls.client is not None:
-            logger.info("Elasticsearch client already initialized.")
-            return
-
-        logger.info("Initializing Elasticsearch client...", config=settings.ELASTICSEARCH_CLIENT_CONFIG)
+    """Singleton pattern for Elasticsearch client management."""
+    
+    _instance = None
+    _client: Optional[Elasticsearch] = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    def initialize(self):
+        """Initialize Elasticsearch client."""
         try:
-            # ELASTICSEARCH_CLIENT_CONFIG is built in config.py from various env vars
-            # (cloud_id, hosts, api_key, basic_auth)
-            if not settings.ELASTICSEARCH_CLIENT_CONFIG:
-                logger.error("Elasticsearch client configuration is empty. Cannot initialize.")
-                # This indicates a problem with settings population, likely ELASTICSEARCH_URL/HOSTS not set.
-                raise ValueError("Elasticsearch client configuration is empty.")
-
-            cls.client = AsyncElasticsearch(**settings.ELASTICSEARCH_CLIENT_CONFIG)
-
-            # Verify connection
-            if not await cls.client.ping():
-                logger.error("Elasticsearch ping failed. Client initialized but could not connect.")
-                # Closing the client here might be too aggressive if it's a transient issue.
-                # However, if ping fails, most operations will fail.
-                await cls.client.close() # Attempt to close the non-functional client
-                cls.client = None
-                raise ConnectionError("Failed to ping Elasticsearch cluster after initialization.")
-
-            logger.info("Elasticsearch client initialized and connection verified.")
-        except TransportError as e:
-            logger.error(f"Failed to initialize Elasticsearch client: {e}", exc_info=True)
-            if cls.client: # If client was partially created before error
-                try:
-                    await cls.client.close()
-                except Exception as close_err:
-                    logger.error(f"Error closing Elasticsearch client after init failure: {close_err}", exc_info=True)
-            cls.client = None # Ensure client is None if init fails
-            raise # Re-raise the original exception to signal failure
-
-    @classmethod
-    async def close(cls):
-        if cls.client:
-            logger.info("Closing Elasticsearch client...")
+            self._client = Elasticsearch(
+                hosts=[settings.ELASTICSEARCH_URL],
+                basic_auth=(
+                    settings.ELASTICSEARCH_USERNAME, 
+                    settings.ELASTICSEARCH_PASSWORD
+                ),
+                request_timeout=settings.ELASTICSEARCH_REQUEST_TIMEOUT,
+                max_retries=settings.ELASTICSEARCH_MAX_RETRIES,
+                retry_on_timeout=settings.ELASTICSEARCH_RETRY_ON_TIMEOUT,
+            )
+            
+            if self._client.ping():
+                logger.info("Successfully connected to Elasticsearch")
+                self._create_indices()
+                return True
+            else:
+                logger.error("Failed to connect to Elasticsearch")
+                return False
+                
+        except Exception as e:
+            logger.error("Error initializing Elasticsearch client", error=str(e))
+            return False
+    
+    def get_client(self) -> Elasticsearch:
+        """Get Elasticsearch client instance."""
+        if not self._client or not self._client.ping():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Elasticsearch service unavailable"
+            )
+        return self._client
+    
+    def _create_indices(self):
+        """Create Elasticsearch indices with proper mappings."""
+        indices = {
+            settings.ELASTICSEARCH_INDEX_PERSONS: {
+                "mappings": {
+                    "properties": {
+                        "first_name": {
+                            "type": "text", 
+                            "fields": {"keyword": {"type": "keyword"}}
+                        },
+                        "last_name": {
+                            "type": "text", 
+                            "fields": {"keyword": {"type": "keyword"}}
+                        },
+                        "full_name": {"type": "text"},
+                        "birth_date": {"type": "date"},
+                        "death_date": {"type": "date"},
+                        "place_of_birth": {"type": "text"},
+                        "place_of_death": {"type": "text"},
+                        "bio": {"type": "text"},
+                        "privacy_level": {"type": "keyword"},
+                        "family_tree_id": {"type": "keyword"},
+                        "created_at": {"type": "date"},
+                        "updated_at": {"type": "date"},
+                        "created_by": {"type": "keyword"},
+                        "document_type": {"type": "keyword"},
+                        "title": {"type": "text"},
+                        "content": {"type": "text"},
+                        "metadata": {"type": "object"}
+                    }
+                }
+            },
+            settings.ELASTICSEARCH_INDEX_EVENTS: {
+                "mappings": {
+                    "properties": {
+                        "title": {
+                            "type": "text", 
+                            "fields": {"keyword": {"type": "keyword"}}
+                        },
+                        "description": {"type": "text"},
+                        "content": {"type": "text"},
+                        "event_date": {"type": "date"},
+                        "location": {"type": "text"},
+                        "privacy_level": {"type": "keyword"},
+                        "family_tree_id": {"type": "keyword"},
+                        "created_at": {"type": "date"},
+                        "updated_at": {"type": "date"},
+                        "created_by": {"type": "keyword"},
+                        "document_type": {"type": "keyword"},
+                        "metadata": {"type": "object"}
+                    }
+                }
+            },
+            settings.ELASTICSEARCH_INDEX_COMMENTS: {
+                "mappings": {
+                    "properties": {
+                        "content": {"type": "text"},
+                        "title": {"type": "text"},
+                        "author": {"type": "keyword"},
+                        "privacy_level": {"type": "keyword"},
+                        "family_tree_id": {"type": "keyword"},
+                        "created_at": {"type": "date"},
+                        "updated_at": {"type": "date"},
+                        "created_by": {"type": "keyword"},
+                        "document_type": {"type": "keyword"},
+                        "metadata": {"type": "object"}
+                    }
+                }
+            }
+        }
+        
+        for index_name, mapping in indices.items():
             try:
-                await cls.client.close()
-                cls.client = None
-                logger.info("Elasticsearch client closed.")
+                if not self._client.indices.exists(index=index_name):
+                    self._client.indices.create(index=index_name, **mapping)
+                    logger.info(f"Created index: {index_name}")
+                else:
+                    logger.info(f"Index already exists: {index_name}")
             except Exception as e:
-                logger.error(f"Error closing Elasticsearch client: {e}", exc_info=True)
-                # Even if close fails, set client to None to indicate it's no longer usable
-                cls.client = None
-        else:
-            logger.info("Elasticsearch client was not initialized or already closed.")
-
-    @classmethod
-    def get_client(cls) -> AsyncElasticsearch:
-        if cls.client is None:
-            logger.error("Elasticsearch client accessed before initialization or after a failed initialization.")
-            # This state should ideally be prevented by proper app lifecycle management.
-            raise RuntimeError("Elasticsearch client is not available. Ensure it's initialized at application startup.")
-        return cls.client
-
-# Functions to be called from main.py startup/shutdown events
-async def init_es_client():
-    await ElasticsearchClientSingleton.initialize()
-
-async def close_es_client():
-    await ElasticsearchClientSingleton.close()
-
-# Dependency for FastAPI endpoints to get the ES client
-async def get_es_client_dependency() -> AsyncElasticsearch:
-    return ElasticsearchClientSingleton.get_client()
-
-# Example usage in a task or other non-request scope (if needed, carefully manage lifecycle)
-# async def get_es_client_for_task() -> AsyncElasticsearch:
-#     if ElasticsearchClientSingleton.client is None:
-#         await ElasticsearchClientSingleton.initialize() # Or handle error if not expected to init here
-#     return ElasticsearchClientSingleton.get_client()
+                logger.error(f"Error creating index {index_name}", error=str(e))
+    
+    def close(self):
+        """Close Elasticsearch client."""
+        if self._client:
+            self._client.close()
+            logger.info("Elasticsearch connection closed")

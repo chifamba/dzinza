@@ -1,3 +1,0 @@
-# search-service/app/services/__init__.py
-# This is where the Elasticsearch client wrapper/service would go.
-# e.g., class ElasticsearchService: ...

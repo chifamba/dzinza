@@ -1,7 +1,7 @@
 # Paths for Genealogy Service
 
 # Family Trees
-/family-trees:
+/v1/family-trees:
   post:
     tags:
       - Family Trees
@@ -12,32 +12,32 @@
       content:
         application/json:
           schema:
-            $ref: '../schemas/FamilyTree.yaml#/FamilyTreeCreate'
+            $ref: "../schemas/FamilyTree.yaml#/FamilyTreeCreate"
           examples:
             default:
-              $ref: '../examples/family_tree_create_request.yaml'
+              $ref: "../examples/family_tree_create_request.yaml"
     responses:
-      '201':
+      "201":
         description: Family tree created successfully.
         content:
           application/json:
             schema:
-              $ref: '../schemas/FamilyTree.yaml#/FamilyTreeRead'
+              $ref: "../schemas/FamilyTree.yaml#/FamilyTreeRead"
             examples:
               default:
-                $ref: '../examples/family_tree_read_response.yaml'
-      '400':
+                $ref: "../examples/family_tree_read_response.yaml"
+      "400":
         description: Invalid input.
         content:
           application/json:
             schema:
-              $ref: '../openapi.yaml#/components/schemas/ErrorResponse' # Common error response
-      '401':
+              $ref: "../openapi.yaml#/components/schemas/ErrorResponse" # Common error response
+      "401":
         description: Unauthorized.
         content:
           application/json:
             schema:
-              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+              $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     security:
       - bearerAuth: []
   get:
@@ -62,22 +62,22 @@
           minimum: 1
           maximum: 200 # Max limit
     responses:
-      '200':
+      "200":
         description: A list of family trees.
         content:
           application/json:
             schema:
-              $ref: '../schemas/FamilyTree.yaml#/FamilyTreeListResponse'
-      '401':
+              $ref: "../schemas/FamilyTree.yaml#/FamilyTreeListResponse"
+      "401":
         description: Unauthorized.
         content:
           application/json:
             schema:
-              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+              $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     security:
       - bearerAuth: []
 
-/family-trees/{tree_id}:
+/v1/family-trees/{tree_id}:
   get:
     tags:
       - Family Trees
@@ -92,18 +92,18 @@
           type: string
           format: uuid
     responses:
-      '200':
+      "200":
         description: Details of the family tree.
         content:
           application/json:
             schema:
-              $ref: '../schemas/FamilyTree.yaml#/FamilyTreeRead'
+              $ref: "../schemas/FamilyTree.yaml#/FamilyTreeRead"
             examples:
               default:
-                $ref: '../examples/family_tree_read_response.yaml'
-      '401':
+                $ref: "../examples/family_tree_read_response.yaml"
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Family tree not found or access denied.
     security:
       - bearerAuth: []
@@ -124,19 +124,19 @@
       content:
         application/json:
           schema:
-            $ref: '../schemas/FamilyTree.yaml#/FamilyTreeUpdate'
+            $ref: "../schemas/FamilyTree.yaml#/FamilyTreeUpdate"
     responses:
-      '200':
+      "200":
         description: Family tree updated successfully.
         content:
           application/json:
             schema:
-              $ref: '../schemas/FamilyTree.yaml#/FamilyTreeRead'
-      '400':
+              $ref: "../schemas/FamilyTree.yaml#/FamilyTreeRead"
+      "400":
         description: Invalid input.
-      '401':
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Family tree not found or access denied.
     security:
       - bearerAuth: []
@@ -153,17 +153,17 @@
           type: string
           format: uuid
     responses:
-      '204':
+      "204":
         description: Family tree deleted successfully.
-      '401':
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Family tree not found or access denied.
     security:
       - bearerAuth: []
 
 # Persons
-/family-trees/{tree_id}/persons:
+/v1/family-trees/{tree_id}/persons:
   post:
     tags:
       - Persons
@@ -181,19 +181,19 @@
       content:
         application/json:
           schema:
-            $ref: '../schemas/GenealogyPerson.yaml#/PersonCreate'
+            $ref: "../schemas/GenealogyPerson.yaml#/PersonCreate"
     responses:
-      '201':
+      "201":
         description: Person created successfully.
         content:
           application/json:
             schema:
-              $ref: '../schemas/GenealogyPerson.yaml#/PersonRead'
-      '400':
+              $ref: "../schemas/GenealogyPerson.yaml#/PersonRead"
+      "400":
         description: Invalid input.
-      '401':
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Family tree not found or access denied.
     security:
       - bearerAuth: []
@@ -222,20 +222,20 @@
           type: integer
           default: 100
     responses:
-      '200':
+      "200":
         description: A list of persons in the tree.
         content:
           application/json:
             schema:
-              $ref: '../schemas/GenealogyPerson.yaml#/PersonListResponse'
-      '401':
+              $ref: "../schemas/GenealogyPerson.yaml#/PersonListResponse"
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Family tree not found or access denied.
     security:
       - bearerAuth: []
 
-/persons/{person_id}:
+/v1/persons/{person_id}:
   get:
     tags:
       - Persons
@@ -249,17 +249,17 @@
           type: string
           format: uuid
     responses:
-      '200':
+      "200":
         description: Details of the person.
         content:
           application/json:
             schema:
-              $ref: '../schemas/GenealogyPerson.yaml#/PersonRead'
-      '401':
+              $ref: "../schemas/GenealogyPerson.yaml#/PersonRead"
+      "401":
         description: Unauthorized.
-      '403':
+      "403":
         description: Forbidden.
-      '404':
+      "404":
         description: Person not found.
     security:
       - bearerAuth: []
@@ -280,21 +280,21 @@
       content:
         application/json:
           schema:
-            $ref: '../schemas/GenealogyPerson.yaml#/PersonUpdate'
+            $ref: "../schemas/GenealogyPerson.yaml#/PersonUpdate"
     responses:
-      '200':
+      "200":
         description: Person updated successfully.
         content:
           application/json:
             schema:
-              $ref: '../schemas/GenealogyPerson.yaml#/PersonRead'
-      '400':
+              $ref: "../schemas/GenealogyPerson.yaml#/PersonRead"
+      "400":
         description: Invalid input.
-      '401':
+      "401":
         description: Unauthorized.
-      '403':
+      "403":
         description: Forbidden.
-      '404':
+      "404":
         description: Person not found.
     security:
       - bearerAuth: []
@@ -311,18 +311,18 @@
           type: string
           format: uuid
     responses:
-      '204':
+      "204":
         description: Person deleted successfully.
-      '401':
+      "401":
         description: Unauthorized.
-      '403':
+      "403":
         description: Forbidden.
-      '404':
+      "404":
         description: Person not found.
     security:
       - bearerAuth: []
 
-/persons/{person_id}/trees/{tree_id}:
+/v1/persons/{person_id}/trees/{tree_id}:
   post:
     tags:
       - Persons
@@ -343,15 +343,15 @@
           type: string
           format: uuid
     responses:
-      '200':
+      "200":
         description: Person successfully associated with the tree.
         content:
           application/json:
             schema:
-              $ref: '../schemas/GenealogyPerson.yaml#/PersonRead'
-      '401':
+              $ref: "../schemas/GenealogyPerson.yaml#/PersonRead"
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Person or Tree not found.
     security:
       - bearerAuth: []
@@ -375,20 +375,20 @@
           type: string
           format: uuid
     responses:
-      '200':
+      "200":
         description: Person successfully disassociated from the tree.
         content:
           application/json:
             schema:
-              $ref: '../schemas/GenealogyPerson.yaml#/PersonRead'
-      '401':
+              $ref: "../schemas/GenealogyPerson.yaml#/PersonRead"
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Person or Tree not found.
     security:
       - bearerAuth: []
 
-/persons/search:
+/v1/persons/search:
   get:
     tags:
       - Persons
@@ -415,23 +415,23 @@
           type: integer
           default: 20
     responses:
-      '200':
+      "200":
         description: List of persons matching the search.
         content:
           application/json:
             schema:
               type: array
               items:
-                $ref: '../schemas/GenealogyPerson.yaml#/PersonSummary'
-      '401':
+                $ref: "../schemas/GenealogyPerson.yaml#/PersonSummary"
+      "401":
         description: Unauthorized.
-      '403':
+      "403":
         description: Forbidden.
     security:
       - bearerAuth: []
 
 # Relationships
-/relationships:
+/v1/relationships:
   post:
     tags:
       - Relationships
@@ -442,19 +442,19 @@
       content:
         application/json:
           schema:
-            $ref: '../schemas/Relationship.yaml#/RelationshipCreate'
+            $ref: "../schemas/Relationship.yaml#/RelationshipCreate"
     responses:
-      '201':
+      "201":
         description: Relationship created.
         content:
           application/json:
             schema:
-              $ref: '../schemas/Relationship.yaml#/RelationshipRead'
-      '400':
+              $ref: "../schemas/Relationship.yaml#/RelationshipRead"
+      "400":
         description: Invalid input.
-      '401':
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Tree or Persons not found.
     security:
       - bearerAuth: []
@@ -489,18 +489,18 @@
           type: integer
           default: 100
     responses:
-      '200':
+      "200":
         description: A list of relationships.
         content:
           application/json:
             schema:
-              $ref: '../schemas/Relationship.yaml#/RelationshipListResponse'
-      '401':
+              $ref: "../schemas/Relationship.yaml#/RelationshipListResponse"
+      "401":
         description: Unauthorized.
     security:
       - bearerAuth: []
 
-/relationships/{relationship_id}:
+/v1/relationships/{relationship_id}:
   get:
     tags:
       - Relationships
@@ -514,15 +514,15 @@
           type: string
           format: uuid
     responses:
-      '200':
+      "200":
         description: Details of the relationship.
         content:
           application/json:
             schema:
-              $ref: '../schemas/Relationship.yaml#/RelationshipRead'
-      '401':
+              $ref: "../schemas/Relationship.yaml#/RelationshipRead"
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Relationship not found.
     security:
       - bearerAuth: []
@@ -543,19 +543,19 @@
       content:
         application/json:
           schema:
-            $ref: '../schemas/Relationship.yaml#/RelationshipUpdate'
+            $ref: "../schemas/Relationship.yaml#/RelationshipUpdate"
     responses:
-      '200':
+      "200":
         description: Relationship updated.
         content:
           application/json:
             schema:
-              $ref: '../schemas/Relationship.yaml#/RelationshipRead'
-      '400':
+              $ref: "../schemas/Relationship.yaml#/RelationshipRead"
+      "400":
         description: Invalid input.
-      '401':
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Relationship not found.
     security:
       - bearerAuth: []
@@ -572,17 +572,17 @@
           type: string
           format: uuid
     responses:
-      '204':
+      "204":
         description: Relationship deleted.
-      '401':
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Relationship not found.
     security:
       - bearerAuth: []
 
 # Events (Genealogical)
-/events:
+/v1/events:
   post:
     tags:
       - Events
@@ -593,17 +593,17 @@
       content:
         application/json:
           schema:
-            $ref: '../schemas/Event.yaml#/EventCreate'
+            $ref: "../schemas/Event.yaml#/EventCreate"
     responses:
-      '201':
+      "201":
         description: Event created.
         content:
           application/json:
             schema:
-              $ref: '../schemas/Event.yaml#/EventRead'
-      '400':
+              $ref: "../schemas/Event.yaml#/EventRead"
+      "400":
         description: Invalid input.
-      '401':
+      "401":
         description: Unauthorized.
     security:
       - bearerAuth: []
@@ -629,7 +629,7 @@
         in: query
         required: false
         schema:
-          $ref: '../schemas/GenealogyCommon.yaml#/EventType'
+          $ref: "../schemas/GenealogyCommon.yaml#/EventType"
       - name: skip
         in: query
         required: false
@@ -643,18 +643,18 @@
           type: integer
           default: 100
     responses:
-      '200':
+      "200":
         description: A list of events.
         content:
           application/json:
             schema:
-              $ref: '../schemas/Event.yaml#/EventListResponse'
-      '401':
+              $ref: "../schemas/Event.yaml#/EventListResponse"
+      "401":
         description: Unauthorized.
     security:
       - bearerAuth: []
 
-/events/{event_id}:
+/v1/events/{event_id}:
   get:
     tags:
       - Events
@@ -668,15 +668,15 @@
           type: string
           format: uuid
     responses:
-      '200':
+      "200":
         description: Details of the event.
         content:
           application/json:
             schema:
-              $ref: '../schemas/Event.yaml#/EventRead'
-      '401':
+              $ref: "../schemas/Event.yaml#/EventRead"
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Event not found.
     security:
       - bearerAuth: []
@@ -697,19 +697,19 @@
       content:
         application/json:
           schema:
-            $ref: '../schemas/Event.yaml#/EventUpdate'
+            $ref: "../schemas/Event.yaml#/EventUpdate"
     responses:
-      '200':
+      "200":
         description: Event updated.
         content:
           application/json:
             schema:
-              $ref: '../schemas/Event.yaml#/EventRead'
-      '400':
+              $ref: "../schemas/Event.yaml#/EventRead"
+      "400":
         description: Invalid input.
-      '401':
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Event not found.
     security:
       - bearerAuth: []
@@ -726,17 +726,17 @@
           type: string
           format: uuid
     responses:
-      '204':
+      "204":
         description: Event deleted.
-      '401':
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Event not found.
     security:
       - bearerAuth: []
 
 # Notifications
-/notifications:
+/v1/notifications:
   get:
     tags:
       - Notifications
@@ -756,18 +756,18 @@
           type: integer
           default: 50
     responses:
-      '200':
+      "200":
         description: List of notifications.
         content:
           application/json:
             schema:
-              $ref: '../schemas/Notification.yaml#/NotificationListResponse'
-      '401':
+              $ref: "../schemas/Notification.yaml#/NotificationListResponse"
+      "401":
         description: Unauthorized.
     security:
       - bearerAuth: []
 
-/notifications/{notification_id}/read:
+/v1/notifications/{notification_id}/read:
   put:
     tags:
       - Notifications
@@ -781,21 +781,21 @@
           type: string
           format: uuid
     responses:
-      '200':
+      "200":
         description: Notification marked as read.
         content:
           application/json:
             schema:
-              $ref: '../schemas/Notification.yaml#/NotificationRead'
-      '401':
+              $ref: "../schemas/Notification.yaml#/NotificationRead"
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Notification not found.
     security:
       - bearerAuth: []
 
 # Merge Suggestions
-/merge-suggestions:
+/v1/merge-suggestions:
   get:
     tags:
       - Merge Suggestions
@@ -812,7 +812,7 @@
         in: query
         required: false
         schema:
-          $ref: '../schemas/GenealogyCommon.yaml#/MergeSuggestionStatus'
+          $ref: "../schemas/GenealogyCommon.yaml#/MergeSuggestionStatus"
       - name: skip
         in: query
         required: false
@@ -826,18 +826,18 @@
           type: integer
           default: 50
     responses:
-      '200':
+      "200":
         description: List of merge suggestions.
         content:
           application/json:
             schema:
-              $ref: '../schemas/MergeSuggestion.yaml#/MergeSuggestionListResponse'
-      '401':
+              $ref: "../schemas/MergeSuggestion.yaml#/MergeSuggestionListResponse"
+      "401":
         description: Unauthorized.
     security:
       - bearerAuth: []
 
-/merge-suggestions/{suggestion_id}:
+/v1/merge-suggestions/{suggestion_id}:
   put:
     tags:
       - Merge Suggestions
@@ -855,25 +855,25 @@
       content:
         application/json:
           schema:
-            $ref: '../schemas/MergeSuggestion.yaml#/MergeSuggestionUpdate'
+            $ref: "../schemas/MergeSuggestion.yaml#/MergeSuggestionUpdate"
     responses:
-      '200':
+      "200":
         description: Suggestion updated.
         content:
           application/json:
             schema:
-              $ref: '../schemas/MergeSuggestion.yaml#/MergeSuggestionRead'
-      '400':
+              $ref: "../schemas/MergeSuggestion.yaml#/MergeSuggestionRead"
+      "400":
         description: Invalid input.
-      '401':
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Suggestion not found.
     security:
       - bearerAuth: []
 
 # Person History
-/persons/{person_id}/history:
+/v1/persons/{person_id}/history:
   get:
     tags:
       - Person History
@@ -899,15 +899,15 @@
           type: integer
           default: 100
     responses:
-      '200':
+      "200":
         description: List of history entries for the person.
         content:
           application/json:
             schema:
-              $ref: '../schemas/PersonHistory.yaml#/PersonHistoryListResponse'
-      '401':
+              $ref: "../schemas/PersonHistory.yaml#/PersonHistoryListResponse"
+      "401":
         description: Unauthorized.
-      '404':
+      "404":
         description: Person not found.
     security:
       - bearerAuth: []
@@ -922,7 +922,7 @@
     description: Checks the operational status of the Genealogy Service.
     operationId: getGenealogyServiceHealth
     responses:
-      '200':
+      "200":
         description: Genealogy Service is healthy.
         content:
           application/json:
@@ -940,10 +940,10 @@
                 mongodb:
                   type: string
                   example: "connected"
-      '503':
+      "503":
         description: Genealogy Service is unhealthy.
         content:
           application/json:
             schema:
-              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+              $ref: "../openapi.yaml#/components/schemas/ErrorResponse"
     security: []

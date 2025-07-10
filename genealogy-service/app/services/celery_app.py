@@ -1,8 +1,3 @@
-import eventlet
-# Patch as early as possible for eventlet compatibility
-# This must be the first import
-eventlet.monkey_patch()
-
 from celery import Celery
 from celery.signals import worker_process_init, worker_process_shutdown
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
@@ -128,3 +123,9 @@ def close_db_connection(**kwargs):
 
 # Tasks will access the DB via `celery_app_state.db`
 # They will still need to manage their own asyncio event loop if they call async DB operations.
+
+# Simple ping task for testing worker connectivity
+@celery_app.task(name="app.services.tasks.ping")
+def ping():
+    """Simple ping task to test worker connectivity."""
+    return "pong"
