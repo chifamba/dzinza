@@ -1,0 +1,164 @@
+# Authentication Related Schemas
+
+# Request body for user registration
+RegisterRequest:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+      description: User's email address.
+    password:
+      type: string
+      format: password
+      description: User's password.
+    username:
+      type: string
+      nullable: true
+      description: User's desired username (optional, will be auto-generated from email if not provided).
+    first_name:
+      type: string
+      nullable: true
+      description: User's first name (optional).
+    last_name:
+      type: string
+      nullable: true
+      description: User's last name (optional).
+
+# Response for successful registration
+RegisterResponse:
+  type: object
+  properties:
+    message:
+      type: string
+      example: "User registered successfully, verification email sent"
+      description: Success message indicating user registration completion.
+
+# Request body for user login
+LoginRequest:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+      description: User's registered email address.
+    password:
+      type: string
+      format: password
+      description: User's password.
+
+# Response body for successful login
+LoginResponse:
+  type: object
+  properties:
+    access_token:
+      type: string
+      description: JWT access token for API authentication.
+    token_type:
+      type: string
+      example: "bearer"
+      description: Type of the token (always "bearer").
+
+# Response for token refresh and general token operations
+TokenResponse:
+  type: object
+  properties:
+    access_token:
+      type: string
+      description: JWT access token for API authentication.
+    token_type:
+      type: string
+      example: "bearer"
+      description: Type of the token (always "bearer").
+
+# =============================================================================
+# UNIMPLEMENTED SCHEMAS - FOR FUTURE VERSIONS
+# =============================================================================
+# The following schemas are documented for planned features but not yet
+# implemented in the current version of the auth service.
+
+# Request body for changing password (authenticated user) - PLANNED v1.1
+PasswordChangeRequest:
+  type: object
+  required:
+    - current_password
+    - new_password
+  properties:
+    current_password:
+      type: string
+      format: password
+      description: User's current password.
+    new_password:
+      type: string
+      format: password
+      minLength: 8
+      description: New password. Must meet complexity requirements.
+  x-implementation-status: "planned"
+  x-planned-version: "1.1"
+
+# Request body for initiating a password reset - PLANNED v1.1
+PasswordResetRequest:
+  type: object
+  required:
+    - email
+  properties:
+    email:
+      type: string
+      format: email
+      description: Email address of the account for which to reset the password.
+  x-implementation-status: "planned"
+  x-planned-version: "1.1"
+
+# Request body for confirming a password reset - PLANNED v1.1
+PasswordResetConfirmRequest:
+  type: object
+  required:
+    - token
+    - new_password
+  properties:
+    token:
+      type: string
+      description: The password reset token received via email.
+    new_password:
+      type: string
+      format: password
+      minLength: 8
+      description: New password. Must meet complexity requirements.
+  x-implementation-status: "planned"
+  x-planned-version: "1.1"
+
+# Request body for confirming email verification - PLANNED v1.1
+EmailVerificationConfirmRequest:
+  type: object
+  required:
+    - token
+  properties:
+    token:
+      type: string
+      description: The email verification token received via email.
+  x-implementation-status: "planned"
+  x-planned-version: "1.1"
+
+# Request body for social login - PLANNED v2.0
+SocialLoginRequest:
+  type: object
+  required:
+    - provider
+    - token
+  properties:
+    provider:
+      type: string
+      enum: [google, facebook, apple] # Example providers
+      description: The social login provider.
+    token:
+      type: string
+      description: The authentication token (e.g., ID token, access token) from the social provider.
+    # May include other provider-specific fields like `authorizationCode` for some flows.
+  x-implementation-status: "planned"
+  x-planned-version: "2.0"

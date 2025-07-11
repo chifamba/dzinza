@@ -1,0 +1,32 @@
+fastapi[all]>=0.100.0 # Includes pydantic, uvicorn, etc.
+motor>=3.3.0         # Async MongoDB driver
+pymongo>=4.0.0       # MongoDB driver (required by motor)
+celery>=5.3.0
+redis>=5.0.0         # For Celery broker/backend and potentially caching
+python-gedcom>=0.4.0 # For GEDCOM parsing
+pydantic-settings>=2.0.0 # For managing settings
+eventlet
+structlog>=24.1.0
+
+# For OpenTelemetry (optional, but good practice)
+opentelemetry-api>=1.19.0
+opentelemetry-sdk>=1.19.0
+opentelemetry-instrumentation-fastapi>=0.40b0
+opentelemetry-instrumentation-celery>=0.40b0
+opentelemetry-exporter-otlp-proto-http>=1.19.0 # Or grpc
+
+# For Prometheus metrics (optional)
+starlette-prometheus>=0.9.0
+
+# For JWT handling if service validates its own tokens locally (though gateway might handle)
+# python-jose[cryptography]>=3.3.0
+# passlib[bcrypt]>=1.7.4
+
+# Development/Testing
+pytest>=7.0.0
+pytest-asyncio>=0.20.0
+httpx>=0.24.0 # For TestClient
+
+# Linter/Formatter (optional, but good for consistency)
+# ruff
+# black

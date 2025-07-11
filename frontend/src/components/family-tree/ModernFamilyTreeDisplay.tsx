@@ -11,9 +11,10 @@ import FamilyUnit from "./FamilyUnit";
 import { organizeFamilyTree } from "./FamilyTreeOrganizer";
 
 const ModernFamilyTreeDisplay: React.FC = () => {
-  const [tree, setTree] = useState<FamilyTree | null>(null);
+  const [tree, setTree] = useState<FamilyTree | Partial<FamilyTree> | null>(null); // Allow Partial for initial load
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noTreeFound, setNoTreeFound] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
@@ -40,15 +41,24 @@ const ModernFamilyTreeDisplay: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      setNoTreeFound(false); // Reset no tree found state
       console.log("Loading family tree...");
-      const familyTree = await genealogyService.getFamilyTree();
-      console.log("Family tree loaded:", familyTree);
-      setTree(familyTree);
+      const familyTreeData = await genealogyService.getFamilyTree();
+
+      if (familyTreeData) {
+        console.log("Family tree loaded:", familyTreeData);
+        setTree(familyTreeData);
+      } else {
+        console.log("No family tree found for the user.");
+        setTree(null);
+        setNoTreeFound(true);
+      }
     } catch (err) {
       console.error("Failed to load family tree:", err);
       setError(
         err instanceof Error ? err.message : "Failed to load family tree."
       );
+      setTree(null); // Ensure tree is null on error
     } finally {
       setIsLoading(false);
     }
@@ -246,6 +256,34 @@ const ModernFamilyTreeDisplay: React.FC = () => {
             <Button onClick={loadFamilyTree}>Try Again</Button>
           </div>
         </Card>
+      </div>
+    );
+  }
+
+  if (noTreeFound) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
+         <div className="mx-auto w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-6">
+            <svg
+              className="w-12 h-12 text-gray-400 dark:text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+            </svg>
+          </div>
+        <h2 className="text-2xl font-semibold text-gray-800 dark:text-white mb-3">No Family Tree Found</h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">
+          It looks like you don't have any family trees yet, or we couldn't load one.
+        </p>
+        <Button
+          onClick={() => setIsAddModalOpen(true)} // Assuming this opens a modal to create a tree or add first person
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          Create Your First Family Tree
+        </Button>
       </div>
     );
   }

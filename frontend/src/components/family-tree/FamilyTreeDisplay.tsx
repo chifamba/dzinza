@@ -22,6 +22,7 @@ const FamilyTreeDisplay: React.FC = () => {
   // Edit Person Modal State (existing)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<FamilyMember | null>(null);
+  const [editMode, setEditMode] = useState<"view" | "edit">("edit");
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [submitEditError, setSubmitEditError] = useState<string | null>(null);
 
@@ -129,21 +130,18 @@ const FamilyTreeDisplay: React.FC = () => {
 
     // Populate memberNodeMap with RawNodeDatum objects for each member.
     // Each node includes attributes and an initialized 'children' array.
-    // 'originalId' is stored to link back to the original FamilyMember object if needed.
+    // Use a custom attribute to store the ID since originalId may not be supported.
     members.forEach((member) => {
       memberNodeMap.set(member.id, {
         name: member.name,
         attributes: {
-          // Attributes are used by the TreePersonNode component
-          Gender: member.gender,
+          // Attributes must be string, number, or boolean to match Record<string, string | number | boolean>
+          Gender: member.gender || "unknown",
           Birthdate: member.birthDate || "N/A",
-          ...(member.deathDate && { "Death Date": member.deathDate }),
-          parentIds: member.parentIds || [],
-          childIds: member.childIds || [],
-          spouseIds: member.spouseIds || [],
-          profileImageUrl: member.profileImageUrl,
+          DeathDate: member.deathDate || "N/A",
+          MemberId: member.id, // Store ID as an attribute instead of separate field
+          ProfileImage: member.profileImageUrl || "",
         },
-        originalId: member.id, // Store the original ID from the FamilyMember object
         children: [], // Initialize children array; will be populated by buildHierarchy
       });
     });
@@ -218,10 +216,20 @@ const FamilyTreeDisplay: React.FC = () => {
     setError(null);
     try {
       const data = await genealogyService.getFamilyTree("tree1");
-      setTree(data);
-    } catch (err) {
+      if (data) {
+        // Ensure data matches FamilyTree type by casting or providing defaults if needed
+        setTree(data as FamilyTree);
+      } else {
+        setError("No family trees found. Would you like to create a new one?");
+        setTree(null);
+      }
+    } catch (err: any) {
       const message =
-        err instanceof Error ? err.message : "Failed to load family tree.";
+        err.message && err.message.includes("Timeout")
+          ? err.message
+          : err instanceof Error
+          ? err.message
+          : "Failed to load family tree.";
       setError(message);
     } finally {
       setIsLoading(false);
@@ -323,8 +331,13 @@ const FamilyTreeDisplay: React.FC = () => {
         // Case: No relationships, but members exist. Display them as a list under a synthetic root.
         const firstPersonNode: RawNodeDatum = {
           name: tree.members[0].name,
-          originalId: tree.members[0].id,
-          attributes: { ...tree.members[0] }, // Spread attributes like gender, birthDate
+          attributes: {
+            Gender: tree.members[0].gender || "unknown",
+            Birthdate: tree.members[0].birthDate || "N/A",
+            DeathDate: tree.members[0].deathDate || "N/A",
+            MemberId: tree.members[0].id,
+            ProfileImage: tree.members[0].profileImageUrl || "",
+          },
         };
         if (tree.members.length === 1) {
           setD3TreeData(firstPersonNode);
@@ -334,8 +347,11 @@ const FamilyTreeDisplay: React.FC = () => {
             name: "Family Members (No Defined Root)",
             children: tree.members.map((m) => ({
               name: m.name,
-              originalId: m.id,
-              attributes: { Gender: m.gender, Birthdate: m.birthDate || "N/A" },
+              attributes: {
+                Gender: m.gender || "unknown",
+                Birthdate: m.birthDate || "N/A",
+                MemberId: m.id,
+              },
             })),
           });
         }
@@ -374,7 +390,8 @@ const FamilyTreeDisplay: React.FC = () => {
     person: FamilyMember,
     mode: "view" | "edit" = "edit"
   ) => {
-    setEditingPerson({ ...person, currentMode: mode }); // Store mode for modal title and form
+    setEditingPerson(person); // Avoid adding custom properties to FamilyMember
+    setEditMode(mode); // Use a separate state for mode
     setSubmitEditError(null);
     setIsEditModalOpen(true);
   };
@@ -448,16 +465,37 @@ const FamilyTreeDisplay: React.FC = () => {
 
   const currentMembers = tree?.members || []; // Keep this for handler access
 
-  const renderNode: RenderCustomNodeElementFn = ({ nodeDatum, toggleNode: _toggleNode }) => {
-    // Find the original FamilyMember data
-    const member = tree?.members.find((m) => m.id === nodeDatum.originalId);
-    
+  const renderNode: RenderCustomNodeElementFn = ({
+    nodeDatum,
+    toggleNode: _toggleNode,
+  }) => {
+    // Find the original FamilyMember data using MemberId from attributes
+    const member = tree?.members.find(
+      (m) => m.id === (nodeDatum.attributes as any)?.MemberId
+    );
+
     if (!member) {
       // Fallback for nodes without member data
       return (
         <g>
-          <rect x="-60" y="-30" width="120" height="60" fill="#EF4444" stroke="#DC2626" strokeWidth="2" rx="8" />
-          <text x="0" y="0" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="12">
+          <rect
+            x="-60"
+            y="-30"
+            width="120"
+            height="60"
+            fill="#EF4444"
+            stroke="#DC2626"
+            strokeWidth="2"
+            rx="8"
+          />
+          <text
+            x="0"
+            y="0"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="white"
+            fontSize="12"
+          >
             {nodeDatum.name}
           </text>
         </g>
@@ -469,66 +507,100 @@ const FamilyTreeDisplay: React.FC = () => {
         <foreignObject x="-120" y="-85" width="240" height="170">
           <div
             style={{
-              width: '100%',
-              height: '100%',
-              padding: '8px',
-              backgroundColor: 'white',
-              border: '2px solid #3B82F6',
-              borderRadius: '8px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              fontSize: '12px',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              cursor: 'pointer',
-              overflow: 'hidden'
+              width: "100%",
+              height: "100%",
+              padding: "8px",
+              backgroundColor: "white",
+              border: "2px solid #3B82F6",
+              borderRadius: "8px",
+              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+              fontSize: "12px",
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              cursor: "pointer",
+              overflow: "hidden",
             }}
             onClick={() => {
               console.log("Node clicked:", member.name);
               openEditPersonModal(member, "view");
             }}
           >
-            <div style={{ textAlign: 'center', fontWeight: 'bold', color: '#1E40AF', marginBottom: '4px' }}>
+            <div
+              style={{
+                textAlign: "center",
+                fontWeight: "bold",
+                color: "#1E40AF",
+                marginBottom: "4px",
+              }}
+            >
               {member.name}
             </div>
-            
+
             {member.gender && (
-              <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '2px' }}>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "#6B7280",
+                  marginBottom: "2px",
+                }}
+              >
                 <strong>Gender:</strong> {member.gender}
               </div>
             )}
-            
+
             {member.birthDate && (
-              <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '2px' }}>
-                <strong>Born:</strong> {new Date(member.birthDate).getFullYear()}
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "#6B7280",
+                  marginBottom: "2px",
+                }}
+              >
+                <strong>Born:</strong>{" "}
+                {new Date(member.birthDate).getFullYear()}
               </div>
             )}
-            
+
             {member.occupation && (
-              <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '2px' }}>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "#6B7280",
+                  marginBottom: "2px",
+                }}
+              >
                 <strong>Occupation:</strong> {member.occupation}
               </div>
             )}
-            
+
             {member.placeOfBirth && (
-              <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '4px' }}>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "#6B7280",
+                  marginBottom: "4px",
+                }}
+              >
                 <strong>Place:</strong> {member.placeOfBirth}
               </div>
             )}
-            
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-around', 
-              marginTop: '8px',
-              gap: '4px'
-            }}>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-around",
+                marginTop: "8px",
+                gap: "4px",
+              }}
+            >
               <button
                 style={{
-                  fontSize: '8px',
-                  padding: '2px 6px',
-                  backgroundColor: '#3B82F6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
+                  fontSize: "8px",
+                  padding: "2px 6px",
+                  backgroundColor: "#3B82F6",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -539,13 +611,13 @@ const FamilyTreeDisplay: React.FC = () => {
               </button>
               <button
                 style={{
-                  fontSize: '8px',
-                  padding: '2px 6px',
-                  backgroundColor: '#10B981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
+                  fontSize: "8px",
+                  padding: "2px 6px",
+                  backgroundColor: "#10B981",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -725,9 +797,9 @@ const FamilyTreeDisplay: React.FC = () => {
           isOpen={isEditModalOpen}
           onClose={() => !isSubmittingEdit && setIsEditModalOpen(false)}
           title={
-            editingPerson.currentMode === "view"
-              ? `View Profile: ${editingPerson.name}`
-              : `Edit Person: ${editingPerson.name}`
+            editMode === "view"
+              ? `View Profile: ${editingPerson?.name || "Unknown"}`
+              : `Edit Person: ${editingPerson?.name || "Unknown"}`
           }
         >
           <EditPersonForm
@@ -736,7 +808,7 @@ const FamilyTreeDisplay: React.FC = () => {
             onCancel={() => setIsEditModalOpen(false)}
             isLoading={isSubmittingEdit}
             error={submitEditError}
-            initialMode={editingPerson.currentMode} // Pass the mode to the form
+            initialMode={editMode} // Pass the mode to the form
             allMembers={currentMembers} // <-- ADD THIS LINE
           />
         </Modal>
@@ -782,11 +854,7 @@ const FamilyTreeDisplay: React.FC = () => {
               >
                 Cancel
               </Button>
-              <Button
-                variant="danger"
-                onClick={handleConfirmDeletePerson}
-                isLoading={isSubmittingDelete}
-              >
+              <Button variant="destructive" onClick={handleConfirmDeletePerson}>
                 Confirm Delete
               </Button>
             </div>
@@ -823,9 +891,8 @@ const FamilyTreeDisplay: React.FC = () => {
                 Cancel
               </Button>
               <Button
-                variant="danger"
+                variant="destructive"
                 onClick={handleConfirmDeleteRelationship}
-                isLoading={isSubmittingDeleteRel}
               >
                 Confirm Delete Relationship
               </Button>

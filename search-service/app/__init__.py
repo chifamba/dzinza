@@ -1,0 +1,3 @@
+"""
+Search service application package.
+"""

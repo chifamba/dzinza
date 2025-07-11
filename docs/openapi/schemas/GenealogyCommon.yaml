@@ -1,0 +1,183 @@
+# Common Enums and Base Schemas for Genealogy Service
+
+# Base for DB models (effect of DBModelMixin)
+DBModelMixinEffect:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Unique identifier for the record (MongoDB _id).
+      readOnly: true # Usually set by the database
+    created_at:
+      type: string
+      format: date-time
+      description: Timestamp of when the record was created.
+      readOnly: true
+    updated_at:
+      type: string
+      format: date-time
+      description: Timestamp of the last update to the record.
+      readOnly: true
+
+# Enums
+Gender:
+  type: string
+  enum:
+    - male
+    - female
+    - non_binary # From models_main.py, more inclusive than just "other"
+    - other
+    - unknown
+  description: Gender of an individual.
+  example: female
+
+PrivacySetting: # For FamilyTree
+  type: string
+  enum:
+    - public
+    - private
+    - shared # Placeholder for future more granular sharing
+    - family # Viewable by members of the associated family tree(s)
+  description: Privacy setting for a family tree.
+  example: private
+
+RelationshipType:
+  type: string
+  enum:
+    - spouse
+    - parent_of
+    - child_of
+    - sibling_of
+    - adoptive_parent_of
+    - adopted_child_of
+    - step_parent_of
+    - step_child_of
+    - guardian_of
+    - ward_of
+    - godparent_of
+    - godchild_of
+    - half_sibling_of
+    - step_sibling_of
+    - other
+    - unknown
+  description: The type of relationship between two persons.
+  example: parent_of
+
+SpousalStatus: # Attribute for SPOUSE relationship type
+  type: string
+  enum:
+    - Married
+    - Divorced
+    - Widowed
+    - Separated
+    - Annulled
+    - DomesticPartnership
+    - CustomaryUnion
+    - LivingTogether
+    - Engaged
+    - Other
+  description: Status of a spousal relationship.
+  example: Married
+
+ParentalRole: # Attribute for PARENT_OF/CHILD_OF relationship types
+  type: string
+  enum:
+    - BiologicalMother
+    - BiologicalFather
+    - AdoptiveMother
+    - AdoptiveFather
+    - Guardian
+    - StepMother
+    - StepFather
+    - FosterParent
+    - SurrogateMother
+    - SpermDonor
+    - EggDonor
+    - Other
+  description: Specific role in a parental relationship.
+  example: BiologicalMother
+
+EventType:
+  type: string
+  enum:
+    - birth
+    - death
+    - marriage
+    - divorce
+    - annulment
+    - adoption
+    - baptism
+    - burial
+    - cremation
+    - residence
+    - education
+    - occupation
+    - retirement
+    - engagement
+    - migration
+    - military_service
+    - custom
+    - other
+  description: Type of genealogical event.
+  example: birth
+
+CollaboratorRole: # For FamilyTree collaborators
+  type: string
+  enum:
+    - viewer
+    - editor
+    - admin
+  description: Role of a collaborator on a family tree.
+  example: editor
+
+PersonPrivacyOptions: # For granular privacy on Person details
+  type: string
+  enum:
+    - public
+    - family_tree_only # Visible to members of trees the person is in
+    - private          # Visible only to tree owner/admins with high privileges
+  description: Privacy options for specific details of a person.
+  example: family_tree_only
+
+MergeSuggestionStatus:
+  type: string
+  enum:
+    - pending
+    - accepted
+    - declined
+  description: Status of a merge suggestion.
+  example: pending
+
+PersonHistoryChangeType:
+  type: string
+  enum:
+    - create
+    - update
+    - merge
+    - delete
+    - revert
+  description: Type of change recorded in person history.
+  example: update
+
+IdentifierType: # For Person identifiers
+  type: string
+  enum:
+    - NationalID
+    - Passport
+    - DriverLicense
+    - BirthCertificate
+    - Email
+    - Phone
+    - Other
+  description: Type of identifier for a person.
+  example: NationalID
+
+VerificationStatus: # For Person identifiers
+  type: string
+  enum:
+    - Verified
+    - Unverified
+    - Pending
+  description: Verification status of an identifier.
+  example: Unverified

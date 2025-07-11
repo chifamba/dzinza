@@ -1,0 +1,5 @@
+value:
+  email: "test@dzinza.com"
+  password: "TestPassword123!"
+summary: Example login request for a test user.
+description: Provides credentials for user authentication. MFA is not implemented in current version.

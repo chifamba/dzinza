@@ -10,11 +10,22 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      "/api/genealogy": {
+        target: "http://localhost:3004",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/genealogy/, "/v1/genealogy"),
+      },
       "/api": {
         target: "http://localhost:3001",
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/api/, "/api/v1"),
       },
+    },
+    host: "0.0.0.0", // Allow external connections
+    watch: {
+      usePolling: true, // Needed for Docker volumes
     },
   },
   resolve: {

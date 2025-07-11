@@ -1,0 +1,281 @@
+# User Schemas for Dzinza Platform API
+
+# Enum for UserRole
+UserRole:
+  type: string
+  enum:
+    - user
+    - admin
+    - moderator
+  description: Role of the user within the system.
+  example: user
+
+# Base properties for a user
+UserBase:
+  type: object
+  properties:
+    email:
+      type: string
+      format: email
+      description: User's email address (unique).
+    username:
+      type: string
+      minLength: 3
+      maxLength: 50
+      pattern: "^[a-zA-Z0-9_]+$"
+      nullable: true
+      description: User's unique username (optional).
+    first_name:
+      type: string
+      maxLength: 50
+      nullable: true
+      description: User's first name.
+    last_name:
+      type: string
+      maxLength: 50
+      nullable: true
+      description: User's last name.
+    preferred_language:
+      type: string
+      maxLength: 10
+      default: "en"
+      nullable: true
+      description: User's preferred language code (e.g., 'en', 'sn').
+    timezone:
+      type: string
+      maxLength: 50
+      default: "UTC"
+      nullable: true
+      description: User's timezone (e.g., 'Africa/Harare', 'UTC').
+
+# Schema for creating a new user (admin endpoint)
+UserCreateAdmin:
+  allOf:
+    - $ref: "#/UserBase"
+    - type: object
+      required:
+        - email
+        - password
+      properties:
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: User's password. Must meet complexity requirements (lowercase, uppercase, digit, special character).
+        email_verified:
+          type: boolean
+          default: false
+          description: Whether the user's email is verified.
+        is_active:
+          type: boolean
+          default: true
+          description: Whether the user account is active.
+        role:
+          $ref: "#/UserRole"
+          default: user
+        send_welcome_email:
+          type: boolean
+          default: true
+          description: Whether to send a welcome email to the user.
+
+# NOTE: User registration schema moved to Auth.yaml#/RegisterRequest
+# This reflects the actual implementation where registration is handled
+# by the auth service with simpler parameter-based approach.
+
+# Schema for updating user details (self-update by user) - PLANNED v1.3
+UserUpdate:
+  type: object
+  properties:
+    email:
+      type: string
+      format: email
+      nullable: true
+      description: User's email address. Changing email may require re-verification.
+    username:
+      type: string
+      minLength: 3
+      maxLength: 50
+      pattern: "^[a-zA-Z0-9_]+$"
+      nullable: true
+      description: User's unique username.
+    first_name:
+      type: string
+      maxLength: 50
+      nullable: true
+    last_name:
+      type: string
+      maxLength: 50
+      nullable: true
+    preferred_language:
+      type: string
+      maxLength: 10
+      nullable: true
+    timezone:
+      type: string
+      maxLength: 50
+      nullable: true
+    # User cannot change is_active or role via this schema.
+
+# Schema for updating user details by an Admin
+AdminUserUpdateRequest:
+  allOf:
+    - $ref: "#/UserUpdate" # Includes all fields from UserUpdate
+    - type: object
+      properties:
+        is_active:
+          type: boolean
+          nullable: true
+          description: Set user account active status.
+        email_verified:
+          type: boolean
+          nullable: true
+          description: Set email verification status.
+        mfa_enabled: # Admin might be able to reset/disable MFA
+          type: boolean
+          nullable: true
+          description: Enable or disable MFA for the user.
+        role:
+          $ref: "#/UserRole"
+          nullable: true
+          description: Set user's role.
+        locked_until:
+          type: string
+          format: date-time
+          nullable: true
+          description: If account is locked, specifies until when. Set to null or past date to unlock.
+
+# User preferences sub-schema
+UserPreferences:
+  type: object
+  properties:
+    notifications:
+      type: object
+      properties:
+        email:
+          type: boolean
+          default: false
+        push:
+          type: boolean
+          default: false
+        newsletter:
+          type: boolean
+          default: false
+    privacy:
+      type: object
+      properties:
+        profileVisibility:
+          type: string
+          enum: [private, public, friends_only] # Example values
+          default: private
+        allowMessages:
+          type: boolean
+          default: false
+        showOnlineStatus:
+          type: boolean
+          default: false
+    theme:
+      type: string
+      enum: [light, dark, system]
+      default: light
+    timezone: # Duplicates UserBase.timezone, but often part of preferences object
+      type: string
+      default: "UTC"
+
+# Full user response schema
+UserResponse:
+  allOf:
+    - $ref: "#/UserBase"
+    - type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the user.
+        isActive: # Note: schema used camelCase, model used is_active
+          type: boolean
+          description: Whether the user account is active.
+        isSuperuser: # Note: schema used camelCase, model used is_superuser (derived from role)
+          type: boolean
+          description: Whether the user has superuser/admin privileges.
+        roles:
+          type: array
+          items:
+            type: string # Actual role values, e.g. "admin", "user"
+          description: List of roles assigned to the user.
+        emailVerified: # Note: schema used camelCase, model used email_verified
+          type: boolean
+          description: Whether the user's email address has been verified.
+        mfaEnabled: # Note: schema used camelCase, model used mfa_enabled
+          type: boolean
+          description: Whether Multi-Factor Authentication is enabled for the user.
+        lastLoginAt: # Note: schema used camelCase, model used last_login_at
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the user's last login.
+        createdAt: # Note: schema used camelCase, model used created_at
+          type: string
+          format: date-time
+          description: Timestamp of when the user account was created.
+        updatedAt: # Note: schema used camelCase, model used updated_at
+          type: string
+          format: date-time
+          description: Timestamp of the last update to the user account.
+        preferences:
+          $ref: "#/UserPreferences"
+          description: User-specific preferences.
+          default: # Provide a default structure
+            notifications:
+              email: false
+              push: false
+              newsletter: false
+            privacy:
+              profileVisibility: "private"
+              allowMessages: false
+              showOnlineStatus: false
+            theme: "light"
+            timezone: "UTC"
+
+# Public representation of a user (limited info)
+UserPublicResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    username:
+      type: string
+      nullable: true
+    first_name:
+      type: string
+      nullable: true
+    last_name:
+      type: string
+      nullable: true
+  example:
+    id: "d290f1ee-6c54-4b01-90e6-d701748f0851"
+    username: "janedoe"
+    first_name: "Jane"
+    last_name: "Doe"
+
+# Schema for a list of Users with pagination
+UserListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: "#/UserResponse"
+    total:
+      type: integer
+      description: Total number of users matching criteria.
+    # Optional pagination details if provided by API
+    # page:
+    #   type: integer
+    # size:
+    #   type: integer
+    # pages:
+    #   type: integer
+  required:
+    - items
+    - total

@@ -1,59 +1,38 @@
-# Dzinza Backend API Gateway - Multi-stage Dockerfile
-FROM node:20-alpine AS build
+# Use an official Python image as a builder
+FROM python:3.11-slim AS builder
 
-WORKDIR /app
+WORKDIR /home/app/web
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Install build dependencies (optional, e.g. gcc, for some pip packages)
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies (including devDependencies for build)
-RUN npm install && npm cache clean --force
+# Install Python dependencies
+COPY ./requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY src/ ./src/
+# Copy application code
+COPY ./app ./app
 
-# Build the application
-RUN npm run build
-# Optional: Prune dev dependencies if node_modules are copied directly
-# RUN npm prune --production && npm cache clean --force
+# Final image
+FROM python:3.11-slim
 
+WORKDIR /home/app/web
 
-# Production stage
-FROM node:20-alpine AS production
+# Install curl for healthchecks
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# Copy installed dependencies from builder
+COPY --from=builder /root/.local /root/.local
+ENV PATH=/root/.local/bin:$PATH
 
-# Create non-root user and group
-RUN addgroup -S appgroup && \
-    adduser -S appuser -G appgroup
+# Copy application code
+COPY ./app ./app
+COPY ./requirements.txt .
 
-# Install dumb-init for signal handling and curl for healthcheck
-RUN apk add --no-cache dumb-init curl
+EXPOSE 8000
 
-# Copy built application, node_modules, and package files from build stage
-COPY --chown=appuser:appgroup --from=build /app/dist ./dist
-COPY --chown=appuser:appgroup --from=build /app/node_modules ./node_modules
-COPY --chown=appuser:appgroup --from=build /app/package.json ./package.json
-# Also copy package-lock.json if it's used by npm start or for consistency
-COPY --chown=appuser:appgroup --from=build /app/package-lock.json ./package-lock.json
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
 
-
-# Create uploads directory and set ownership
-RUN mkdir -p uploads && chown appuser:appgroup uploads
-
-# Ensure /app directory itself is owned by appuser
-RUN chown appuser:appgroup /app
-
-# Switch to non-root user
-USER appuser
-
-EXPOSE 3001
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/health || exit 1
-
-# Start the application with dumb-init
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "start"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,60 +1,36 @@
-# Multi-stage build for optimal image size
-FROM node:18-alpine AS builder
+# auth-service/Dockerfile
+FROM python:3.11-slim AS base
 
-# Set working directory
-WORKDIR /app
+# Set environment variables from base
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
-# Copy package files
-COPY auth-service/package*.json ./
-COPY auth-service/tsconfig.json ./
+# Create a non-root user and group (copied from base/Dockerfile logic)
+RUN addgroup --system app && adduser --system --group app
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci && npm cache clean --force
+# Install curl for healthchecks
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-# Copy shared utilities
-COPY backend-service/shared ./shared
+WORKDIR /home/app/web
 
-# Copy source code
-COPY auth-service/src ./src
+# Create a virtual environment
+RUN python -m venv /home/app/venv
+ENV PATH=/home/app/venv/bin:/home/jules/.nvm/versions/node/v22.16.0/bin:/home/jules/.pyenv/shims:/home/jules/.pyenv/bin:/home/jules/.local/bin:/go/bin:/usr/local/go/bin:/usr/share/gradle/bin:/usr/share/maven/bin:/home/jules/.local/bin:/home/jules/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 
-# Build the application
-RUN npm run build
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Production image
-FROM node:18-alpine AS production
+# Copy application code
+COPY ./app /home/app/web/app
 
-# Create non-root user and group
-RUN addgroup -S appgroup && \
-    adduser -S appuser -G appgroup
+# Chown the directories to the app user
+RUN chown -R app:app /home/app/web /home/app/venv
 
-# Set working directory
-WORKDIR /app
+# Switch to non-root user
+USER app
 
-# Install dumb-init for signal handling
-RUN apk add --no-cache dumb-init
+# Expose port and command (can be overridden in docker-compose)
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-# Copy package files and install production dependencies only
-# Ensure files copied are owned by the non-root user
-COPY --chown=appuser:appgroup auth-service/package*.json ./
-RUN npm ci --production && npm cache clean --force
-
-# Copy built application and shared utilities from builder stage
-# Ensure these are also owned by the non-root user
-COPY --chown=appuser:appgroup --from=builder /app/dist ./dist/
-COPY --chown=appuser:appgroup --from=builder /app/shared ./shared/
-
-# Ensure the /app directory itself is owned by appuser.
-# WORKDIR creates /app as root, COPY --chown handles contents.
-RUN chown appuser:appgroup /app
-USER appuser
-
-# Expose port
-EXPOSE 3002
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node dist/healthcheck.js || exit 1
-
-# Start the application with dumb-init
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "start"]

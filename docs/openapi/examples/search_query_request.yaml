@@ -1,0 +1,19 @@
+value:
+  query_string: "John Doe 1950"
+  record_types:
+    - "person"
+  filters:
+    - field: "birth_place.keyword" # Assuming birth_place is indexed with a .keyword field for exact matches
+      value: "New York"
+    - field: "is_living"
+      value: false
+  page: 1
+  size: 10
+  sort_by: "_score" # or "primary_name.surname.keyword"
+  sort_order: "desc"
+  request_highlighting: true
+  request_facets:
+    - "gender.keyword"
+    - "death_decade_bucket" # Example of a custom bucket aggregation
+summary: Example search query for persons.
+description: Searches for persons matching "John Doe 1950", filters by birth place and living status, requests highlighting and facets.

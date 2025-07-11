@@ -26,112 +26,263 @@ jobs:
       - name: Discover services and validate
         id: discover
         run: |
-          # Discover all services with package.json
-          SERVICES=()
-          HAS_TESTS=false
+          SERVICES_JSON_ARRAY="[]"
+          PYTHON_SERVICES_ARRAY="[]"
+          NODE_SERVICES_ARRAY="[]"
+          HAS_NODE_TESTS=false
+          HAS_PYTHON_TESTS=false # Assume true for now if Python service exists
 
-          for dir in frontend backend-service auth-service genealogy-service search-service storage-service; do
-            if [ -f "$dir/package.json" ]; then
-              echo "Found service: $dir"
-              SERVICES+=("$dir")
-              
-              # Check if any service has tests
+          # Define all known service directories
+          ALL_SERVICE_DIRS=("frontend" "backend-service" "auth-service" "genealogy-service" "search-service" "storage-service")
+
+          for dir in "${ALL_SERVICE_DIRS[@]}"; do
+            SERVICE_TYPE=""
+            SERVICE_NAME="$dir"
+            HAS_SERVICE_TESTS=false # Placeholder for per-service test detection
+
+            if [ -f "$dir/package.json" ]; then # Node.js service
+              SERVICE_TYPE="node"
+              echo "Found Node.js service: $dir"
+              NODE_SERVICES_ARRAY=$(echo "$NODE_SERVICES_ARRAY" | jq --arg item "$SERVICE_NAME" '. + [$item]')
               if grep -q '"test"' "$dir/package.json"; then
-                HAS_TESTS=true
+                HAS_NODE_TESTS=true # Global flag for any Node tests
+                HAS_SERVICE_TESTS=true
               fi
+            elif [ -f "$dir/requirements.txt" ] || [ -f "$dir/pyproject.toml" ]; then # Python service
+              SERVICE_TYPE="python"
+              echo "Found Python service: $dir"
+              PYTHON_SERVICES_ARRAY=$(echo "$PYTHON_SERVICES_ARRAY" | jq --arg item "$SERVICE_NAME" '. + [$item]')
+              # Assume Python services will have tests; refine if specific check needed (e.g. tests dir)
+              if [ -d "$dir/tests" ]; then # Simple check for a tests directory
+                HAS_PYTHON_TESTS=true # Global flag for any Python tests
+                HAS_SERVICE_TESTS=true
+              fi
+            fi
+
+            if [ -n "$SERVICE_TYPE" ]; then
+              SERVICE_INFO=$(jq -n --arg name "$SERVICE_NAME" --arg type "$SERVICE_TYPE" --argjson has_tests "$HAS_SERVICE_TESTS" \
+                             '{name: $name, type: $type, has_tests: $has_tests}')
+              SERVICES_JSON_ARRAY=$(echo "$SERVICES_JSON_ARRAY" | jq --argjson item "$SERVICE_INFO" '. + [$item]')
             fi
           done
 
-          # Validate root package.json exists
-          if [ ! -f "package.json" ]; then
-            echo "::error::Root package.json is missing"
-            exit 1
-          fi
+          # Validate root package.json exists (for overall Node.js tooling if still used at root)
+          # This might become optional or removed if root is no longer Node.js focused.
+          # if [ ! -f "package.json" ]; then
+          #   echo "::warning::Root package.json is missing (may be okay if not a Node monorepo root)"
+          # fi
 
-          # Output discovered services as JSON array
-          SERVICES_JSON=$(printf '%s\n' "${SERVICES[@]}" | jq -R . | jq -s .)
-          echo "services=$SERVICES_JSON" >> $GITHUB_OUTPUT
-          echo "has-tests=$HAS_TESTS" >> $GITHUB_OUTPUT
+          echo "services_json=$(echo "$SERVICES_JSON_ARRAY" | jq -c .)" >> $GITHUB_OUTPUT
+          echo "python_services_json=$(echo "$PYTHON_SERVICES_ARRAY" | jq -c .)" >> $GITHUB_OUTPUT
+          echo "node_services_json=$(echo "$NODE_SERVICES_ARRAY" | jq -c .)" >> $GITHUB_OUTPUT
+          echo "has_node_tests=$HAS_NODE_TESTS" >> $GITHUB_OUTPUT
+          echo "has_python_tests=$HAS_PYTHON_TESTS" >> $GITHUB_OUTPUT
 
-          echo "✅ Discovered ${#SERVICES[@]} services"
-          echo "✅ Tests available: $HAS_TESTS"
+          echo "✅ Discovered services (JSON): $(echo "$SERVICES_JSON_ARRAY" | jq -c .)"
+          echo "🐍 Python services: $(echo "$PYTHON_SERVICES_ARRAY" | jq -c .)"
+          echo "📦 Node.js services: $(echo "$NODE_SERVICES_ARRAY" | jq -c .)"
+          echo "🧪 Node tests available: $HAS_NODE_TESTS"
+          echo "🧪 Python tests available: $HAS_PYTHON_TESTS"
 
-  # Build all services using workspaces
-  build:
-    name: Build & Quality
+  # Build Node.js services (if any)
+  build-node:
+    name: Build & Quality (Node.js)
     runs-on: ubuntu-latest
     needs: validate
+    if: fromJson(needs.validate.outputs.node_services_json) != null && fromJson(needs.validate.outputs.node_services_json)[0] != null
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
+          cache: npm # Cache for root and workspaces
 
-      - name: Install all dependencies
-        run: npm ci
+      # Assuming frontend is the primary Node.js build target now
+      - name: Install Frontend dependencies
+        run: npm ci --prefix frontend
+      - name: Lint Frontend
+        run: npm run lint --prefix frontend
+      - name: Type check Frontend
+        run: npm run typecheck --prefix frontend
+      - name: Build Frontend
+        run: npm run build --prefix frontend
+      - name: Security audit Frontend
+        run: npm audit --audit-level=high --prefix frontend
+        continue-on-error: false # Fail build on high vulnerabilities
 
-      - name: Lint all workspaces
-        run: npm run lint
-        continue-on-error: false
+      # Example for other Node services if they still exist and need building via root npm commands
+      # This part needs to be adapted if other Node services are not part of a workspace or built differently
+      # For now, focusing on frontend as the main Node.js component.
+      # If backend-service (Node) was still active:
+      # - name: Install Backend (Node) dependencies
+      #   run: npm ci --prefix backend-service # Example
+      # - name: Build Backend (Node)
+      #   run: npm run build --prefix backend-service # Example
 
-      - name: Type check all workspaces
-        run: npm run typecheck
-        continue-on-error: false
-
-      - name: Build all workspaces
-        run: npm run build
-
-      - name: Security audit
-        run: |
-          npm audit --audit-level=high
-        continue-on-error: false
-
-      - name: Upload build artifacts
+      - name: Upload Frontend build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts
-          path: |
-            */dist/
-            */build/
+          name: frontend-build-artifact
+          path: frontend/dist/ # Common path for Vite/React builds
           retention-days: 1
 
-  # Run tests if available
-  test:
-    name: Test
+  # Lint & Test Python services
+  lint-python:
+    name: Lint Python Services
     runs-on: ubuntu-latest
-    needs: [validate, build]
-    if: needs.validate.outputs.has-tests == 'true'
+    needs: validate
+    if: fromJson(needs.validate.outputs.python_services_json) != null && fromJson(needs.validate.outputs.python_services_json)[0] != null
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.validate.outputs.python_services_json) }}
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Ruff
+        run: pip install ruff
+      - name: Run Ruff linter & formatter check
+        working-directory: ./${{ matrix.service }}
+        run: |
+          ruff check .
+          ruff format --check .
 
+  test-python:
+    name: Test Python Services
+    runs-on: ubuntu-latest
+    needs: [validate, lint-python] # Depends on linting passing
+    if: needs.validate.outputs.has_python_tests == 'true' && fromJson(needs.validate.outputs.python_services_json) != null && fromJson(needs.validate.outputs.python_services_json)[0] != null
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.validate.outputs.python_services_json) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies for ${{ matrix.service }}
+        working-directory: ./${{ matrix.service }}
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio # Ensure test dependencies are installed
+      - name: Run Pytest
+        working-directory: ./${{ matrix.service }}
+        run: pytest
+
+  # Run Node.js tests (if any)
+  test-node:
+    name: Test Node.js Services
+    runs-on: ubuntu-latest
+    needs: [validate, build-node]
+    if: needs.validate.outputs.has_node_tests == 'true' && fromJson(needs.validate.outputs.node_services_json) != null && fromJson(needs.validate.outputs.node_services_json)[0] != null
+    steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+      - name: Install Frontend dependencies (for testing context)
+        run: npm ci --prefix frontend
+      # If build artifacts are needed for Node tests (e.g. testing dist output), download them
+      # - name: Download Frontend build artifact
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: frontend-build-artifact
+      #     path: frontend/dist
+      - name: Run Frontend tests
+        run: npm test --prefix frontend # Assumes frontend has its tests runnable this way
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifacts
-          path: .
-
-      - name: Run all tests
-        run: npm run test
-
-  # Build Docker images (only on main branch)
+  # Build Docker images (only on main branch, iterate over ALL services discovered)
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
-    needs: [validate, build, test]
-    if: github.ref == 'refs/heads/main' && !failure()
+    needs: [validate, build-node, lint-python, test-python, test-node] # Depends on all relevant preceding jobs
+    if: github.ref == 'refs/heads/main' && !failure() # Only run on main and if previous jobs succeed
     strategy:
-      matrix:
-        service: ${{ fromJson(needs.validate.outputs.services) }}
+      matrix: # Use the full list of services with their types
+        service_info: ${{ fromJson(needs.validate.outputs.services_json) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Dockerfile for ${{ matrix.service_info.name }}
+        run: |
+          if [ ! -f "${{ matrix.service_info.name }}/Dockerfile" ]; then
+            echo "::error::Missing Dockerfile for ${{ matrix.service_info.name }}"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for ${{ matrix.service_info.name }}
+        uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.service_info.name }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest
+
+      - name: Build and push ${{ matrix.service_info.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service_info.name }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/amd64 # Or as needed
+          cache-from: type=gha,scope=${{ matrix.service_info.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service_info.name }}
+
+  # Deployment readiness check
+  deploy-ready:
+    name: Deploy Ready
+    runs-on: ubuntu-latest
+    needs: [build-node, lint-python, test-python, test-node, docker] # Adjusted dependencies
+    if: always() && github.ref == 'refs/heads/main'
+    steps:
+      - name: Check status
+        run: |
+          if [ "${{ needs.build-node.result }}" == "failure" ]; then # Check if build-node was skipped or failed
+            if [ "${{ needs.build-node.result }}" != "skipped" ]; then
+              echo "::error::Node.js build failed"
+              exit 1
+            fi
+          fi
+          if [ "${{ needs.lint-python.result }}" == "failure" ]; then
+             if [ "${{ needs.lint-python.result }}" != "skipped" ]; then
+              echo "::error::Python linting failed"
+              exit 1
+            fi
+          fi
+          if [ "${{ needs.test-python.result }}" == "failure" ]; then
+            if [ "${{ needs.test-python.result }}" != "skipped" ]; then
+              echo "::error::Python tests failed"
+              exit 1
+            fi
+          fi
+          if [ "${{ needs.test-node.result }}" == "failure" ]; then
+             if [ "${{ needs.test-node.result }}" != "skipped" ]; then
+              echo "::error::Node.js tests failed"
+              exit 1
+            fi
+          fi
+          if [ "${{ needs.docker.result }}" == "failure" ]; then
+             if [ "${{ needs.docker.result }}" != "skipped" ]; then
+              echo "::error::Docker build failed"
+              exit 1
+            fi
+          fi
+          echo "✅ Ready for deployment!"
     steps:
       - uses: actions/checkout@v4
 
