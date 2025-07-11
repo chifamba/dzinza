@@ -54,14 +54,17 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
     container_name: dzinza-frontend
     ports:
-      - "8080:80"
+      - "8080:8080"
     depends_on:
-      - redis
+      - backend_service
     environment:
       - NODE_ENV=production
       - REACT_APP_ENVIRONMENT=production
+      - VITE_API_BASE_URL="" # Use relative URLs with nginx proxy
     networks:
       - dzinza-network
     restart: unless-stopped
@@ -69,7 +72,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`dzinza.local`)"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -285,10 +288,10 @@ services:
     environment:
       - DEBUG=${DEBUG:-false}
       # Downstream service URLs (these are picked up by config.py to build the SERVICE_URLS_BY_PREFIX map)
-      - AUTH_SERVICE_URL=http://auth_service:8000/api/v1
-      - GENEALOGY_SERVICE_URL=http://genealogy_service:8000/api/v1
-      - SEARCH_SERVICE_URL=http://search_service:8000/api/v1
-      - STORAGE_SERVICE_URL=http://storage_service:8000/api/v1
+      - AUTH_SERVICE_URL=http://auth_service:8000
+      - GENEALOGY_SERVICE_URL=http://genealogy_service:8000
+      - SEARCH_SERVICE_URL=http://search_service:8000
+      - STORAGE_SERVICE_URL=http://storage_service:8000
       # Add these for the proxy to work correctly inside Docker:
       - AUTH_SERVICE_BASE_URL=http://auth_service:8000
       - GENEALOGY_SERVICE_BASE_URL=http://genealogy_service:8000
