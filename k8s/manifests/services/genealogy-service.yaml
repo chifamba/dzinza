@@ -1,0 +1,220 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genealogy-service
+  namespace: dzinza
+  labels:
+    app: genealogy-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: genealogy-service
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: genealogy-service
+        version: v1
+    spec:
+      containers:
+        - name: genealogy-service
+          image: dzinza/genealogy-service:latest
+          command:
+            ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: DEBUG
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: DB_USER
+            - name: MONGODB_URL
+              value: "mongodb://$(DB_USER):$(MONGO_PASSWORD)@mongodb-service:27017/$(MONGODB_GENEALOGY_DB)?authSource=admin"
+            - name: MONGODB_DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: MONGODB_GENEALOGY_DB
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dzinza-secrets
+                  key: mongo_password
+            - name: MONGODB_GENEALOGY_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: MONGODB_GENEALOGY_DB
+            - name: CELERY_BROKER_URL
+              value: "redis://:$(REDIS_PASSWORD)@redis-service:6379/0"
+            - name: CELERY_RESULT_BACKEND
+              value: "redis://:$(REDIS_PASSWORD)@redis-service:6379/1"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dzinza-secrets
+                  key: redis_password
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: REDIS_HOST
+            - name: OTEL_SERVICE_NAME
+              value: "genealogy-service"
+            - name: JAEGER_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: JAEGER_ENDPOINT
+            - name: PYTHONUNBUFFERED
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: PYTHONUNBUFFERED
+            - name: PYTHONDONTWRITEBYTECODE
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: PYTHONDONTWRITEBYTECODE
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genealogy-worker
+  namespace: dzinza
+  labels:
+    app: genealogy-worker
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: genealogy-worker
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: genealogy-worker
+        version: v1
+    spec:
+      containers:
+        - name: genealogy-worker
+          image: dzinza/genealogy-service:latest
+          command:
+            [
+              "celery",
+              "-A",
+              "celery_worker.celery_app",
+              "worker",
+              "-l",
+              "info",
+              "-P",
+              "eventlet",
+            ]
+          env:
+            - name: DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: DEBUG
+            - name: MONGODB_URL
+              value: "mongodb://$(DB_USER):$(MONGO_PASSWORD)@mongodb-service:27017/$(MONGODB_GENEALOGY_DB)?authSource=admin"
+            - name: MONGODB_DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: MONGODB_GENEALOGY_DB
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: DB_USER
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dzinza-secrets
+                  key: mongo_password
+            - name: MONGODB_GENEALOGY_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: MONGODB_GENEALOGY_DB
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dzinza-secrets
+                  key: redis_password
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: REDIS_HOST
+            - name: OTEL_SERVICE_NAME
+              value: "genealogy-worker"
+            - name: JAEGER_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: JAEGER_ENDPOINT
+            - name: PYTHONUNBUFFERED
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: PYTHONUNBUFFERED
+            - name: PYTHONDONTWRITEBYTECODE
+              valueFrom:
+                configMapKeyRef:
+                  name: dzinza-config
+                  key: PYTHONDONTWRITEBYTECODE
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: genealogy-service
+  namespace: dzinza
+  labels:
+    app: genealogy-service
+spec:
+  selector:
+    app: genealogy-service
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http
+  type: ClusterIP
