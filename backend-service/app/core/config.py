@@ -1,30 +1,31 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, Optional, Dict
-from pydantic import AnyHttpUrl, model_validator, BaseModel
+import os
+import threading
+import time
 from functools import lru_cache
+from typing import Dict, List, Optional
+
+from pydantic import AnyHttpUrl, BaseModel, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 class ServiceURLMap(BaseModel):
-    auth_service: AnyHttpUrl = "http://localhost:3002/api/v1" # Example default, will be overridden by env
+    auth_service: AnyHttpUrl = "http://localhost:3002/api/v1"
     genealogy_service: AnyHttpUrl = "http://localhost:3004/api/v1"
     search_service: AnyHttpUrl = "http://localhost:3003/api/v1"
     storage_service: AnyHttpUrl = "http://localhost:3005/api/v1"
-    # Add other services if any
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "API Gateway (Backend Service)"
     PROJECT_VERSION: str = "0.1.0"
     DEBUG: bool = False
 
-    # URLs for downstream services (scheme, host, port only)
-    # These can be set via environment variables, e.g., AUTH_SERVICE_BASE_URL
-    AUTH_SERVICE_BASE_URL: AnyHttpUrl = "http://auth-service:8000" # No longer include /api/v1
-    GENEALOGY_SERVICE_BASE_URL: AnyHttpUrl = "http://genealogy-service:8000"
-    SEARCH_SERVICE_BASE_URL: AnyHttpUrl = "http://search-service:8000"
-    STORAGE_SERVICE_BASE_URL: AnyHttpUrl = "http://storage-service:8000"
+    AUTH_SERVICE_BASE_URL: Optional[AnyHttpUrl] = None
+    GENEALOGY_SERVICE_BASE_URL: Optional[AnyHttpUrl] = None
+    SEARCH_SERVICE_BASE_URL: Optional[AnyHttpUrl] = None
+    STORAGE_SERVICE_BASE_URL: Optional[AnyHttpUrl] = None
 
-    # This mapping can be used by the proxy to determine target URLs based on path prefixes
-    # Keys are path prefixes (e.g., "auth"), values will be the base URLs above.
-    SERVICE_BASE_URLS_BY_PREFIX: Dict[str, str] = {} # Populated by validator, stores string version of URL
+    SERVICE_BASE_URLS_BY_PREFIX: Dict[str, str] = {}
 
     # JWT Settings (if gateway validates tokens directly)
     JWT_SECRET_FILE: Optional[str] = None
@@ -56,6 +57,7 @@ class Settings(BaseSettings):
     OTEL_SERVICE_NAME: str = "api-gateway-service"
 
     SHARED_CONFIG_PATH: Optional[str] = "/etc/shared-config/backend.yaml"
+    SERVICES_CONFIG_PATH: str = "config/services.conf"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding='utf-8', extra='ignore')
 
@@ -72,48 +74,43 @@ class Settings(BaseSettings):
     def ASSEMBLED_JWT_SECRET(self) -> Optional[str]:
         return self._read_secret_file(self.JWT_SECRET_FILE) or self.JWT_SECRET
 
-    # @property
-    # def ASSEMBLED_JWT_PUBLIC_KEY(self) -> Optional[str]:
-    #     return self._read_secret_file(self.JWT_PUBLIC_KEY_FILE) or self.JWT_PUBLIC_KEY
+    def load_service_urls_from_file(self, file_path: str) -> Dict[str, str]:
+        urls = {}
+        try:
+            with open(file_path, 'r') as f:
+                for line in f:
+                    if '=' in line:
+                        key, value = line.strip().split('=', 1)
+                        urls[key] = value
+        except IOError:
+            pass  # Or log a warning
+        return urls
 
     @model_validator(mode='after')
     def build_service_map(cls, values: 'Settings') -> 'Settings':
-        # This map helps the proxy route requests based on URL path prefixes
-        # The keys are path prefixes that the gateway will look for.
-        # Example: /api/v1/auth/* -> auth_service
-        #          /api/v1/genealogy/* -> genealogy_service
-        # The exact prefixes depend on how the Node.js gateway routes.
-        # For now, using a simple mapping. This needs to align with actual routes.
+        service_urls = values.load_service_urls_from_file(values.SERVICES_CONFIG_PATH)
 
-        # Assuming the gateway itself is accessed at root, and downstream services have prefixes
-        # like /auth, /genealogy etc., after the gateway's own potential prefix (API_V1_STR).
-        # Let's assume the Node gateway proxies paths like:
-        # /auth -> auth-service
-        # /genealogy -> genealogy-service
-        # /storage -> storage-service
-        # /search -> search-service
-        # /metrics, /admin, /docs are handled by gateway or specific services.
+        values.AUTH_SERVICE_BASE_URL = service_urls.get("AUTH_SERVICE_URL")
+        values.GENEALOGY_SERVICE_BASE_URL = service_urls.get("GENEALOGY_SERVICE_URL")
+        values.SEARCH_SERVICE_BASE_URL = service_urls.get("SEARCH_SERVICE_URL")
+        values.STORAGE_SERVICE_BASE_URL = service_urls.get("STORAGE_SERVICE_URL")
 
-        # This mapping might be more dynamic or loaded from a config file in a real scenario.
-        # The keys are the first path segment that identifies the downstream service.
-        # Values are the base URLs (scheme://host:port) of the target services.
         service_base_map = {
             "auth": values.AUTH_SERVICE_BASE_URL,
-            "users": values.AUTH_SERVICE_BASE_URL, # /users routes to auth service
-            "genealogy": values.GENEALOGY_SERVICE_BASE_URL, # General prefix for genealogy
+            "users": values.AUTH_SERVICE_BASE_URL,
+            "genealogy": values.GENEALOGY_SERVICE_BASE_URL,
             "family-trees": values.GENEALOGY_SERVICE_BASE_URL,
             "persons": values.GENEALOGY_SERVICE_BASE_URL,
             "relationships": values.GENEALOGY_SERVICE_BASE_URL,
             "events": values.GENEALOGY_SERVICE_BASE_URL,
-            "notifications": values.GENEALOGY_SERVICE_BASE_URL, # Notifications are part of genealogy
+            "notifications": values.GENEALOGY_SERVICE_BASE_URL,
             "merge-suggestions": values.GENEALOGY_SERVICE_BASE_URL,
-            "person-history": values.GENEALOGY_SERVICE_BASE_URL, # Person history part of genealogy
+            "person-history": values.GENEALOGY_SERVICE_BASE_URL,
             "search": values.SEARCH_SERVICE_BASE_URL,
             "storage": values.STORAGE_SERVICE_BASE_URL,
-            "files": values.STORAGE_SERVICE_BASE_URL, # /files routes to storage service
+            "files": values.STORAGE_SERVICE_BASE_URL,
         }
-        # Ensure URLs are stored as strings for httpx compatibility and simplicity in proxy.py
-        values.SERVICE_BASE_URLS_BY_PREFIX = {k: str(v).rstrip('/') for k, v in service_base_map.items()}
+        values.SERVICE_BASE_URLS_BY_PREFIX = {k: str(v).rstrip('/') for k, v in service_base_map.items() if v}
         return values
 
 
@@ -122,3 +119,37 @@ def get_settings() -> Settings:
     return Settings()
 
 settings = get_settings()
+
+class ConfigChangeHandler(FileSystemEventHandler):
+    def __init__(self, settings_instance):
+        self.settings = settings_instance
+        self.last_reload_time = 0
+
+    def on_modified(self, event):
+        if event.src_path.endswith(os.path.basename(self.settings.SERVICES_CONFIG_PATH)):
+            current_time = time.time()
+            if current_time - self.last_reload_time > 1:  # Debounce
+                print(f"Detected change in {event.src_path}. Reloading configuration.")
+                self.settings.build_service_map(self.settings)
+                self.last_reload_time = current_time
+
+def start_config_watcher(settings_instance: Settings):
+    path = os.path.dirname(settings_instance.SERVICES_CONFIG_PATH)
+    event_handler = ConfigChangeHandler(settings_instance)
+    observer = Observer()
+    observer.schedule(event_handler, path, recursive=False)
+    observer.start()
+    print(f"Started watching for changes in {path}")
+
+    # Keep the observer thread running
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+
+# It's better to start the watcher in the application's startup event
+def setup_config_watcher(settings_instance: Settings):
+    watcher_thread = threading.Thread(target=start_config_watcher, args=(settings_instance,), daemon=True)
+    watcher_thread.start()

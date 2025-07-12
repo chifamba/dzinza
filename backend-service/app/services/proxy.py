@@ -30,6 +30,8 @@ def get_target_service_url(path: str) -> Optional[Tuple[str, str]]:
     #          "health" -> ["health"] (This case should ideally not happen if gateway always has a prefix like /api)
     #          "" -> [""]
     #          "auth" -> ["auth"]
+    if path.startswith('/api/v1/'):
+        path = path[len('/api/v1/'):]
     stripped_path = path.strip("/")
     if not stripped_path: # Handles empty path or path that was just "/"
         # This case should ideally be caught before, or means no specific service target.
@@ -43,6 +45,7 @@ def get_target_service_url(path: str) -> Optional[Tuple[str, str]]:
 
     if first_segment not in settings.SERVICE_BASE_URLS_BY_PREFIX:
         logger.warning(f"No downstream service configured for path prefix: '{first_segment}' (from path: '{path}')")
+        logger.debug(f"Available prefixes: {list(settings.SERVICE_BASE_URLS_BY_PREFIX.keys())}")
         return None
 
     service_base_url = settings.SERVICE_BASE_URLS_BY_PREFIX[first_segment]
@@ -151,7 +154,7 @@ async def reverse_proxy(request: Request, path: str):
         # Example: service_base_url = "http://auth-service:8000"
         #          service_specific_path_segment = "/auth/login"
         # Target: "http://auth-service:8000/v1/auth/login"
-        target_url = service_base_url.rstrip("/")  + service_specific_path_segment
+        target_url = service_base_url.rstrip("/") + "/v1" + service_specific_path_segment
         logger.debug(f"Constructed non-health check target URL: {target_url}")
 
     # Query parameters
