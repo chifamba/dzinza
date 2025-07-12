@@ -151,7 +151,7 @@ async def reverse_proxy(request: Request, path: str):
         # Example: service_base_url = "http://auth-service:8000"
         #          service_specific_path_segment = "/auth/login"
         # Target: "http://auth-service:8000/v1/auth/login"
-        target_url = service_base_url.rstrip("/") + "/v1" + service_specific_path_segment
+        target_url = service_base_url.rstrip("/")  + service_specific_path_segment
         logger.debug(f"Constructed non-health check target URL: {target_url}")
 
     # Query parameters

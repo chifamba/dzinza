@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_AUTH_ENDPOINTS: str = "10/minute" # Stricter for login/register
 
     # API settings
-    API_V1_STR: str = "/api" # Path prefix for this gateway's own API endpoints (if any, like health)
+    API_V1_STR: str = "/api/v1" # Path prefix for this gateway's own API endpoints (if any, like health)
                                # Note: The main proxying might happen at root "/" or a different prefix
     ALLOWED_ORIGINS: List[str] = ["*"] # Adjust in production
 

@@ -169,8 +169,6 @@ services:
       - 'http.cors.allow-origin="*"'
       - "indices.recovery.max_bytes_per_sec=100mb"
       - "action.destructive_requires_name=false"
-      - "index.number_of_replicas=0"
-      - "index.number_of_shards=1"
       - "logger.level=INFO"
     ulimits:
       memlock:
