@@ -26,6 +26,8 @@ spec:
     metadata:
       labels:
         app: mongodb
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
       containers:
         - name: mongodb
@@ -68,8 +70,10 @@ spec:
                 - "db.runCommand('ping').ok"
                 - localhost:27017/test
                 - --quiet
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
             exec:
               command:
@@ -78,8 +82,10 @@ spec:
                 - "db.runCommand('ping').ok"
                 - localhost:27017/test
                 - --quiet
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: mongodb-storage
           persistentVolumeClaim:

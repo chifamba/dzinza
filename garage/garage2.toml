@@ -3,7 +3,7 @@ data_dir = "/var/lib/garage/data2"
 db_engine = "lmdb"
 metadata_auto_snapshot_interval = "6h"
 
-replication_factor = 3
+replication_factor = 1
 compression_level = 2
 
 node_name = "node2"
@@ -11,8 +11,8 @@ rpc_bind_addr = "0.0.0.0:39012"
 rpc_public_addr = "garage2:39012"
 rpc_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 bootstrap_peers = [
-  "dzinza-garage1:39011",
-  "dzinza-garage3:39013"
+  "garage1:39011",
+  "garage3:39013"
 ]
 
 [s3_api]

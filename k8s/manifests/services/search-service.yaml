@@ -21,6 +21,7 @@ spec:
       containers:
         - name: search-service
           image: dzinza/search-service:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8000
           env:

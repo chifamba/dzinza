@@ -1,8 +1,8 @@
 # storage-service/Dockerfile
 FROM python:3.11-slim AS base
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 RUN addgroup --system app && adduser --system --group app
 

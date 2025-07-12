@@ -26,7 +26,11 @@ spec:
     metadata:
       labels:
         app: elasticsearch
+      annotations:
+        sidecar.istio.io/inject: "false"
     spec:
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: elasticsearch
           image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
@@ -47,7 +51,7 @@ spec:
             - name: http.cors.enabled
               value: "true"
             - name: http.cors.allow-origin
-              value: "*"
+              value: '"*"'
             - name: indices.recovery.max_bytes_per_sec
               value: "100mb"
             - name: action.destructive_requires_name
@@ -65,21 +69,22 @@ spec:
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
-            fsGroup: 1000
           livenessProbe:
+            httpGet:
+              path: /_cluster/health
+              port: 9200
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
             httpGet:
               path: /_cluster/health
               port: 9200
             initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 5
-          readinessProbe:
-            httpGet:
-              path: /_cluster/health
-              port: 9200
-            initialDelaySeconds: 30
-            periodSeconds: 5
-            timeoutSeconds: 3
+            failureThreshold: 3
       volumes:
         - name: elasticsearch-storage
           persistentVolumeClaim:

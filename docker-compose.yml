@@ -139,13 +139,15 @@ services:
     command: ["redis-server", "--requirepass", "redis_secure_password_789"]
     secrets: # Grant access to the secret
       - redis_password
+    volumes:
+      - redis_data:/data
     # Environment variable for REDIS_PASSWORD is no longer needed if accessed via file by the application
     # If the application itself needs REDIS_PASSWORD env var, it should read it from /run/secrets/redis_password
     networks:
       - dzinza-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-a", "redis_secure_password_789", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -167,6 +169,9 @@ services:
       - 'http.cors.allow-origin="*"'
       - "indices.recovery.max_bytes_per_sec=100mb"
       - "action.destructive_requires_name=false"
+      - "index.number_of_replicas=0"
+      - "index.number_of_shards=1"
+      - "logger.level=INFO"
     ulimits:
       memlock:
         soft: -1
@@ -609,9 +614,6 @@ volumes:
   prometheus_data:
   grafana_data:
   shared_config: # Define the shared_config volume
-  minio_data: # Data volume for MinIO
-  garage_data: # Data volume for Garage
-  garage_metadata: # Metadata volume for Garage
   garage1_data:
   garage1_meta:
   garage2_data:

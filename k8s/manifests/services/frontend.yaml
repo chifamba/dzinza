@@ -21,6 +21,7 @@ spec:
       containers:
         - name: frontend
           image: dzinza/frontend:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
           env:

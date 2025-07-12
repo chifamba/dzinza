@@ -21,6 +21,7 @@ spec:
       containers:
         - name: genealogy-service
           image: dzinza/genealogy-service:latest
+          imagePullPolicy: Never
           command:
             ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
           ports:
@@ -115,7 +116,7 @@ metadata:
     app: genealogy-worker
     version: v1
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: genealogy-worker
@@ -129,11 +130,12 @@ spec:
       containers:
         - name: genealogy-worker
           image: dzinza/genealogy-service:latest
+          imagePullPolicy: Never
           command:
             [
               "celery",
               "-A",
-              "celery_worker.celery_app",
+              "app.services.celery_app:celery_app",
               "worker",
               "-l",
               "info",

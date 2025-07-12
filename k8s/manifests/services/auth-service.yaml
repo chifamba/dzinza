@@ -21,6 +21,7 @@ spec:
       containers:
         - name: auth-service
           image: dzinza/auth-service:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8000
           env:
