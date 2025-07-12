@@ -288,18 +288,9 @@ services:
     volumes:
       - ./backend-service:/home/app/web # Mount code for development
       - shared_config:/etc/shared-config
+      - ./backend-service/config:/home/app/web/config
     environment:
       - DEBUG=${DEBUG:-false}
-      # Downstream service URLs (these are picked up by config.py to build the SERVICE_URLS_BY_PREFIX map)
-      - AUTH_SERVICE_URL=http://auth_service:8000
-      - GENEALOGY_SERVICE_URL=http://genealogy_service:8000
-      - SEARCH_SERVICE_URL=http://search_service:8000
-      - STORAGE_SERVICE_URL=http://storage_service:8000
-      # Add these for the proxy to work correctly inside Docker:
-      - AUTH_SERVICE_BASE_URL=http://auth_service:8000
-      - GENEALOGY_SERVICE_BASE_URL=http://genealogy_service:8000
-      - SEARCH_SERVICE_BASE_URL=http://search_service:8000
-      - STORAGE_SERVICE_BASE_URL=http://storage_service:8000
       # JWT settings if gateway validates tokens
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
       - JWT_ALGORITHM=HS256 # Ensure this matches auth-service

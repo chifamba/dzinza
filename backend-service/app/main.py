@@ -7,7 +7,7 @@ import httpx # HTTP client for proxying
 import structlog
 import time # For X-Response-Time header
 
-from app.core.config import settings
+from app.core.config import settings, setup_config_watcher
 # from app.services.proxy import reverse_proxy # To be created
 from app.middleware.rate_limiter import limiter as app_limiter # Import the limiter instance
 from slowapi.errors import RateLimitExceeded # Import the exception
@@ -51,7 +51,8 @@ async def startup_event():
         app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler) # Add exception handler
         logger.info("Rate limiter initialized and attached to app state.")
     logger.info("HTTPX AsyncClient initialized for proxying.")
-    # TODO: Initialize JWT public key if using asymmetric algo & key is from file/service
+    # Start the configuration file watcher
+    setup_config_watcher(settings)
 
 @app.on_event("shutdown")
 async def shutdown_event():

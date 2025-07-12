@@ -43,6 +43,7 @@ def get_target_service_url(path: str) -> Optional[Tuple[str, str]]:
 
     if first_segment not in settings.SERVICE_BASE_URLS_BY_PREFIX:
         logger.warning(f"No downstream service configured for path prefix: '{first_segment}' (from path: '{path}')")
+        logger.debug(f"Available prefixes: {list(settings.SERVICE_BASE_URLS_BY_PREFIX.keys())}")
         return None
 
     service_base_url = settings.SERVICE_BASE_URLS_BY_PREFIX[first_segment]
