@@ -16,6 +16,6 @@ class RefreshToken(Base):
     token_jti = Column(String, nullable=False, unique=True, index=True)
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
-    revoked = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)

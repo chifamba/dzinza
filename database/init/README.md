@@ -4,26 +4,18 @@ This directory contains SQL scripts to initialize and manage the PostgreSQL data
 
 ## Script Overview
 
-The database initialization has been consolidated into three optimized scripts:
+The database initialization and migration scripts must be run in the following order:
 
-1. **01-schema.sql** - Database structure including:
+1. **01-schema.sql** - Base schema (tables, types, functions, indexes)
+2. **04-auth-schema-patch.sql** - Auth-related columns/tables
+3. **05-auth-audit-logs.sql** - Audit logs table (if present)
+4. **06-username-nullable-patch.sql** - Username column patch
+5. **07-create-missing-tables.sql** - Create any missing tables (e.g., audit_logs, refresh_tokens)
+6. **08-sync-models.sql** - Patch columns and add comments to ensure schema matches application models
+7. **02-data.sql** - Initial seed data
+8. **03-cleanup.sql** - Cleanup and migration logic
 
-   - Tables, columns, and constraints
-   - User-defined types and enums
-   - Functions and triggers
-   - Indexes for performance optimization
-
-2. **02-data.sql** - Initial seed data:
-
-   - Default admin and test users
-   - Default family trees
-   - Reference data needed for application functionality
-
-3. **03-cleanup.sql** - Migration and cleanup script:
-   - Safely removes deprecated columns
-   - Fixes data inconsistencies
-   - Ensures proper data migration between schema versions
-   - Handles enum value updates
+> **Note:** Always ensure table creation scripts are executed before any patch scripts that add columns or comments to those tables. This prevents migration errors and ensures a consistent schema.
 
 ## Usage
 
@@ -46,7 +38,7 @@ psql -U dzinza_user -d dzinza_db
 
 ### For Docker Environments
 
-These scripts are automatically executed when the PostgreSQL container is started for the first time, in alphabetical order. The Docker setup uses the init scripts in this directory.
+These scripts are automatically executed when the PostgreSQL container is started for the first time, in alphabetical order. **Rename scripts as needed to enforce the correct order.**
 
 ### Initial Login Credentials
 
@@ -78,10 +70,11 @@ The database schema supports the following features:
 
 When making schema changes:
 
-1. Add your changes to the appropriate script
-2. For backward-incompatible changes, add migration logic to `03-cleanup.sql`
-3. Test the scripts on a development database before committing
-4. Document significant changes in the commit message
+1. Add new tables in a new script with a lower number than any patch scripts.
+2. Add column or comment patches in a script that runs after table creation.
+3. For backward-incompatible changes, add migration logic to `03-cleanup.sql`.
+4. Test the scripts on a development database before committing.
+5. Document significant changes in the commit message
 
 ## Troubleshooting
 

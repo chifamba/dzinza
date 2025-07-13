@@ -1,3 +1,31 @@
+"""
+Reverse Proxy Service
+====================
+
+This module implements the core reverse proxy logic for the API Gateway (backend-service).
+
+## Version-Agnostic Routing
+
+Requests to paths like `/v1/auth/login`, `/v2/auth/login`, etc., are automatically routed to the correct downstream service by skipping the version segment (e.g., `v1`, `v2`) and using the next segment (e.g., `auth`) as the service prefix. This ensures future compatibility as new API versions are introduced.
+
+- Example: `/v1/auth/login` → routed to the `auth` service
+- Example: `/v2/genealogy/persons` → routed to the `genealogy` service
+
+## Service Mapping
+
+The mapping of service prefixes to downstream URLs is defined in `SERVICE_BASE_URLS_BY_PREFIX` in `app/core/config.py`.
+
+## Health Checks
+
+Health check endpoints (e.g., `/v1/auth/health`) are detected and routed to `/health` on the downstream service.
+
+## Implementation Notes
+
+- The function `get_target_service_url` handles version-agnostic path parsing and service mapping.
+- No changes to service map are needed when introducing new API versions.
+
+"""
+
 from fastapi import Request, HTTPException, status
 from fastapi.responses import StreamingResponse, Response # Ensure Response is imported
 import httpx
@@ -20,64 +48,50 @@ GATEWAY_MANAGED_HEADERS = ["content-length", "content-type"] # Content-Type migh
 def get_target_service_url(path: str) -> Optional[Tuple[str, str]]:
     """
     Determines the target downstream service URL and the path segment for that service.
-    The path segment does NOT include the /v1/ prefix, as that will be added by reverse_proxy for non-health endpoints.
+    Handles versioned API paths (e.g., v1/auth/login, v2/auth/login) by skipping the version segment.
     Returns a tuple: (service_base_url, path_segment_for_service) or None if no match.
-    Example path inputs from gateway: "auth/login", "auth/health", "genealogy/persons", "family-trees/123"
     """
-    # Normalize path by removing leading/trailing slashes and split
-    # If path is empty or just "/", path_segments might be [""] or empty.
-    # Example: "auth/login" -> ["auth", "login"]
-    #          "health" -> ["health"] (This case should ideally not happen if gateway always has a prefix like /api)
-    #          "" -> [""]
-    #          "auth" -> ["auth"]
-    if path.startswith('/api/v1/'):
-        path = path[len('/api/v1/'):]
+    # Remove leading /api if present
+    if path.startswith('/api/'):
+        path = path[len('/api/'):]
     stripped_path = path.strip("/")
-    if not stripped_path: # Handles empty path or path that was just "/"
-        # This case should ideally be caught before, or means no specific service target.
-        # However, if a prefix like "auth" could map to its own root, this logic might need adjustment.
-        # For now, returning None as no clear first_segment to map.
+    if not stripped_path:
         logger.warning(f"Path is empty or root after stripping: '{path}'")
         return None
 
     path_segments = stripped_path.split("/")
-    first_segment = path_segments[0]
+    # Check if first segment is a version indicator (e.g., v1, v2, v3)
+    if path_segments[0].startswith('v') and path_segments[0][1:].isdigit():
+        # Use the next segment as the service prefix
+        if len(path_segments) < 2:
+            logger.warning(f"No service prefix after version segment in path: '{path}'")
+            return None
+        service_prefix = path_segments[1]
+        downstream_path_segments = path_segments[1:]  # keep version in downstream path
+    else:
+        service_prefix = path_segments[0]
+        downstream_path_segments = path_segments
 
-    if first_segment not in settings.SERVICE_BASE_URLS_BY_PREFIX:
-        logger.warning(f"No downstream service configured for path prefix: '{first_segment}' (from path: '{path}')")
+    if service_prefix not in settings.SERVICE_BASE_URLS_BY_PREFIX:
+        logger.warning(f"No downstream service configured for path prefix: '{service_prefix}' (from path: '{path}')")
         logger.debug(f"Available prefixes: {list(settings.SERVICE_BASE_URLS_BY_PREFIX.keys())}")
         return None
 
-    service_base_url = settings.SERVICE_BASE_URLS_BY_PREFIX[first_segment]
-    downstream_path_for_service: str
+    service_base_url = settings.SERVICE_BASE_URLS_BY_PREFIX[service_prefix]
 
-    # Determine the path segment for the downstream service.
-    # This segment will be appended to "service_base_url/v1/" or "service_base_url/" for health checks.
-
-    # Case 1: Health check for a prefixed service (e.g., "auth/health")
-    # path_segments would be ["auth", "health"]. first_segment is "auth".
-    # We want downstream_path_for_service = "/health"
-    if len(path_segments) > 1 and path_segments[-1] == "health":
-        # This covers "auth/health", "genealogy/health" (if "genealogy" is a direct prefix),
-        # "family-trees/health" etc.
+    # Health check detection
+    if len(downstream_path_segments) > 1 and downstream_path_segments[-1] == "health":
         downstream_path_for_service = "/health"
-    # Case 2: Path starts with "genealogy" prefix (e.g., "genealogy/family-trees/123")
-    # downstream_path_for_service should be "/family-trees/123"
-    elif first_segment == "genealogy":
-        if len(path_segments) > 1: # e.g., "genealogy/persons"
-            downstream_path_for_service = "/" + "/".join(path_segments[1:])
-        else: # Just "genealogy"
-            downstream_path_for_service = "/" # Represents the root of the genealogy path structure
-    # Case 3: Default path construction for other prefixes (e.g., "auth/login", "family-trees/123")
-    # downstream_path_for_service should be "/auth/login" or "/family-trees/123"
+    elif service_prefix == "genealogy":
+        if len(downstream_path_segments) > 1:
+            downstream_path_for_service = "/" + "/".join(downstream_path_segments[1:])
+        else:
+            downstream_path_for_service = "/"
     else:
-        # This covers "auth/login", "family-trees/123", "search/persons"
-        # path_segments = ["auth", "login"] -> "/auth/login"
-        # path_segments = ["family-trees", "123"] -> "/family-trees/123"
-        downstream_path_for_service = "/" + "/".join(path_segments)
+        downstream_path_for_service = "/" + "/".join(downstream_path_segments)
 
     logger.debug(
-        f"Path mapping: original_path='{path}', matched_prefix='{first_segment}', "
+        f"Path mapping: original_path='{path}', matched_prefix='{service_prefix}', "
         f"target_service_base_url='{service_base_url}', "
         f"downstream_path_segment_for_service='{downstream_path_for_service}'"
     )
@@ -150,12 +164,9 @@ async def reverse_proxy(request: Request, path: str):
         target_url = service_base_url.rstrip("/") + service_specific_path_segment
         logger.debug(f"Constructed health check target URL: {target_url}")
     else:
-        # For other endpoints, prepend /v1/
-        # Example: service_base_url = "http://auth-service:8000"
-        #          service_specific_path_segment = "/auth/login"
-        # Target: "http://auth-service:8000/v1/auth/login"
-        target_url = service_base_url.rstrip("/") + "/v1" + service_specific_path_segment
-        logger.debug(f"Constructed non-health check target URL: {target_url}")
+        # For non-health check paths, we append the service_specific_path_segment to the base URL
+        target_url = service_base_url.rstrip("/") + service_specific_path_segment
+        logger.info(f"Constructed non-health check target URL: {target_url}")
 
     # Query parameters
     query_params = request.query_params
