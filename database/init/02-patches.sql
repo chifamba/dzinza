@@ -1,3 +1,10 @@
+-- Dzinza Database Patch Script
+-- This script contains all necessary schema modifications and data migrations.
+
+-- Patch to make username column nullable for user registration
+-- This allows the auth service to generate usernames from email when not provided
+ALTER TABLE users ALTER COLUMN username DROP NOT NULL;
+
 -- Dzinza Database Cleanup & Migration Script
 -- This script handles cleanup of deprecated columns, fixes data inconsistencies,
 -- and ensures data migration between schema versions
