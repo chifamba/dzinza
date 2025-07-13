@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
@@ -18,4 +18,7 @@ class RefreshToken(Base):
     created_at = Column(DateTime, default=func.now(), nullable=False)
     revoked_at = Column(DateTime, nullable=True)
     ip_address = Column(String, nullable=True)
-    user_agent = Column(String, nullable=True)
+    user_agent = Column(Text, nullable=True)
+    session_id = Column(String, nullable=True)
+    device_fingerprint = Column(String, nullable=True)
+    location_info = Column(Text, nullable=True)
