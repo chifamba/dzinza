@@ -378,7 +378,7 @@ async def refresh_access_token(
         # Validate session security (IP/User Agent matching)
         if db_refresh_token.session_id:
             session_valid = session_manager.validate_session_security(
-                db_refresh_token.session_id, client_ip, user_agent
+                db_refresh_token.session_id, request
             )
             if not session_valid:
                 # Security violation - revoke token and session

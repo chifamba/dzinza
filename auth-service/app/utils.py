@@ -45,7 +45,6 @@ def create_access_token(subject: Union[str, Any], expires_delta: Optional[timede
         if hasattr(subject, 'role'):
             to_encode["role"] = subject.role.value if hasattr(subject.role, 'value') else str(subject.role)
 
-
     encoded_jwt = jwt.encode(to_encode, settings.ASSEMBLED_JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
 
@@ -104,12 +103,10 @@ def decode_token(token: str, secret_key: str) -> Optional[TokenPayload]:
         return TokenPayload(**token_data)
 
     except JWTError as e:
-        # Log the error e.g., logger.error(f"JWT Error: {e}")
-        print(f"JWT Decode Error: {e}") # Placeholder for proper logging
+        print(f"[DEBUG] JWT Decode Error: {e}") # Debug output
         return None
     except ValidationError as e:
-        # Log the error e.g., logger.error(f"Token payload validation error: {e}")
-        print(f"Token Payload Validation Error: {e}") # Placeholder
+        print(f"[DEBUG] Token Payload Validation Error: {e}") # Debug output
         return None
 
 # Email sending utility (placeholder, actual implementation requires SMTP setup)
