@@ -1,5 +1,6 @@
 -- Dzinza Database Schema Initialization Script
 -- Consolidated schema definitions for all tables, types, functions, and indexes
+-- REVIEW: This script has been updated for improved idempotency and data integrity.
 
 -- Enable necessary extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -93,7 +94,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    token VARCHAR(255) NOT NULL UNIQUE,
+    token TEXT NOT NULL UNIQUE, -- Changed to TEXT for larger tokens
     token_jti VARCHAR(255) NOT NULL UNIQUE,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -178,7 +179,10 @@ CREATE TABLE IF NOT EXISTS dna_matches (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
-    UNIQUE(user1_id, user2_id, test1_id, test2_id)
+    UNIQUE(user1_id, user2_id, test1_id, test2_id),
+    -- REVIEW: Added a CHECK constraint to prevent duplicate pairs (e.g., user A -> user B and user B -> user A).
+    -- This enforces a consistent order for storing matches.
+    CONSTRAINT check_user_order CHECK (user1_id < user2_id)
 );
 
 -----------------------------------------
@@ -248,7 +252,9 @@ CREATE TABLE IF NOT EXISTS tree_members (
 -- Family tree permissions and sharing
 CREATE TABLE IF NOT EXISTS family_tree_permissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tree_id VARCHAR(255) NOT NULL, -- MongoDB ObjectId
+    -- REVIEW: Changed tree_id from VARCHAR(255) to UUID to match the primary key of family_trees.
+    -- Added a foreign key constraint to enforce relational integrity.
+    tree_id UUID NOT NULL REFERENCES family_trees(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     granted_by UUID REFERENCES users(id) ON DELETE CASCADE,
     permission_level VARCHAR(20) NOT NULL, -- view, edit, admin
@@ -581,48 +587,63 @@ CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at);
 -----------------------------------------
 -- Triggers
 -----------------------------------------
+-- REVIEW: Added `DROP TRIGGER IF EXISTS` before each creation to make the script re-runnable.
 
 -- Update Triggers for updated_at timestamps
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_dna_tests_updated_at ON dna_tests;
 CREATE TRIGGER update_dna_tests_updated_at BEFORE UPDATE ON dna_tests
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_dna_matches_updated_at ON dna_matches;
 CREATE TRIGGER update_dna_matches_updated_at BEFORE UPDATE ON dna_matches
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_family_trees_updated_at ON family_trees;
 CREATE TRIGGER update_family_trees_updated_at BEFORE UPDATE ON family_trees
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_family_members_updated_at ON family_members;
 CREATE TRIGGER update_family_members_updated_at BEFORE UPDATE ON family_members
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_tree_members_updated_at ON tree_members;
 CREATE TRIGGER update_tree_members_updated_at BEFORE UPDATE ON tree_members
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_family_tree_permissions_updated_at ON family_tree_permissions;
 CREATE TRIGGER update_family_tree_permissions_updated_at BEFORE UPDATE ON family_tree_permissions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_file_metadata_updated_at ON file_metadata;
 CREATE TRIGGER update_file_metadata_updated_at BEFORE UPDATE ON file_metadata
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_historical_records_updated_at ON historical_records;
 CREATE TRIGGER update_historical_records_updated_at BEFORE UPDATE ON historical_records
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_events_updated_at ON events;
 CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON events
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_notifications_updated_at ON notifications;
 CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON notifications
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
 CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON comments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_subscriptions_updated_at ON subscriptions;
 CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON subscriptions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Name update trigger
+DROP TRIGGER IF EXISTS trigger_update_full_name ON family_members;
 CREATE TRIGGER trigger_update_full_name
     BEFORE INSERT OR UPDATE OF first_name, middle_name, last_name, nickname
     ON family_members

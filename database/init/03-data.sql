@@ -1,5 +1,6 @@
 -- Dzinza Database Data Initialization Script
 -- Initial seed data for Dzinza application
+-- REVIEW: This script has been updated to be fully idempotent.
 
 -- Insert default admin user (password: AdminPassword123!)
 -- This user is created for initial setup and should have password changed in production
@@ -31,9 +32,10 @@ VALUES (
 SET 
     is_active = true, 
     email_verified = true,
-    email_verified_at = CURRENT_TIMESTAMP,
+    email_verified_at = COALESCE(users.email_verified_at, CURRENT_TIMESTAMP),
     role = 'ADMIN',
-    is_superuser = true;
+    is_superuser = true,
+    updated_at = CURRENT_TIMESTAMP;
 
 -- Insert a test user for development (password: TestPassword123!)
 -- Password hash generated with: bcrypt.hashSync('TestPassword123!', 12)
@@ -64,9 +66,24 @@ VALUES (
 SET 
     is_active = true, 
     email_verified = true,
-    email_verified_at = CURRENT_TIMESTAMP;
+    email_verified_at = COALESCE(users.email_verified_at, CURRENT_TIMESTAMP),
+    updated_at = CURRENT_TIMESTAMP;
 
--- Create default family trees for users
+
+-- Ensure unique constraint exists for (owner_id, name) to support ON CONFLICT
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints tc
+        JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name
+        WHERE tc.table_name = 'family_trees' AND tc.constraint_type = 'UNIQUE'
+        AND ccu.column_name = 'owner_id'
+    ) THEN
+        EXECUTE 'ALTER TABLE family_trees ADD CONSTRAINT unique_owner_name UNIQUE (owner_id, name)';
+    END IF;
+END;
+$$;
+
 DO $$ 
 DECLARE
     admin_user_id UUID;
@@ -78,70 +95,32 @@ BEGIN
     SELECT id INTO test_user_id FROM users WHERE email = 'test@dzinza.com' LIMIT 1;
     
     -- Create admin user's family tree if it doesn't exist
-    SELECT ft.id INTO default_tree_id 
-    FROM family_trees ft 
-    WHERE ft.owner_id = admin_user_id 
-    LIMIT 1;
-    
-    IF admin_user_id IS NOT NULL AND default_tree_id IS NULL THEN
-        INSERT INTO family_trees (
-            name, 
-            description, 
-            owner_id, 
-            privacy
-        ) VALUES (
-            'My Family Tree',
-            'Default family tree created during initialization',
-            admin_user_id,
-            'private'
-        )
-        RETURNING id INTO default_tree_id;
-        
-        -- Add admin as a member with admin role
-        INSERT INTO tree_members (
-            tree_id,
-            user_id,
-            role
-        ) VALUES (
-            default_tree_id,
-            admin_user_id,
-            'admin'
-        );
-        
-        RAISE NOTICE 'Created default family tree (ID: %) for admin user', default_tree_id;
+    IF admin_user_id IS NOT NULL THEN
+        INSERT INTO family_trees (name, description, owner_id, privacy)
+        VALUES ('My Family Tree', 'Default family tree created during initialization', admin_user_id, 'private')
+        ON CONFLICT (owner_id, name) DO NOTHING;
+
+        SELECT id INTO default_tree_id FROM family_trees WHERE owner_id = admin_user_id AND name = 'My Family Tree' LIMIT 1;
+
+        IF default_tree_id IS NOT NULL THEN
+            INSERT INTO tree_members (tree_id, user_id, role)
+            VALUES (default_tree_id, admin_user_id, 'admin')
+            ON CONFLICT (tree_id, user_id) DO NOTHING;
+        END IF;
     END IF;
     
     -- Create test user's family tree if it doesn't exist
-    SELECT ft.id INTO default_tree_id 
-    FROM family_trees ft 
-    WHERE ft.owner_id = test_user_id 
-    LIMIT 1;
-    
-    IF test_user_id IS NOT NULL AND default_tree_id IS NULL THEN
-        INSERT INTO family_trees (
-            name, 
-            description, 
-            owner_id, 
-            privacy
-        ) VALUES (
-            'Test Family Tree',
-            'Default family tree created for test user during initialization',
-            test_user_id,
-            'private'
-        )
-        RETURNING id INTO default_tree_id;
-        
-        -- Add test user as a member with admin role
-        INSERT INTO tree_members (
-            tree_id,
-            user_id,
-            role
-        ) VALUES (
-            default_tree_id,
-            test_user_id,
-            'admin'
-        );
-        
-        RAISE NOTICE 'Created default family tree (ID: %) for test user', default_tree_id;
+    IF test_user_id IS NOT NULL THEN
+        INSERT INTO family_trees (name, description, owner_id, privacy)
+        VALUES ('Test Family Tree', 'Default family tree created for test user during initialization', test_user_id, 'private')
+        ON CONFLICT (owner_id, name) DO NOTHING;
+
+        SELECT id INTO default_tree_id FROM family_trees WHERE owner_id = test_user_id AND name = 'Test Family Tree' LIMIT 1;
+
+        IF default_tree_id IS NOT NULL THEN
+            INSERT INTO tree_members (tree_id, user_id, role)
+            VALUES (default_tree_id, test_user_id, 'admin')
+            ON CONFLICT (tree_id, user_id) DO NOTHING;
+        END IF;
     END IF;
 END $$;
