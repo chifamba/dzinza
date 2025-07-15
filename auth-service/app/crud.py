@@ -156,14 +156,19 @@ def create_refresh_token(
     expires_at: datetime,
     ip_address: Optional[str],
     user_agent: Optional[str],
+    token: Optional[str],
     session_id: Optional[str] = None
 ) -> models.RefreshToken:
+    # Ensure token is never None to avoid NOT NULL violation
+    if token is None:
+        token = f"token-{token_jti}"
     db_refresh_token = models.RefreshToken(
         user_id=user_id,
         token_jti=token_jti,
         expires_at=expires_at,
         ip_address=ip_address,
         user_agent=user_agent,
+        token=token,
         session_id=session_id
     )
     db.add(db_refresh_token)

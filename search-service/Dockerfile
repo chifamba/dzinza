@@ -1,4 +1,4 @@
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 # Install only build dependencies in the builder stage
 WORKDIR /home/app/web

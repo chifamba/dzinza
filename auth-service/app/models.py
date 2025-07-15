@@ -80,7 +80,7 @@ class RefreshToken(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )
-    token = Column(String, unique=True, index=True, nullable=True)
+    token = Column(Text, unique=True, index=True, nullable=True)
     token_jti = Column(String, unique=True, index=True, nullable=False)
 
     expires_at = Column(DateTime, nullable=False)

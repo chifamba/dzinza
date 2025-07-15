@@ -12,7 +12,6 @@ from app.config import settings
 # Store the original function reference before patching
 _original_create_refresh_token = None
 
-
 def create_refresh_token_with_jti(subject: Dict[str, Any], jti: Optional[str] = None, 
                                  expires_delta: Optional[timedelta] = None) -> Tuple[str, str]:
     """
@@ -56,7 +55,6 @@ def create_refresh_token_with_jti(subject: Dict[str, Any], jti: Optional[str] = 
     
     return token, jti
 
-
 def decode_refresh_token(token: str) -> Optional[schemas.TokenPayload]:
     """
     Decode and validate a refresh token.
@@ -68,7 +66,6 @@ def decode_refresh_token(token: str) -> Optional[schemas.TokenPayload]:
         TokenPayload if valid, None otherwise
     """
     return utils.decode_token(token, settings.ASSEMBLED_JWT_REFRESH_SECRET)
-
 
 def apply_refresh_token_patches():
     """Apply the patches to fix refresh token functionality"""

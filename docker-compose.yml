@@ -68,6 +68,8 @@ services:
     networks:
       - dzinza-network
     restart: unless-stopped
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`dzinza.local`)"
@@ -139,13 +141,15 @@ services:
     command: ["redis-server", "--requirepass", "redis_secure_password_789"]
     secrets: # Grant access to the secret
       - redis_password
+    volumes:
+      - redis_data:/data
     # Environment variable for REDIS_PASSWORD is no longer needed if accessed via file by the application
     # If the application itself needs REDIS_PASSWORD env var, it should read it from /run/secrets/redis_password
     networks:
       - dzinza-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-a", "redis_secure_password_789", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -167,6 +171,7 @@ services:
       - 'http.cors.allow-origin="*"'
       - "indices.recovery.max_bytes_per_sec=100mb"
       - "action.destructive_requires_name=false"
+      - "logger.level=INFO"
     ulimits:
       memlock:
         soft: -1
@@ -285,18 +290,9 @@ services:
     volumes:
       - ./backend-service:/home/app/web # Mount code for development
       - shared_config:/etc/shared-config
+      - ./backend-service/config:/home/app/web/config
     environment:
       - DEBUG=${DEBUG:-false}
-      # Downstream service URLs (these are picked up by config.py to build the SERVICE_URLS_BY_PREFIX map)
-      - AUTH_SERVICE_URL=http://auth_service:8000
-      - GENEALOGY_SERVICE_URL=http://genealogy_service:8000
-      - SEARCH_SERVICE_URL=http://search_service:8000
-      - STORAGE_SERVICE_URL=http://storage_service:8000
-      # Add these for the proxy to work correctly inside Docker:
-      - AUTH_SERVICE_BASE_URL=http://auth_service:8000
-      - GENEALOGY_SERVICE_BASE_URL=http://genealogy_service:8000
-      - SEARCH_SERVICE_BASE_URL=http://search_service:8000
-      - STORAGE_SERVICE_BASE_URL=http://storage_service:8000
       # JWT settings if gateway validates tokens
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
       - JWT_ALGORITHM=HS256 # Ensure this matches auth-service
@@ -609,9 +605,6 @@ volumes:
   prometheus_data:
   grafana_data:
   shared_config: # Define the shared_config volume
-  minio_data: # Data volume for MinIO
-  garage_data: # Data volume for Garage
-  garage_metadata: # Metadata volume for Garage
   garage1_data:
   garage1_meta:
   garage2_data:

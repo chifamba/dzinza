@@ -1,5 +1,6 @@
 -- Dzinza Database Schema Initialization Script
 -- Consolidated schema definitions for all tables, types, functions, and indexes
+-- REVIEW: This script has been updated for improved idempotency and data integrity.
 
 -- Enable necessary extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -21,7 +22,7 @@ END$$;
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
-    username VARCHAR(50) UNIQUE NOT NULL,
+    username VARCHAR(50) UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
@@ -52,6 +53,9 @@ CREATE TABLE IF NOT EXISTS users (
     locked_until TIMESTAMP WITH TIME ZONE,
     last_login_at TIMESTAMP WITH TIME ZONE,
     last_login_ip VARCHAR(255),
+    last_login_user_agent TEXT,
+    current_session_count INTEGER DEFAULT 0,
+    max_concurrent_sessions INTEGER DEFAULT 5,
     
     -- Privacy & Preferences
     privacy_settings JSONB DEFAULT '{}',
@@ -67,6 +71,7 @@ CREATE TABLE IF NOT EXISTS users (
     
     -- Metadata
     is_active BOOLEAN DEFAULT TRUE,
+    is_verified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE
@@ -85,6 +90,22 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     last_used TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Refresh Tokens table
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE, -- Changed to TEXT for larger tokens
+    token_jti VARCHAR(255) NOT NULL UNIQUE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    ip_address VARCHAR(255),
+    user_agent TEXT,
+    session_id VARCHAR(255),
+    device_fingerprint VARCHAR(255),
+    location_info TEXT
+);
+
 -- User login attempts and security logs
 CREATE TABLE IF NOT EXISTS user_security_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -96,6 +117,17 @@ CREATE TABLE IF NOT EXISTS user_security_logs (
     success BOOLEAN DEFAULT TRUE,
     details JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Audit Logs table
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(100),
+    user_agent TEXT,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    details JSONB
 );
 
 -----------------------------------------
@@ -147,7 +179,10 @@ CREATE TABLE IF NOT EXISTS dna_matches (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
-    UNIQUE(user1_id, user2_id, test1_id, test2_id)
+    UNIQUE(user1_id, user2_id, test1_id, test2_id),
+    -- REVIEW: Added a CHECK constraint to prevent duplicate pairs (e.g., user A -> user B and user B -> user A).
+    -- This enforces a consistent order for storing matches.
+    CONSTRAINT check_user_order CHECK (user1_id < user2_id)
 );
 
 -----------------------------------------
@@ -217,7 +252,9 @@ CREATE TABLE IF NOT EXISTS tree_members (
 -- Family tree permissions and sharing
 CREATE TABLE IF NOT EXISTS family_tree_permissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tree_id VARCHAR(255) NOT NULL, -- MongoDB ObjectId
+    -- REVIEW: Changed tree_id from VARCHAR(255) to UUID to match the primary key of family_trees.
+    -- Added a foreign key constraint to enforce relational integrity.
+    tree_id UUID NOT NULL REFERENCES family_trees(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     granted_by UUID REFERENCES users(id) ON DELETE CASCADE,
     permission_level VARCHAR(20) NOT NULL, -- view, edit, admin
@@ -344,6 +381,71 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 );
 
 -----------------------------------------
+-- Events
+-----------------------------------------
+
+-- Events table for storing life events related to family members
+CREATE TABLE IF NOT EXISTS events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_date DATE,
+    end_date DATE,
+    place JSONB, -- {name, country, state, city, coordinates}
+    category VARCHAR(50), -- birth, marriage, death, migration, etc.
+    related_person_ids JSONB DEFAULT '[]'::jsonb, -- Array of family member IDs
+    family_tree_id UUID REFERENCES family_trees(id) ON DELETE CASCADE,
+    privacy VARCHAR(20) DEFAULT 'private', -- private, family, public
+    notes TEXT,
+    source_ids JSONB DEFAULT '[]'::jsonb, -- Array of historical record IDs or references
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-----------------------------------------
+-- Notifications
+-----------------------------------------
+
+-- Notifications table for user alerts and messages
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL, -- system, family_tree_update, dna_match, etc.
+    is_read BOOLEAN DEFAULT FALSE,
+    read_at TIMESTAMP WITH TIME ZONE,
+    related_entity_type VARCHAR(50), -- event, family_member, dna_match, etc.
+    related_entity_id UUID, -- Reference to the related entity
+    metadata JSONB DEFAULT '{}', -- Additional data about the notification
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-----------------------------------------
+-- Comments
+-----------------------------------------
+
+-- Comments table for user comments on various entities
+CREATE TABLE IF NOT EXISTS comments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    entity_type VARCHAR(50) NOT NULL, -- event, family_member, historical_record, etc.
+    entity_id UUID NOT NULL, -- Reference to the entity being commented on
+    parent_comment_id UUID REFERENCES comments(id) ON DELETE CASCADE, -- For threaded replies
+    is_edited BOOLEAN DEFAULT FALSE,
+    edited_at TIMESTAMP WITH TIME ZONE,
+    is_flagged BOOLEAN DEFAULT FALSE,
+    flagged_reason VARCHAR(255),
+    privacy VARCHAR(20) DEFAULT 'public', -- public, family, private
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+-----------------------------------------
 -- Helper Functions
 -----------------------------------------
 
@@ -403,10 +505,23 @@ CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_token_jti ON user_sessions(token_jti);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions(expires_at);
 
+-- Refresh Tokens
+CREATE INDEX IF NOT EXISTS refresh_tokens_token_idx ON refresh_tokens(token);
+CREATE INDEX IF NOT EXISTS refresh_tokens_token_jti_idx ON refresh_tokens(token_jti);
+CREATE INDEX IF NOT EXISTS refresh_tokens_user_id_idx ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS refresh_tokens_session_id_idx ON refresh_tokens(session_id);
+CREATE INDEX IF NOT EXISTS refresh_tokens_device_fingerprint_idx ON refresh_tokens(device_fingerprint);
+
+
 -- Security
 CREATE INDEX IF NOT EXISTS idx_user_security_logs_user_id ON user_security_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_security_logs_event_type ON user_security_logs(event_type);
 CREATE INDEX IF NOT EXISTS idx_user_security_logs_created_at ON user_security_logs(created_at);
+
+-- Audit Logs
+CREATE INDEX IF NOT EXISTS audit_logs_user_id_idx ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS audit_logs_timestamp_idx ON audit_logs(timestamp);
+CREATE INDEX IF NOT EXISTS audit_logs_action_idx ON audit_logs(action);
 
 -- DNA
 CREATE INDEX IF NOT EXISTS idx_dna_tests_user_id ON dna_tests(user_id);
@@ -450,138 +565,85 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_subscription_id ON subscriptions(stripe_subscription_id);
 
------------------------------------------
--- Triggers
------------------------------------------
-
--- Update Triggers for updated_at timestamps
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_dna_tests_updated_at BEFORE UPDATE ON dna_tests
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_dna_matches_updated_at BEFORE UPDATE ON dna_matches
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_family_trees_updated_at BEFORE UPDATE ON family_trees
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_family_members_updated_at BEFORE UPDATE ON family_members
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_tree_members_updated_at BEFORE UPDATE ON tree_members
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_family_tree_permissions_updated_at BEFORE UPDATE ON family_tree_permissions
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_file_metadata_updated_at BEFORE UPDATE ON file_metadata
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_historical_records_updated_at BEFORE UPDATE ON historical_records
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
------------------------------------------
 -- Events
------------------------------------------
-
--- Events table for storing life events related to family members
-CREATE TABLE IF NOT EXISTS events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    start_date DATE,
-    end_date DATE,
-    place JSONB, -- {name, country, state, city, coordinates}
-    category VARCHAR(50), -- birth, marriage, death, migration, etc.
-    related_person_ids JSONB DEFAULT '[]'::jsonb, -- Array of family member IDs
-    family_tree_id UUID REFERENCES family_trees(id) ON DELETE CASCADE,
-    privacy VARCHAR(20) DEFAULT 'private', -- private, family, public
-    notes TEXT,
-    source_ids JSONB DEFAULT '[]'::jsonb, -- Array of historical record IDs or references
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Indexes for events
 CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
 CREATE INDEX IF NOT EXISTS idx_events_family_tree_id ON events(family_tree_id);
 CREATE INDEX IF NOT EXISTS idx_events_category ON events(category);
 CREATE INDEX IF NOT EXISTS idx_events_start_date ON events(start_date);
 
--- Trigger for updated_at timestamp on events
-CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON events
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
------------------------------------------
 -- Notifications
------------------------------------------
-
--- Notifications table for user alerts and messages
-CREATE TABLE IF NOT EXISTS notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
-    type VARCHAR(50) NOT NULL, -- system, family_tree_update, dna_match, etc.
-    is_read BOOLEAN DEFAULT FALSE,
-    read_at TIMESTAMP WITH TIME ZONE,
-    related_entity_type VARCHAR(50), -- event, family_member, dna_match, etc.
-    related_entity_id UUID, -- Reference to the related entity
-    metadata JSONB DEFAULT '{}', -- Additional data about the notification
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Indexes for notifications
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
 CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
 
--- Trigger for updated_at timestamp on notifications
-CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON notifications
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
------------------------------------------
 -- Comments
------------------------------------------
-
--- Comments table for user comments on various entities
-CREATE TABLE IF NOT EXISTS comments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    content TEXT NOT NULL,
-    entity_type VARCHAR(50) NOT NULL, -- event, family_member, historical_record, etc.
-    entity_id UUID NOT NULL, -- Reference to the entity being commented on
-    parent_comment_id UUID REFERENCES comments(id) ON DELETE CASCADE, -- For threaded replies
-    is_edited BOOLEAN DEFAULT FALSE,
-    edited_at TIMESTAMP WITH TIME ZONE,
-    is_flagged BOOLEAN DEFAULT FALSE,
-    flagged_reason VARCHAR(255),
-    privacy VARCHAR(20) DEFAULT 'public', -- public, family, private
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP WITH TIME ZONE
-);
-
--- Indexes for comments
 CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id);
 CREATE INDEX IF NOT EXISTS idx_comments_entity_type ON comments(entity_type);
 CREATE INDEX IF NOT EXISTS idx_comments_entity_id ON comments(entity_id);
 CREATE INDEX IF NOT EXISTS idx_comments_parent_comment_id ON comments(parent_comment_id);
 CREATE INDEX IF NOT EXISTS idx_comments_created_at ON comments(created_at);
 
--- Trigger for updated_at timestamp on comments
+-----------------------------------------
+-- Triggers
+-----------------------------------------
+-- REVIEW: Added `DROP TRIGGER IF EXISTS` before each creation to make the script re-runnable.
+
+-- Update Triggers for updated_at timestamps
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_dna_tests_updated_at ON dna_tests;
+CREATE TRIGGER update_dna_tests_updated_at BEFORE UPDATE ON dna_tests
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_dna_matches_updated_at ON dna_matches;
+CREATE TRIGGER update_dna_matches_updated_at BEFORE UPDATE ON dna_matches
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_family_trees_updated_at ON family_trees;
+CREATE TRIGGER update_family_trees_updated_at BEFORE UPDATE ON family_trees
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_family_members_updated_at ON family_members;
+CREATE TRIGGER update_family_members_updated_at BEFORE UPDATE ON family_members
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_tree_members_updated_at ON tree_members;
+CREATE TRIGGER update_tree_members_updated_at BEFORE UPDATE ON tree_members
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_family_tree_permissions_updated_at ON family_tree_permissions;
+CREATE TRIGGER update_family_tree_permissions_updated_at BEFORE UPDATE ON family_tree_permissions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_file_metadata_updated_at ON file_metadata;
+CREATE TRIGGER update_file_metadata_updated_at BEFORE UPDATE ON file_metadata
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_historical_records_updated_at ON historical_records;
+CREATE TRIGGER update_historical_records_updated_at BEFORE UPDATE ON historical_records
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_events_updated_at ON events;
+CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON events
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_notifications_updated_at ON notifications;
+CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON notifications
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
 CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON comments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_subscriptions_updated_at ON subscriptions;
 CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON subscriptions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Name update trigger
+DROP TRIGGER IF EXISTS trigger_update_full_name ON family_members;
 CREATE TRIGGER trigger_update_full_name
     BEFORE INSERT OR UPDATE OF first_name, middle_name, last_name, nickname
     ON family_members
@@ -589,6 +651,12 @@ CREATE TRIGGER trigger_update_full_name
     EXECUTE FUNCTION update_full_name();
 
 -- Add comments for documentation
+COMMENT ON COLUMN users.last_login_user_agent IS 'User agent string from last login';
+COMMENT ON COLUMN users.current_session_count IS 'Number of currently active sessions';
+COMMENT ON COLUMN users.max_concurrent_sessions IS 'Maximum allowed concurrent sessions for this user';
+COMMENT ON COLUMN refresh_tokens.session_id IS 'Redis session identifier for this token';
+COMMENT ON COLUMN refresh_tokens.device_fingerprint IS 'Browser/device fingerprint for security';
+COMMENT ON COLUMN refresh_tokens.location_info IS 'JSON string containing geolocation data';
 COMMENT ON COLUMN family_members.first_name IS 'Given/first name of the family member';
 COMMENT ON COLUMN family_members.middle_name IS 'Middle name of the family member';
 COMMENT ON COLUMN family_members.last_name IS 'Family/surname of the family member';

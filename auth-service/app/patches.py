@@ -47,6 +47,7 @@ class TokenRefreshPatch:
         
         db_refresh_token = RefreshToken(
             user_id=user_id,
+            token=token,
             token_jti=token_jti,
             expires_at=expires_at,
             created_at=datetime.datetime.utcnow(),

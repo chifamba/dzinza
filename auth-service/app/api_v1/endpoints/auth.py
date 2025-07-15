@@ -259,12 +259,13 @@ async def login_for_access_token(
     # Enhanced database tracking
     client_info = session_mgr._get_client_info(request)
     crud.create_refresh_token(
-        db,
+        db=db,
         user_id=user.id,
         token_jti=refresh_jti,
         expires_at=datetime.utcnow() + refresh_token_expires_delta,
-        ip_address=client_info["ip_address"],
-        user_agent=client_info["user_agent"],
+        ip_address=client_info.get("ip_address"),
+        user_agent=client_info.get("user_agent"),
+        token=refresh_token,
         session_id=session_id
     )
 
@@ -377,7 +378,7 @@ async def refresh_access_token(
         # Validate session security (IP/User Agent matching)
         if db_refresh_token.session_id:
             session_valid = session_manager.validate_session_security(
-                db_refresh_token.session_id, client_ip, user_agent
+                db_refresh_token.session_id, request
             )
             if not session_valid:
                 # Security violation - revoke token and session

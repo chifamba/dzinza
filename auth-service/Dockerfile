@@ -2,8 +2,8 @@
 FROM python:3.11-slim AS base
 
 # Set environment variables from base
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Create a non-root user and group (copied from base/Dockerfile logic)
 RUN addgroup --system app && adduser --system --group app
@@ -23,6 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY ./app /home/app/web/app
+COPY ./config /home/app/web/config
 
 # Chown the directories to the app user
 RUN chown -R app:app /home/app/web /home/app/venv
