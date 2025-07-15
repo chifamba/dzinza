@@ -37,7 +37,7 @@ async def create_notification(
     )
     return notification
 
-@router.get("/", response_model=schemas.notification.NotificationList)
+@router.get("/", response_model=dict)
 async def list_user_notifications(
     *,
     db: AsyncIOMotorDatabase = Depends(get_database),
@@ -56,10 +56,14 @@ async def list_user_notifications(
     total_notifications = await crud_notification.count_notifications_for_user(
         db=db, user_id=current_user.id, read_status=read_status # Count should match filter
     )
-    unread_count = await crud_notification.count_notifications_for_user(
-        db=db, user_id=current_user.id, read_status=False
-    )
-    return schemas.notification.NotificationList(items=notifications, total=total_notifications, unread_count=unread_count)
+    page = (skip // limit) + 1 if limit else 1
+    return {
+        "pagination": {
+            "totalItems": total_notifications if total_notifications is not None else 0,
+            "page": page
+        },
+        "items": notifications if notifications is not None else [],
+    }
 
 class NotificationSummaryResponse(BaseModel): # Using Pydantic BaseModel directly
     total_notifications: int
