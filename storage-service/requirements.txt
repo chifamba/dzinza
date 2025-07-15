@@ -16,7 +16,7 @@ python-multipart==0.0.9 # For FastAPI file uploads
 python-magic==0.4.27 # For MIME type detection from file content (more robust)
 
 # Image Processing (optional, if advanced processing is needed beyond basic uploads)
-Pillow==10.2.0 # For image manipulation, thumbnails
+Pillow==10.3.0 # For image manipulation, thumbnails
 
 # Scheduled tasks (if not using a central Celery)
 apscheduler==3.10.4
