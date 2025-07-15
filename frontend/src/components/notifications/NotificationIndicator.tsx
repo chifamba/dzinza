@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell } from 'lucide-react'; // Assuming lucide-react for icons
-import NotificationCenterPanel from './NotificationCenterPanel';
-import { UnreadNotificationsCountResponse } from '../../types/notifications'; // Adjust path
-import { logger } from '../../utils/logger';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Bell } from "lucide-react"; // Assuming lucide-react for icons
+import NotificationCenterPanel from "./NotificationCenterPanel";
+import { UnreadNotificationsCountResponse } from "../../types/notifications"; // Adjust path
+import { logger } from "../../utils/logger";
+import { useAuth } from "../../hooks/useAuth";
 
 const NotificationIndicator: React.FC = () => {
+  const { isAuthenticated } = useAuth();
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
   const [isLoadingCount, setIsLoadingCount] = useState<boolean>(false);
@@ -17,18 +19,24 @@ const NotificationIndicator: React.FC = () => {
     setErrorCount(null);
     try {
       // Fetch only a single item to get the totalItems count from pagination metadata
-      const response = await fetch('/api/notifications?isRead=false&limit=1&page=1');
+      const response = await fetch(
+        "/api/notifications?isRead=false&limit=1&page=1"
+      );
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to fetch unread count. Status: ${response.status}`);
+        throw new Error(
+          errorData.message ||
+            `Failed to fetch unread count. Status: ${response.status}`
+        );
       }
       const result: UnreadNotificationsCountResponse = await response.json();
       setUnreadCount(result.pagination.totalItems || 0);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+      const errorMessage =
+        err instanceof Error ? err.message : "An unknown error occurred.";
       setErrorCount(errorMessage); // You might want to display this error somewhere or just log it
       if (logger?.error) {
-        logger.error('Error fetching unread notification count:', err);
+        logger.error("Error fetching unread notification count:", err);
       }
       setUnreadCount(0); // Reset count on error
     } finally {
@@ -37,14 +45,17 @@ const NotificationIndicator: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchUnreadCount();
+    if (isAuthenticated) {
+      fetchUnreadCount();
+    }
     // Future: Set up polling or WebSocket listener here if desired
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, isAuthenticated]);
 
   const togglePanel = () => {
-    setIsPanelOpen(prev => !prev);
-    if (!isPanelOpen) { // If panel is about to open
-        fetchUnreadCount(); // Refresh count and potentially list inside panel too
+    setIsPanelOpen((prev) => !prev);
+    if (!isPanelOpen) {
+      // If panel is about to open
+      fetchUnreadCount(); // Refresh count and potentially list inside panel too
     }
   };
 
@@ -56,6 +67,8 @@ const NotificationIndicator: React.FC = () => {
     // This callback is called from NotificationCenterPanel when notifications are marked as read
     fetchUnreadCount(); // Re-fetch the unread count
   };
+
+  if (!isAuthenticated) return null;
 
   return (
     <div className="relative">
@@ -69,22 +82,25 @@ const NotificationIndicator: React.FC = () => {
       >
         <Bell size={22} />
         {isLoadingCount && (
-            <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-3 w-3">
-                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                 <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
-            </span>
+          <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
+          </span>
         )}
         {!isLoadingCount && unreadCount > 0 && (
           <span className="absolute top-0 right-0 block h-5 w-5 transform translate-x-1/3 -translate-y-1/3">
             <span className="absolute inline-flex items-center justify-center w-full h-full text-xs font-bold text-white bg-red-500 border-2 border-white dark:border-gray-800 rounded-full">
-              {unreadCount > 9 ? '9+' : unreadCount}
+              {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           </span>
         )}
-         {errorCount && ( // Simple error indicator, could be a tooltip or small icon
-            <span className="absolute top-1 right-0 -mt-1 -mr-1 flex h-2 w-2">
-                 <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500" title={errorCount}></span>
-            </span>
+        {errorCount && ( // Simple error indicator, could be a tooltip or small icon
+          <span className="absolute top-1 right-0 -mt-1 -mr-1 flex h-2 w-2">
+            <span
+              className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"
+              title={errorCount}
+            ></span>
+          </span>
         )}
       </button>
 

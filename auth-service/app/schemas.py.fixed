@@ -1,0 +1,21 @@
+import datetime
+import uuid
+from pydantic import BaseModel, EmailStr, constr, validator, Field
+from typing import Optional, List
+from .models import UserRole
+from .user_role_patch import AuditLogAction # Import AuditLogAction from user_role_patch.py
+
+# Base Schemas
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int # seconds
+    refresh_token: Optional[str] = None
+
+class AuthTokens(BaseModel):
+    accessToken: str
+    refreshToken: str
+    expiresIn: int
+
+class TokenPayload(BaseModel):
+    sub: str

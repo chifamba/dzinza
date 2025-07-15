@@ -5,10 +5,10 @@ import { ModernFamilyTreeDisplay } from "../components/family-tree"; // Use the 
 
 const FamilyTreePage: React.FC = () => {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
       <Header />
       {/* Full-height main content for the modern family tree */}
-      <main className="flex-grow">
+      <main className="flex-grow bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
         <ModernFamilyTreeDisplay />
       </main>
       <Footer />

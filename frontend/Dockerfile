@@ -36,7 +36,10 @@ RUN addgroup -S appgroup && \
 
 # Ensure appuser has access to necessary directories
 RUN mkdir -p /var/cache/nginx /var/run/nginx && \
-    chown -R appuser:appgroup /var/cache/nginx /var/run/nginx /var/log/nginx
+    chown -R appuser:appgroup /var/cache/nginx /var/run/nginx && \
+    # Create log directory with proper permissions
+    mkdir -p /var/log/nginx && \
+    chown -R appuser:appgroup /var/log/nginx
 
 # Change ownership of static content to appuser
 COPY --chown=appuser:appgroup --from=build /app/dist /usr/share/nginx/html

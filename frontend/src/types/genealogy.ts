@@ -1,10 +1,11 @@
 // Enhanced FamilyMember interface
 export interface FamilyMember {
   id: string;
-  name: string; // Computed full name (first + middle + last)
+  name: string; // Computed full name (first + middle + last) or nickname if no formal names
   firstName?: string;
   middleName?: string;
   lastName?: string;
+  nickname?: string; // For people known only by nickname or informal name
   birthDate?: string;
   deathDate?: string;
   gender?: "male" | "female" | "other" | "unknown";

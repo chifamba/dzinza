@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from "react-redux"; // Add useDispatch for l
 import NotificationIndicator from "../notifications/NotificationIndicator";
 import GlobalSearchBar from "../search/GlobalSearchBar"; // Import GlobalSearchBar
 import LoginModal from "../auth/LoginModal";
-import { Button } from "../ui";
+import { Button, ThemeToggle } from "../ui"; // Add ThemeToggle import
 import { RootState, AppDispatch } from "../../store/store"; // Add AppDispatch type
 import { logout } from "../../store/slices/authSlice"; // Import logout action
 
@@ -41,7 +41,7 @@ const Navbar: React.FC<NavbarProps> = ({ logo, navItems, className = "" }) => {
   return (
     <nav
       className={`
-        bg-white shadow-md py-3 px-4 md:px-6
+        bg-white dark:bg-gray-900 shadow-md dark:shadow-gray-800 py-3 px-4 md:px-6 transition-colors duration-200
         ${className}
       `}
     >
@@ -79,6 +79,7 @@ const Navbar: React.FC<NavbarProps> = ({ logo, navItems, className = "" }) => {
           <div className="hidden sm:flex items-center space-x-3">
             {" "}
             {/* Icons visible on sm+ */}
+            <ThemeToggle />
             <NotificationIndicator />
             {/* Login Button - only show if not authenticated */}
             {!isAuthenticated && (
@@ -111,6 +112,7 @@ const Navbar: React.FC<NavbarProps> = ({ logo, navItems, className = "" }) => {
             {" "}
             {/* Mobile specific utilities / search toggle area */}
             {/* On mobile, perhaps only show NotificationIndicator, search could be an icon toggle */}
+            <ThemeToggle />
             <NotificationIndicator />
             {/* Mobile Login Button */}
             {!isAuthenticated && (
@@ -142,7 +144,7 @@ const Navbar: React.FC<NavbarProps> = ({ logo, navItems, className = "" }) => {
             {/* This button itself is hidden on medium+ screens */}
             <button
               type="button"
-              className="text-gray-600 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 dark:focus:ring-blue-400"
               aria-label="Open main menu"
             >
               {/* Heroicon name: menu */}

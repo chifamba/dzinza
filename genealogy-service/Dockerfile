@@ -1,58 +1,41 @@
-# Multi-stage build for optimal image size
-FROM node:18-alpine AS builder
+# Use an official Python image as a builder
+FROM python:3.11-slim AS builder
 
-# Set working directory
-WORKDIR /app
+WORKDIR /home/app/web
 
-# Copy package files
-COPY genealogy-service/package.json ./
-COPY genealogy-service/package-lock.json ./
+# Install build dependencies (optional, e.g. gcc, for some pip packages)
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci && npm cache clean --force
+# Install Python dependencies globally (no --user)
+COPY ./requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy shared utilities
-COPY backend-service/shared ./shared
+# Copy application code
+COPY ./app ./app
 
-# Copy source code
-COPY genealogy-service/src ./src
+# Final image
+FROM python:3.11-slim
 
-# Build the application
-RUN npm run build
+WORKDIR /home/app/web
 
-# Production image
-FROM node:18-alpine AS production
+# Install curl for healthchecks
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user and group
-RUN addgroup -S appgroup && \
-    adduser -S appuser -G appgroup
+# Create a non-root user and group
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Set working directory
-WORKDIR /app
+# Copy installed dependencies from builder (system site-packages)
+COPY --from=builder /usr/local /usr/local
 
-# Install dumb-init for signal handling
-RUN apk add --no-cache dumb-init
+# Copy application code
+COPY ./app ./app
+COPY ./requirements.txt .
 
-# Copy package files and install production dependencies only
-COPY --chown=appuser:appgroup genealogy-service/package.json ./
-COPY --chown=appuser:appgroup genealogy-service/package-lock.json ./
-RUN npm ci --production && npm cache clean --force
+# Change ownership of the app directory
+RUN chown -R appuser:appuser /home/app/web
 
-# Copy built application and shared utilities
-COPY --chown=appuser:appgroup --from=builder /app/dist ./dist/
-COPY --chown=appuser:appgroup --from=builder /app/shared ./shared/
-
-# Ensure the /app directory itself is owned by appuser
-RUN chown appuser:appgroup /app
 USER appuser
 
-# Expose port
-EXPOSE 3004
+EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node dist/healthcheck.js || exit 1
-
-# Start the application with dumb-init
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "start"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

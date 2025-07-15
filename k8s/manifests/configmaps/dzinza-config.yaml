@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dzinza-config
+  namespace: dzinza
+data:
+  # Common configuration
+  NODE_ENV: "production"
+  DEBUG: "false"
+  PYTHONUNBUFFERED: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+  # Database configuration
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "dzinza_db"
+  DB_USER: "dzinza_user"
+  DB_POOL_SIZE: "20"
+
+  # MongoDB configuration
+  MONGODB_GENEALOGY_DB: "dzinza_genealogy"
+  MONGODB_STORAGE_DB: "dzinza_storage"
+  MONGODB_SEARCH_DB: "dzinza_search_analytics"
+
+  # Redis configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+
+  # Elasticsearch configuration
+  ELASTICSEARCH_URL: "http://elasticsearch-service:9200"
+  ELASTICSEARCH_INDEX_PERSONS: "dzinza_persons"
+  ELASTICSEARCH_INDEX_FAMILY_TREES: "dzinza_family_trees"
+  ELASTICSEARCH_INDEX_EVENTS: "dzinza_events"
+  ELASTICSEARCH_REQUEST_TIMEOUT: "30"
+  ELASTICSEARCH_MAX_RETRIES: "3"
+  ELASTICSEARCH_RETRY_ON_TIMEOUT: "true"
+
+  # Service URLs
+  AUTH_SERVICE_URL: "http://auth-service:8000"
+  GENEALOGY_SERVICE_URL: "http://genealogy-service:8000"
+  SEARCH_SERVICE_URL: "http://search-service:8000"
+  STORAGE_SERVICE_URL: "http://storage-service:8000"
+  BACKEND_SERVICE_URL: "http://backend-service:8000"
+
+  # JWT configuration
+  JWT_ALGORITHM: "HS256"
+  JWT_AUDIENCE: "dzinza-app"
+  JWT_EXPIRES_IN: "24h"
+  JWT_REFRESH_EXPIRES_IN: "7d"
+
+  # S3/Storage configuration
+  AWS_REGION: "garage"
+  S3_ENDPOINT_URL: "http://garage-service:39000"
+  S3_BUCKET_NAME: "dzinza-storage-bucket"
+  S3_FORCE_PATH_STYLE: "true"
+  S3_CREATE_BUCKET_IF_NOT_EXISTS: "true"
+
+  # SMTP configuration
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_SECURE: "false"
+  SMTP_USER: "noreply@dzinza.com"
+  FROM_EMAIL: "noreply@dzinza.com"
+  FROM_NAME: "Dzinza Genealogy Platform"
+  SUPPORT_EMAIL: "support@dzinza.com"
+
+  # CORS configuration
+  CORS_ORIGINS: "http://localhost:3000,http://localhost:8080,http://dzinza.local"
+
+  # Observability
+  OTEL_SERVICE_NAME: "dzinza-service"
+  JAEGER_ENDPOINT: "http://jaeger-service:14268/api/traces"
+  ENABLE_TRACING: "false"
+  ENABLE_METRICS: "true"
+
+  # Rate limiting
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX_REQUESTS: "1000"
+  AUTH_RATE_LIMIT_WINDOW_MS: "900000"
+  AUTH_RATE_LIMIT_MAX_REQUESTS: "20"
+
+  # File upload limits
+  MAX_FILE_SIZE: "104857600"
+  MAX_IMAGE_SIZE: "52428800"
+  MAX_DOCUMENT_SIZE: "104857600"
+  ALLOWED_IMAGE_TYPES: "jpg,jpeg,png,gif,webp,tiff,bmp"
+  ALLOWED_DOCUMENT_TYPES: "pdf,doc,docx,txt,rtf"
+
+  # Feature flags
+  ENABLE_DNA_MATCHING: "true"
+  ENABLE_PHOTO_ENHANCEMENT: "true"
+  ENABLE_AI_SUGGESTIONS: "true"
+  ENABLE_REAL_TIME_COLLABORATION: "true"
+  ENABLE_ADVANCED_SEARCH: "true"
+  ENABLE_SOCIAL_FEATURES: "true"
+  ENABLE_SWAGGER: "true"
+  ENABLE_DEBUG_ROUTES: "false"
+  ENABLE_SEED_DATA: "false"
+
+  # Celery configuration
+  CELERY_BROKER_URL: "redis://redis-service:6379/0"
+  CELERY_RESULT_BACKEND: "redis://redis-service:6379/1"

@@ -1,51 +1,58 @@
-# Multi-stage build for optimal image size
-FROM node:18-alpine AS builder
+FROM python:3.11-slim AS builder
 
-WORKDIR /app
+# Install only build dependencies in the builder stage
+WORKDIR /home/app/web
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies (including dev dependencies for build)
-COPY package.json ./
-COPY package-lock.json ./
-RUN npm ci && npm cache clean --force
+# Create a virtual environment
+RUN python -m venv /opt/venv
 
-# Copy source code
-COPY src ./src
-COPY tsconfig.json ./
+# Activate the virtual environment
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Build the application
-RUN npm run build
+# Copy requirements file
+COPY ./requirements.txt .
 
-# Production image
-FROM node:18-alpine AS production
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Create non-root user and group
-RUN addgroup -S appgroup && \
-    adduser -S appuser -G appgroup
+# Install test dependencies
+RUN pip install --no-cache-dir pytest pytest-asyncio httpx
 
-WORKDIR /app
+# Copy application code
+COPY ./app ./app
 
-# Install dumb-init for signal handling
-RUN apk add --no-cache dumb-init
+# Stage 2 - Production stage
+FROM python:3.11-slim
 
-# Copy package files and install production dependencies only
-COPY --chown=appuser:appgroup package.json ./
-COPY --chown=appuser:appgroup package-lock.json ./
-RUN npm ci --production && npm cache clean --force
+# Create a non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Copy built application
-COPY --chown=appuser:appgroup --from=builder /app/dist ./dist/
+# Install runtime dependencies only (no build tools)
+WORKDIR /home/app/web
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Ensure the /app directory itself is owned by appuser
-RUN chown appuser:appgroup /app
+# Copy the virtual environment from the builder stage
+COPY --from=builder /opt/venv /opt/venv
+
+# Activate the virtual environment
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy application code
+COPY ./app ./app
+COPY ./requirements.txt .
+
+# Change ownership to appuser
+RUN chown -R appuser:appuser /home/app
+
+# Switch to non-root user
 USER appuser
 
-# Expose port
-EXPOSE 3003
+EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3003/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); })"
-
-# Start the application with dumb-init
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "start"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

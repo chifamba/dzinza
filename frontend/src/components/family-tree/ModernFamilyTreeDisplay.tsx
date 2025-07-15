@@ -11,9 +11,10 @@ import FamilyUnit from "./FamilyUnit";
 import { organizeFamilyTree } from "./FamilyTreeOrganizer";
 
 const ModernFamilyTreeDisplay: React.FC = () => {
-  const [tree, setTree] = useState<FamilyTree | null>(null);
+  const [tree, setTree] = useState<FamilyTree | Partial<FamilyTree> | null>(null); // Allow Partial for initial load
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noTreeFound, setNoTreeFound] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
@@ -40,15 +41,24 @@ const ModernFamilyTreeDisplay: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      setNoTreeFound(false); // Reset no tree found state
       console.log("Loading family tree...");
-      const familyTree = await genealogyService.getFamilyTree();
-      console.log("Family tree loaded:", familyTree);
-      setTree(familyTree);
+      const familyTreeData = await genealogyService.getFamilyTree();
+
+      if (familyTreeData) {
+        console.log("Family tree loaded:", familyTreeData);
+        setTree(familyTreeData);
+      } else {
+        console.log("No family tree found for the user.");
+        setTree(null);
+        setNoTreeFound(true);
+      }
     } catch (err) {
       console.error("Failed to load family tree:", err);
       setError(
         err instanceof Error ? err.message : "Failed to load family tree."
       );
+      setTree(null); // Ensure tree is null on error
     } finally {
       setIsLoading(false);
     }
@@ -250,17 +260,45 @@ const ModernFamilyTreeDisplay: React.FC = () => {
     );
   }
 
+  if (noTreeFound) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
+         <div className="mx-auto w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-6">
+            <svg
+              className="w-12 h-12 text-gray-400 dark:text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+            </svg>
+          </div>
+        <h2 className="text-2xl font-semibold text-gray-800 dark:text-white mb-3">No Family Tree Found</h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">
+          It looks like you don't have any family trees yet, or we couldn't load one.
+        </p>
+        <Button
+          onClick={() => setIsAddModalOpen(true)} // Assuming this opens a modal to create a tree or add first person
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          Create Your First Family Tree
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Header Section */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-700 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-200">
                 {tree?.name || "Family Tree"}
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-600 dark:text-gray-300 mt-1 transition-colors duration-200">
                 Manage and explore your family connections
               </p>
             </div>
@@ -290,14 +328,14 @@ const ModernFamilyTreeDisplay: React.FC = () => {
       </div>
 
       {/* Control Bar */}
-      <div className="bg-white border-b">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             {/* Search */}
             <div className="flex-1 max-w-md">
               <div className="relative">
                 <svg
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500 transition-colors duration-200"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -314,19 +352,19 @@ const ModernFamilyTreeDisplay: React.FC = () => {
                   placeholder="Search family members..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
                 />
               </div>
             </div>
 
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1 transition-colors duration-200">
               <button
                 onClick={() => setViewMode("grid")}
                 className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
                   viewMode === "grid"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 <svg
@@ -348,8 +386,8 @@ const ModernFamilyTreeDisplay: React.FC = () => {
                 onClick={() => setViewMode("list")}
                 className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
                   viewMode === "list"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm"
+                    : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 <svg

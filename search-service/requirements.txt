@@ -1,0 +1,37 @@
+# Core FastAPI and web framework
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+pydantic==2.8.2
+pydantic-settings==2.3.4
+
+# Elasticsearch client
+elasticsearch==8.14.0
+aiohttp>=3.8.0
+
+# MongoDB driver for search analytics
+motor>=3.3.0
+
+# JWT handling for token validation
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Structured logging
+structlog>=25.4.0
+
+# OpenTelemetry for observability (optional)
+opentelemetry-api>=1.19.0
+opentelemetry-sdk>=1.19.0
+opentelemetry-instrumentation-fastapi>=0.40b0
+opentelemetry-instrumentation-elasticsearch>=0.40b0
+opentelemetry-exporter-otlp-proto-http>=1.19.0
+
+# Prometheus metrics (optional)
+starlette-prometheus>=0.9.0
+
+# Testing dependencies
+pytest==8.2.2
+pytest-asyncio==0.23.8
+httpx==0.27.0
+
+# For development and testing with Elasticsearch (optional)
+# pytest-elasticsearch
