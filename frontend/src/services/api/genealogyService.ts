@@ -356,7 +356,7 @@ class GenealogyService {
     // familyTreeId might be part of personData or a query param, depends on backend.
     // Let's assume it's part of personData for this example if backend supports it.
     const response: AxiosResponse<FamilyMember> = await apiClient.post(
-      "/api/v1/genealogy/members",
+      "/api/genealogy/members",
       personData
     );
     return response.data;
@@ -371,7 +371,7 @@ class GenealogyService {
   }): Promise<Relationship> {
     // Align with addRelationship by using relationshipBaseURL
     const response: AxiosResponse<Relationship> = await apiClient.post(
-      "/api/v1/genealogy/relationships",
+      "/api/genealogy/relationships",
       relationshipData
     );
     return response.data;

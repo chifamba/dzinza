@@ -68,6 +68,8 @@ services:
     networks:
       - dzinza-network
     restart: unless-stopped
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`dzinza.local`)"

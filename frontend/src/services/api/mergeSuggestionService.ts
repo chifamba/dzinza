@@ -27,28 +27,30 @@ export interface PersonHistoryEntry {
 export class MergeSuggestionService {
   async listMergeSuggestions(): Promise<MergeSuggestion[]> {
     const response: AxiosResponse<MergeSuggestion[]> = await apiClient.get(
-      "/api/v1/merge-suggestions"
+      "/api/merge-suggestions"
     );
     return response.data;
   }
 
   async acceptMergeSuggestion(id: string): Promise<void> {
-    await apiClient.post(`/api/v1/merge-suggestions/${id}/accept`);
+    await apiClient.post(`/api/merge-suggestions/${id}/accept`);
   }
 
   async declineMergeSuggestion(id: string): Promise<void> {
-    await apiClient.post(`/api/v1/merge-suggestions/${id}/decline`);
+    await apiClient.post(`/api/merge-suggestions/${id}/decline`);
   }
 
   async getPersonHistory(personId: string): Promise<PersonHistoryEntry[]> {
     const response: AxiosResponse<PersonHistoryEntry[]> = await apiClient.get(
-      `/api/v1/persons/${personId}/history`
+      `/api/genealogy/persons/${personId}/history`
     );
     return response.data;
   }
 
   async revertPerson(personId: string, version: number): Promise<void> {
-    await apiClient.post(`/api/v1/persons/${personId}/revert`, { version });
+    await apiClient.post(`/api/genealogy/persons/${personId}/revert`, {
+      version,
+    });
   }
 }
 

@@ -107,7 +107,7 @@ export interface MfaVerifyData {
 }
 
 class AuthAPI {
-  private baseURL = "/api/v1/auth";
+  private baseURL = "/api/auth";
 
   async register(data: RegisterData): Promise<AuthResponse> {
     const response: AxiosResponse<AuthResponse> = await apiClient.post(
