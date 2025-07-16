@@ -3,12 +3,15 @@
 Collaborator:
   type: object
   properties:
-    user_id:
+    id:
       type: string
-      # format: uuid # If user IDs are UUIDs, but model says `str`
-      description: Reference to a User ID from an auth service.
+      format: uuid
+      description: Reference to a User ID from the auth service.
+    name:
+      type: string
+      description: Email or display name of the user.
     role:
-      $ref: './GenealogyCommon.yaml#/CollaboratorRole'
+      $ref: "./GenealogyCommon.yaml#/CollaboratorRole"
     added_at:
       type: string
       format: date-time
@@ -19,8 +22,8 @@ Collaborator:
       nullable: true
       description: Timestamp when the collaboration invitation was accepted.
   required:
-    - user_id
-    - role
+    - id
+    - name
 
 FamilyTreeSettings:
   type: object
@@ -33,7 +36,7 @@ FamilyTreeSettings:
       default: true
       description: Controls visibility of living persons to non-collaborators or based on privacy settings.
     default_person_privacy:
-      $ref: './GenealogyCommon.yaml#/PersonPrivacyOptions'
+      $ref: "./GenealogyCommon.yaml#/PersonPrivacyOptions"
       default: family_tree_only
     theme:
       type: string
@@ -76,7 +79,7 @@ FamilyTreeBase:
       description: Optional description for the tree.
     owner_id:
       type: string
-      # format: uuid # If owner_id is a UUID
+      format: uuid
       description: User ID of the creator/owner of the tree.
       readOnly: true # Usually set by the system based on authenticated user
     root_person_id:
@@ -84,18 +87,19 @@ FamilyTreeBase:
       format: uuid
       nullable: true
       description: Optional ID of the main person (root) of this family tree.
-    collaborators:
+    members:
       type: array
       items:
-        $ref: '#/Collaborator'
+        $ref: "#/Collaborator"
       default: []
+      description: List of users who are members/collaborators of this tree. Each member has an id and name.
     privacy:
-      $ref: './GenealogyCommon.yaml#/PrivacySetting'
-      default: private
+      $ref: "./GenealogyCommon.yaml#/PrivacySetting"
+      default: PRIVATE
     settings:
-      $ref: '#/FamilyTreeSettings'
+      $ref: "#/FamilyTreeSettings"
     statistics:
-      $ref: '#/FamilyTreeStatistics'
+      $ref: "#/FamilyTreeStatistics"
     last_gedcom_import:
       type: string
       format: date-time
@@ -108,7 +112,7 @@ FamilyTreeBase:
       readOnly: true
   required:
     - name
-    # owner_id is set by system
+    - owner_id
 
 # Schema for creating a FamilyTree
 FamilyTreeCreate:
@@ -123,15 +127,21 @@ FamilyTreeCreate:
       maxLength: 500
       nullable: true
     privacy:
-      $ref: './GenealogyCommon.yaml#/PrivacySetting'
-      default: private # Default from schema
+      $ref: "./GenealogyCommon.yaml#/PrivacySetting"
+      default: PRIVATE
     settings: # Allow partial settings on create or full default
-      $ref: '#/FamilyTreeSettings'
+      $ref: "#/FamilyTreeSettings"
       nullable: true
     root_person_id: # Allow setting root person on create
       type: string
       format: uuid
       nullable: true
+    members:
+      type: array
+      items:
+        $ref: "#/Collaborator"
+      default: []
+      description: List of users who are members/collaborators of this tree. Each member has an id and name.
   required:
     - name
 
@@ -149,22 +159,28 @@ FamilyTreeUpdate:
       maxLength: 500
       nullable: true
     privacy:
-      $ref: './GenealogyCommon.yaml#/PrivacySetting'
+      $ref: "./GenealogyCommon.yaml#/PrivacySetting"
       nullable: true
     settings:
-      $ref: '#/FamilyTreeSettings' # Allow full or partial update of settings object
+      $ref: "#/FamilyTreeSettings" # Allow full or partial update of settings object
       nullable: true
     root_person_id:
       type: string
       format: uuid
       nullable: true
+    members:
+      type: array
+      items:
+        $ref: "#/Collaborator"
+      default: []
+      description: List of users who are members/collaborators of this tree. Each member has an id and name.
   minProperties: 1 # Ensure at least one field is provided for update
 
 # Schema for reading/returning a FamilyTree
 FamilyTreeRead:
   allOf:
-    - $ref: './GenealogyCommon.yaml#/DBModelMixinEffect' # id, created_at, updated_at
-    - $ref: '#/FamilyTreeBase' # All other fields
+    - $ref: "./GenealogyCommon.yaml#/DBModelMixinEffect" # id, created_at, updated_at
+    - $ref: "#/FamilyTreeBase" # All other fields
 
 # Schema for a list of Family Trees with pagination
 FamilyTreeListResponse: # Corresponds to FamilyTreeList in schemas/family_tree.py
@@ -173,7 +189,7 @@ FamilyTreeListResponse: # Corresponds to FamilyTreeList in schemas/family_tree.p
     items:
       type: array
       items:
-        $ref: '#/FamilyTreeRead'
+        $ref: "#/FamilyTreeRead"
     total:
       type: integer
       description: Total number of family trees matching the query (can be -1 if not calculated).
@@ -191,7 +207,7 @@ FamilyTreeSummary:
     name:
       type: string
     privacy:
-      $ref: './GenealogyCommon.yaml#/PrivacySetting'
+      $ref: "./GenealogyCommon.yaml#/PrivacySetting"
     updated_at:
       type: string
       format: date-time

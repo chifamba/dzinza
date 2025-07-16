@@ -3,10 +3,33 @@ from datetime import datetime
 from typing import List, Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from bson import ObjectId
 
 from app.models_main import FamilyTree  # Pydantic model for DB representation
 from app.schemas import FamilyTreeCreate, FamilyTreeUpdate  # Pydantic models for API input
 from app.db.base import FAMILY_TREES_COLLECTION  # Collection name
+
+def _transform_tree_doc(doc):
+    """Transform MongoDB doc to match FamilyTree Pydantic model."""
+    if not doc:
+        return None
+    # Map MongoDB fields to Pydantic model fields
+    doc = dict(doc)  # Defensive copy
+    # _id to id (as str)
+    if "_id" in doc:
+        doc["id"] = str(doc.pop("_id"))
+    # userId to owner_id
+    if "userId" in doc:
+        doc["owner_id"] = doc.pop("userId")
+    # Normalize privacy to uppercase if present
+    if "privacy" in doc and isinstance(doc["privacy"], str):
+        doc["privacy"] = doc["privacy"].upper()
+    # Ensure required fields exist
+    if "owner_id" not in doc:
+        doc["owner_id"] = None
+    if "privacy" not in doc:
+        doc["privacy"] = "PRIVATE"
+    return doc
 
 async def create_tree(db: AsyncIOMotorDatabase, *, tree_in: FamilyTreeCreate, owner_id: str) -> FamilyTree:
     """
@@ -26,7 +49,6 @@ async def create_tree(db: AsyncIOMotorDatabase, *, tree_in: FamilyTreeCreate, ow
     await collection.insert_one(db_tree.model_dump(by_alias=True)) # by_alias=True to use '_id'
     return db_tree
 
-
 async def get_tree_by_id(db: AsyncIOMotorDatabase, *, tree_id: uuid.UUID, owner_id: Optional[str] = None) -> Optional[FamilyTree]:
     """
     Get a family tree by its ID.
@@ -35,23 +57,34 @@ async def get_tree_by_id(db: AsyncIOMotorDatabase, *, tree_id: uuid.UUID, owner_
     collection = db[FAMILY_TREES_COLLECTION]
     query = {"_id": tree_id}
     if owner_id:
-        query["owner_id"] = owner_id
+        query["userId"] = owner_id  # FIXED: use userId not owner_id
 
     doc = await collection.find_one(query)
+    doc = _transform_tree_doc(doc)
     return FamilyTree(**doc) if doc else None
-
 
 async def get_trees_by_owner(
     db: AsyncIOMotorDatabase, *, owner_id: str, skip: int = 0, limit: int = 100
 ) -> List[FamilyTree]:
     """
-    Get all family trees owned by a specific user.
+    Get all family trees owned by a specific user or where the user is a member.
     """
     collection = db[FAMILY_TREES_COLLECTION]
     trees = []
-    cursor = collection.find({"owner_id": owner_id}).skip(skip).limit(limit)
+    cursor = collection.find({
+        "$or": [
+            {"userId": owner_id},
+            {"members": {"$elemMatch": {"id": owner_id}}}
+        ]
+    }).skip(skip).limit(limit)
     async for doc in cursor:
-        trees.append(FamilyTree(**doc))
+        doc = _transform_tree_doc(doc)
+        if doc:
+            try:
+                trees.append(FamilyTree(**doc))
+            except Exception as e:
+                # Log or print error for debugging
+                print(f"Error parsing FamilyTree doc: {e}\nDoc: {doc}")
     return trees
 
 async def update_tree(
@@ -70,12 +103,12 @@ async def update_tree(
     update_data["updated_at"] = datetime.utcnow()
 
     result = await collection.find_one_and_update(
-        {"_id": tree_id, "owner_id": owner_id},
+        {"_id": tree_id, "userId": owner_id},  # FIXED: use userId not owner_id
         {"$set": update_data},
         return_document=True
     )
+    result = _transform_tree_doc(result)
     return FamilyTree(**result) if result else None
-
 
 async def delete_tree(db: AsyncIOMotorDatabase, *, tree_id: uuid.UUID, owner_id: str) -> bool:
     """
@@ -88,10 +121,10 @@ async def delete_tree(db: AsyncIOMotorDatabase, *, tree_id: uuid.UUID, owner_id:
     For now, this only deletes the tree document itself.
     """
     collection = db[FAMILY_TREES_COLLECTION]
-    result = await collection.delete_one({"_id": tree_id, "owner_id": owner_id})
+    result = await collection.delete_one({"_id": tree_id, "userId": owner_id})  # FIXED: use userId not owner_id
     return result.deleted_count > 0
 
 # TODO: Add function to get total count of trees for an owner (for pagination)
 # async def count_trees_by_owner(db: AsyncIOMotorDatabase, *, owner_id: str) -> int:
 #     collection = db[FAMILY_TREES_COLLECTION]
-#     return await collection.count_documents({"owner_id": owner_id})
+#     return await collection.count_documents({"userId": owner_id})
