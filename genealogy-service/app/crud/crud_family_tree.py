@@ -57,7 +57,7 @@ async def get_tree_by_id(db: AsyncIOMotorDatabase, *, tree_id: uuid.UUID, owner_
     collection = db[FAMILY_TREES_COLLECTION]
     query = {"_id": tree_id}
     if owner_id:
-        query["userId"] = owner_id  # FIXED: use userId not owner_id
+        query["owner_id"] = owner_id
 
     doc = await collection.find_one(query)
     doc = _transform_tree_doc(doc)
@@ -73,7 +73,7 @@ async def get_trees_by_owner(
     trees = []
     cursor = collection.find({
         "$or": [
-            {"userId": owner_id},
+            {"owner_id": owner_id},
             {"members": {"$elemMatch": {"id": owner_id}}}
         ]
     }).skip(skip).limit(limit)
@@ -103,7 +103,7 @@ async def update_tree(
     update_data["updated_at"] = datetime.utcnow()
 
     result = await collection.find_one_and_update(
-        {"_id": tree_id, "userId": owner_id},  # FIXED: use userId not owner_id
+        {"_id": tree_id, "owner_id": owner_id},
         {"$set": update_data},
         return_document=True
     )
@@ -121,7 +121,7 @@ async def delete_tree(db: AsyncIOMotorDatabase, *, tree_id: uuid.UUID, owner_id:
     For now, this only deletes the tree document itself.
     """
     collection = db[FAMILY_TREES_COLLECTION]
-    result = await collection.delete_one({"_id": tree_id, "userId": owner_id})  # FIXED: use userId not owner_id
+    result = await collection.delete_one({"_id": tree_id, "owner_id": owner_id})
     return result.deleted_count > 0
 
 # TODO: Add function to get total count of trees for an owner (for pagination)

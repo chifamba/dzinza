@@ -1019,6 +1019,7 @@ paths:
       tags:
         - Family Trees
       summary: List family trees for the current user
+      description: Retrieves family trees owned by or shared with the authenticated user.
       operationId: listFamilyTrees
       parameters:
         - name: skip
