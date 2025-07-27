@@ -1,0 +1,30 @@
+{
+  "family": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "gender": "male",
+      "spouse": 2,
+      "children": [3, 4]
+    },
+    {
+      "id": 2,
+      "name": "Jane Doe",
+      "gender": "female",
+      "spouse": 1,
+      "children": [3, 4]
+    },
+    {
+      "id": 3,
+      "name": "Alice Doe",
+      "gender": "female",
+      "parents": [1, 2]
+    },
+    {
+      "id": 4,
+      "name": "Bob Doe",
+      "gender": "male",
+      "parents": [1, 2]
+    }
+  ]
+}
