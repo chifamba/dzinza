@@ -1,8 +1,0 @@
-fastapi
-uvicorn
-pydantic-settings
-httpx
-structlog
-python-multipart
-slowapi
-watchdog
