@@ -1,163 +1,96 @@
-# Dzinza Platform Docker Environment Status Report
+# Dzinza Microservices Audit - Documentation Review Summary
 
-## 🎯 Current Status: **EXCELLENT**
+## Reviewed Documentation
 
-_All critical services are running properly_
+### 1. Project Overview & Architecture
 
-### ✅ Successfully Running Services (15/16)
+- **README.md**: High-level overview, service descriptions, setup instructions, and architecture summary.
+- **docs/ARCHITECTURE.md**: Detailed technical architecture, service boundaries, data flow, technology stack, security, and deployment notes.
 
-| Service               | Status     | Health     | Port  | Notes                                                  |
-| --------------------- | ---------- | ---------- | ----- | ------------------------------------------------------ |
-| **Frontend**          | ✅ Running | ✅ Healthy | 8080  | Production React app                                   |
-| **Backend Gateway**   | ✅ Running | ✅ Healthy | 3000  | API Gateway with routing                               |
-| **Auth Service**      | ✅ Running | ✅ Healthy | 3002  | Authentication & authorization                         |
-| **Genealogy Service** | ✅ Running | ✅ Healthy | 3004  | Core genealogy data processing                         |
-| **Genealogy Worker**  | ✅ Running | ✅ Healthy | N/A   | Celery background tasks                                |
-| **Search Service**    | ✅ Running | ✅ Healthy | 3003  | Elasticsearch integration                              |
-| **Storage Service**   | ✅ Running | ✅ Healthy | 3005  | S3-compatible file storage                             |
-| **PostgreSQL**        | ✅ Running | ✅ Healthy | 5432  | Main relational database                               |
-| **MongoDB**           | ✅ Running | ✅ Healthy | 27017 | Document database                                      |
-| **Redis**             | ✅ Running | ✅ Healthy | 6379  | Caching & session store                                |
-| **Elasticsearch**     | ✅ Running | ✅ Healthy | 9200  | Search engine (Yellow status - normal for single node) |
-| **Garage S3**         | ✅ Running | ✅ Healthy | 39000 | S3-compatible storage cluster                          |
-| **Prometheus**        | ✅ Running | ✅ Healthy | 9090  | Metrics collection                                     |
-| **Grafana**           | ✅ Running | ✅ Healthy | 3300  | Dashboards & visualization                             |
+### 2. Environment & Configuration
 
-### ⚠️ Optional Services (Not Critical)
+- **docker-compose.yml**: Complete service topology, secrets, volumes, networks, healthchecks, and environment variable usage.
+- **.env.example**: Comprehensive environment variable template for all services.
+- **.secrets.baseline**: Baseline for secret management; explicit required secret files inferred from docker-compose.yml and .env.example.
 
-- **Garage2 & Garage3**: Disabled for development (single-node cluster is sufficient)
+### 3. Service-Specific Documentation
 
----
+- **auth-service/README.md**: Patch for UserRole enum, migration script reference, and DB alignment notes.
+- **docs/AUTH_SERVICE_OPENAPI_UPDATE.md**: Auth service API documentation, implemented endpoints, request/response formats, and planned features.
 
-## 🔧 Recent Improvements Made
+### 4. API Gateway & Routing
 
-### 1. **Fixed S3 Storage Issues**
+- **backend-service/app/services/proxy.py**: Version-agnostic routing logic, health check forwarding, header management.
+- **backend-service/app/core/config.py**: Dynamic service mapping from config/services.conf and environment variables.
 
-- ✅ Configured Garage S3 cluster properly
-- ✅ Created storage bucket: `dzinza-storage-bucket`
-- ✅ Generated API keys for S3 authentication
-- ✅ Storage service now connects successfully
+## Documentation Gaps Identified
 
-### 2. **Enhanced Redis Configuration**
+1. **Service Discovery Config File**
 
-- ✅ Fixed Redis health check authentication
-- ✅ Improved connection reliability
+   - The file `config/services.conf` is referenced for dynamic service URLs but was not found in the reviewed documentation. Its required format and example contents are not documented.
 
-### 3. **Added Development Tools**
+2. **OpenAPI/Swagger Specs**
 
-- ✅ Created comprehensive health check script
-- ✅ Added automated Garage setup script
-- ✅ Enhanced Docker Compose development override
+   - While updates are described, the actual OpenAPI YAML/JSON files for each service (e.g., docs/openapi/paths/auth_paths.yaml) were not reviewed. These specs are critical for automated API testing and endpoint discovery.
 
-### 4. **Improved Configuration**
+3. **Database Schema Documentation**
 
-- ✅ Fixed hostnames in Garage configuration
-- ✅ Optimized replication factor for development
-- ✅ Enhanced secret management
+   - No explicit documentation found for PostgreSQL or MongoDB schemas beyond code references and migration scripts. Schema diagrams or model documentation would aid in understanding data flow and integrity.
 
----
+4. **Celery Worker Configuration**
 
-## 📊 Resource Usage Summary
+   - The genealogy_service_worker setup is described in docker-compose.yml, but no documentation was found detailing its tasks, queue configuration, or monitoring.
 
-The platform is running efficiently with:
+5. **Monitoring & Observability**
 
-- **CPU Usage**: Moderate (10-20% per service)
-- **Memory Usage**: ~1.5GB total across all services
-- **Disk Usage**: Minimal (development data)
-- **Network**: All services communicating properly
+   - Prometheus and Grafana are configured, but no documentation was found on dashboard setup, metrics endpoints, or alerting strategies.
 
----
+6. **Frontend API Integration**
 
-## 🚀 Available Endpoints
+   - No documentation found describing how the frontend interacts with the API Gateway, authentication flows, or error handling.
 
-### **Application Endpoints**
+7. **Secrets Directory Management**
 
-- **Frontend**: http://localhost:8080
-- **API Gateway**: http://localhost:3000
-- **Auth Service**: http://localhost:3002
-- **Genealogy Service**: http://localhost:3004
-- **Search Service**: http://localhost:3003
-- **Storage Service**: http://localhost:3005
+   - The process for populating and rotating secrets in ./secrets/ is not documented beyond the baseline and references in docker-compose.yml.
 
-### **Database Endpoints**
+8. **Feature Flags & Planned Features**
+   - Feature flags are present in .env.example, but there is no documentation on their usage, impact, or rollout strategy.
 
-- **PostgreSQL**: localhost:5432
-- **MongoDB**: localhost:27017
-- **Redis**: localhost:6379
-- **Elasticsearch**: http://localhost:9200
+## Codebase Analysis Summary
 
-### **Monitoring & Tools**
+### Service Topology & Dependencies
 
-- **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3300 (admin/admin)
-- **Garage S3**: http://localhost:39000
+- **Services:** frontend, backend_service (API Gateway), auth_service, genealogy_service (+ worker), search_service, storage_service.
+- **Databases:** PostgreSQL (auth_service), MongoDB (genealogy_service, storage_service, search_service), Redis (auth_service, genealogy_service/Celery), Elasticsearch (search_service), S3-compatible storage (Garage cluster).
+- **Monitoring:** Prometheus, Grafana.
+- **Networks:** All services connected via `dzinza-network` (bridge).
+- **Volumes:** Persistent volumes for databases, shared config, Garage storage.
 
----
+### Environment Variable & Secret Management
 
-## 🎯 Recommendations for Further Enhancement
+- **Environment Variables:** Managed via root `.env` file and service-specific `.env` files. Variables are loaded using Pydantic Settings in each service.
+- **Secrets:** Sensitive credentials (DB, Redis, JWT, SMTP, S3, etc.) are stored in individual files in `./secrets/` and mounted as Docker secrets.
+- **Configuration Loading:** Services read secrets from files (preferred) or environment variables (fallback), with error handling for missing values.
 
-### 1. **Development Experience**
+### Dockerfile Build Processes
 
-```bash
-# Use the enhanced development override
-docker-compose -f docker-compose.yml -f docker-compose.development.yml up -d
-```
+- **Backend Services:** Multi-stage builds with Python 3.11-slim, dependency installation, non-root users, healthchecks, and uvicorn entrypoints.
+- **Frontend:** Node.js build stage for React app, Nginx for serving static assets, non-root user, healthcheck.
+- **Best Practices:** All Dockerfiles follow security and production-readiness standards.
 
-### 2. **Add Database Management Tools**
+### Shared Resources
 
-```bash
-# Access included tools
-- Adminer (PostgreSQL): http://localhost:8081
-- Redis Commander: http://localhost:8082
-- Elasticsearch Head: http://localhost:9100
-```
+- **Volumes:** Used for database persistence, shared config, Garage S3 storage.
+- **Networks:** Single bridge network for service communication.
+- **Secrets:** Managed via Docker secrets and referenced in docker-compose.yml.
 
-### 3. **Implement CI/CD Pipeline**
+## Recommendations
 
-- Add automated testing
-- Docker image building
-- Deployment automation
-
-### 4. **Security Enhancements**
-
-- Enable TLS for all services
-- Implement proper secret rotation
-- Add network security policies
-
-### 5. **Performance Optimization**
-
-- Implement connection pooling
-- Add caching layers
-- Optimize database queries
-
----
-
-## 🔍 Health Check Commands
-
-```bash
-# Run comprehensive health check
-./scripts/health-check.sh
-
-# Check specific service
-curl http://localhost:3000/api/v1/gateway/health
-
-# Monitor logs
-docker-compose logs -f [service_name]
-
-# Check resource usage
-docker stats
-```
-
----
-
-## 🎉 Summary
-
-The Dzinza Platform Docker environment is now **fully operational** with all critical services running healthy. The platform is ready for development work with:
-
-- ✅ **15/16 services running**
-- ✅ **All databases connected**
-- ✅ **S3 storage configured**
-- ✅ **Monitoring active**
-- ✅ **Health checks passing**
-
-The environment provides a robust foundation for genealogy platform development with proper microservices architecture, data persistence, and observability.
+- Add or update documentation for `config/services.conf` format and usage.
+- Include OpenAPI/Swagger spec files for all services in docs/openapi/.
+- Document database schemas and provide diagrams for key models.
+- Add details on Celery worker configuration and monitoring.
+- Provide guidance on Prometheus/Grafana dashboard setup and metrics.
+- Document frontend-to-backend API integration and error handling.
+- Clarify secret management procedures for development and production.
+- Document feature flag usage and planned feature rollout.
