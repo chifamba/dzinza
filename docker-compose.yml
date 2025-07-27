@@ -294,3 +294,39 @@ volumes:
 networks:
   dzinza-network:
     driver: bridge # Default network driver, can be customized if needed
+
+x-skaffold:
+  profiles:
+    - name: local
+      build:
+        artifacts:
+          - image: adminmoderationservice
+            context: services/AdminModerationService
+          - image: analyticsservice
+            context: services/AnalyticsService
+          - image: audithistoryservice
+            context: services/AuditHistoryService
+          - image: authservice
+            context: services/AuthService
+          - image: extendedservicesopenapi
+            context: services/ExtendedServicesOpenapi
+          - image: genealogyservice
+            context: services/GenealogyService
+          - image: graphqueryservice
+            context: services/GraphQueryService
+          - image: localizationservice
+            context: services/LocalizationService
+          - image: mediastorageservice
+            context: services/MediaStorageService
+          - image: searchdiscoveryservice
+            context: services/SearchDiscoveryService
+          - image: community-marketplace-service
+            context: services/community-marketplace-service
+          - image: deduplication-service
+            context: services/deduplication-service
+          - image: notification-service
+            context: services/notification-service
+          - image: relationship-verification-service
+            context: services/relationship-verification-service
+          - image: trust-access-control-service
+            context: services/trust-access-control-service

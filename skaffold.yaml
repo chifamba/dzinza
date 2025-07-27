@@ -1,0 +1,101 @@
+apiVersion: skaffold/v4beta5
+kind: Config
+metadata:
+  name: dzinza
+build:
+  artifacts:
+    - image: adminmoderationservice
+      context: services/AdminModerationService
+    - image: analyticsservice
+      context: services/AnalyticsService
+    - image: audithistoryservice
+      context: services/AuditHistoryService
+    - image: authservice
+      context: services/AuthService
+    - image: extendedservicesopenapi
+      context: services/ExtendedServicesOpenapi
+    - image: genealogyservice
+      context: services/GenealogyService
+    - image: graphqueryservice
+      context: services/GraphQueryService
+    - image: localizationservice
+      context: services/LocalizationService
+    - image: mediastorageservice
+      context: services/MediaStorageService
+    - image: searchdiscoveryservice
+      context: services/SearchDiscoveryService
+    - image: community-marketplace-service
+      context: services/community-marketplace-service
+    - image: deduplication-service
+      context: services/deduplication-service
+    - image: notification-service
+      context: services/notification-service
+    - image: relationship-verification-service
+      context: services/relationship-verification-service
+    - image: trust-access-control-service
+      context: services/trust-access-control-service
+manifests:
+  kustomize:
+    paths:
+      - ./k8s
+portForward:
+  - resourceType: service
+    resourceName: adminmoderationservice
+    port: 8080
+    localPort: 8081
+  - resourceType: service
+    resourceName: analyticsservice
+    port: 8080
+    localPort: 8082
+  - resourceType: service
+    resourceName: audithistoryservice
+    port: 8080
+    localPort: 8083
+  - resourceType: service
+    resourceName: authservice
+    port: 8080
+    localPort: 8084
+  - resourceType: service
+    resourceName: extendedservicesopenapi
+    port: 8080
+    localPort: 8085
+  - resourceType: service
+    resourceName: genealogyservice
+    port: 8080
+    localPort: 8086
+  - resourceType: service
+    resourceName: graphqueryservice
+    port: 8080
+    localPort: 8087
+  - resourceType: service
+    resourceName: localizationservice
+    port: 8080
+    localPort: 8088
+  - resourceType: service
+    resourceName: mediastorageservice
+    port: 8080
+    localPort: 8089
+  - resourceType: service
+    resourceName: searchdiscoveryservice
+    port: 8080
+    localPort: 8090
+  - resourceType: service
+    resourceName: community-marketplace-service
+    port: 8080
+    localPort: 8091
+  - resourceType: service
+    resourceName: deduplication-service
+    port: 8080
+    localPort: 8092
+  - resourceType: service
+    resourceName: notification-service
+    port: 8080
+    localPort: 8093
+  - resourceType: service
+    resourceName: relationship-verification-service
+    port: 8080
+    localPort: 8094
+  - resourceType: service
+    resourceName: trust-access-control-service
+    port: 8080
+    localPort: 8095
