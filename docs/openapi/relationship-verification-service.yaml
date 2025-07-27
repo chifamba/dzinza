@@ -1,0 +1,207 @@
+openapi: 3.0.3
+info:
+  title: Relationship Verification Service API
+  version: 1.0.0
+  description: API for suggesting and verifying relationships between persons in family trees.
+servers:
+  - url: https://api.example.com/relationship-verification
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RelationshipSuggestion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        suggesting_user_id:
+          type: string
+          format: uuid
+        person1_id:
+          type: string
+          format: uuid
+        person2_id:
+          type: string
+          format: uuid
+        relationship_type:
+          type: string
+          enum: [PARENT_CHILD, SPOUSE, SIBLING, OTHER]
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, REJECTED]
+        confirmations:
+          type: array
+          items:
+            type: object
+            properties:
+              user_id:
+                type: string
+                format: uuid
+              confirmed:
+                type: boolean
+              confirmed_at:
+                type: string
+                format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - suggesting_user_id
+        - person1_id
+        - person2_id
+        - relationship_type
+        - status
+    ConfirmationRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        confirmed:
+          type: boolean
+      required:
+        - user_id
+        - confirmed
+paths:
+  /relationship-suggestions:
+    post:
+      summary: Create a relationship suggestion
+      security:
+        - BearerAuth: []
+      requestBody:
+        description: Relationship suggestion details
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                suggesting_user_id:
+                  type: string
+                  format: uuid
+                person1_id:
+                  type: string
+                  format: uuid
+                person2_id:
+                  type: string
+                  format: uuid
+                relationship_type:
+                  type: string
+                  enum: [PARENT_CHILD, SPOUSE, SIBLING, OTHER]
+              required:
+                - suggesting_user_id
+                - person1_id
+                - person2_id
+                - relationship_type
+      responses:
+        '201':
+          description: Relationship suggestion created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationshipSuggestion'
+  /relationship-suggestions/{id}:
+    get:
+      summary: Get a relationship suggestion by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Relationship suggestion details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationshipSuggestion'
+        '404':
+          description: Relationship suggestion not found
+    put:
+      summary: Confirm or reject a relationship suggestion
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Confirmation from user
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmationRequest'
+      responses:
+        '200':
+          description: Relationship suggestion updated with confirmation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationshipSuggestion'
+        '404':
+          description: Relationship suggestion not found
+  /relationship-suggestions:
+    get:
+      summary: List relationship suggestions with optional filtering
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, CONFIRMED, REJECTED]
+          description: Filter by suggestion status
+        - name: person_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter suggestions involving this person
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of relationship suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RelationshipSuggestion'
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  total_records:
+                    type: integer
+                  total_pages:
+                    type: integer
+security:
+  - BearerAuth: []
