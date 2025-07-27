@@ -1,0 +1,18 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: community-marketplace-service
+spec:
+  hosts:
+    - "community-marketplace-service.local"
+  gateways:
+    - shared-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: community-marketplace-service
+            port:
+              number: 8080

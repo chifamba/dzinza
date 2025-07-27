@@ -1,0 +1,18 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: relationship-verification-service
+spec:
+  hosts:
+    - "relationship-verification-service.local"
+  gateways:
+    - shared-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: relationship-verification-service
+            port:
+              number: 8080

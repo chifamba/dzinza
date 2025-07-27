@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: trust-access-control-service
+  labels:
+    app: trust-access-control-service
+spec:
+  type: ClusterIP
+  selector:
+    app: trust-access-control-service
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080

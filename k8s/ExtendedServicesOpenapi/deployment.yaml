@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: extendedservicesopenapi
+  labels:
+    app: extendedservicesopenapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: extendedservicesopenapi
+  template:
+    metadata:
+      labels:
+        app: extendedservicesopenapi
+    spec:
+      containers:
+        - name: extendedservicesopenapi
+          image: extendedservicesopenapi:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ENVIRONMENT
+              value: "local"

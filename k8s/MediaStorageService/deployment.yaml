@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mediastorageservice
+  labels:
+    app: mediastorageservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mediastorageservice
+  template:
+    metadata:
+      labels:
+        app: mediastorageservice
+    spec:
+      containers:
+        - name: mediastorageservice
+          image: mediastorageservice:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ENVIRONMENT
+              value: "local"
