@@ -1,7 +1,9 @@
 openapi: 3.1.0
 info:
   title: Extended Services for Community Genealogy Platform
-  description: OpenAPI specification for additional services: Search, Audit, Media, Graph, Localization, Analytics, Admin.
+  description: >
+    OpenAPI specification for additional services:
+    Search, Audit, Media, Graph, Localization, Analytics, Admin.
   version: 1.0.0
 
 paths:
@@ -26,7 +28,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: List of matching persons
 
   ########################
@@ -49,7 +51,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: List of audit entries
 
   #############################
@@ -70,7 +72,7 @@ paths:
                 associatedPersonId:
                   type: string
       responses:
-        '201':
+        "201":
           description: File uploaded
 
   /media/{mediaId}:
@@ -83,7 +85,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Media metadata
 
   ############################
@@ -106,7 +108,7 @@ paths:
                   type: string
                   enum: [up, down, both]
       responses:
-        '200':
+        "200":
           description: Graph traversal result
 
   #################################
@@ -125,7 +127,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Translated text
 
   ############################
@@ -135,14 +137,14 @@ paths:
     get:
       summary: Get user and activity stats
       responses:
-        '200':
+        "200":
           description: Usage stats
 
   /analytics/top-contributors:
     get:
       summary: List top contributing users
       responses:
-        '200':
+        "200":
           description: Contributor list
 
   ###########################
@@ -152,7 +154,7 @@ paths:
     get:
       summary: Get user-submitted reports
       responses:
-        '200':
+        "200":
           description: List of reports
 
   /admin/users/{userId}/ban:
@@ -165,5 +167,136 @@ paths:
           schema:
             type: string
       responses:
-        '204':
+        "204":
           description: User banned
+
+  ###############################
+  # Community Marketplace API   #
+  ###############################
+  /marketplace/items:
+    get:
+      summary: List marketplace items
+      responses:
+        "200":
+          description: List of marketplace items
+    post:
+      summary: Create a marketplace item
+      responses:
+        "201":
+          description: Marketplace item created
+
+  /marketplace/items/{id}:
+    get:
+      summary: Get a marketplace item by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Marketplace item details
+        "404":
+          description: Item not found
+    put:
+      summary: Update a marketplace item
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Marketplace item updated
+        "404":
+          description: Item not found
+    delete:
+      summary: Delete a marketplace item
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Item deleted
+        "404":
+          description: Item not found
+
+  #####################################
+  # Relationship Verification API     #
+  #####################################
+  /relationship-suggestions:
+    get:
+      summary: List relationship suggestions with optional filtering
+      responses:
+        "200":
+          description: List of relationship suggestions
+    post:
+      summary: Create a relationship suggestion
+      responses:
+        "201":
+          description: Relationship suggestion created
+
+  /relationship-suggestions/{id}:
+    get:
+      summary: Get a relationship suggestion by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Relationship suggestion details
+        "404":
+          description: Relationship suggestion not found
+    put:
+      summary: Confirm or reject a relationship suggestion
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Relationship suggestion updated with confirmation
+        "404":
+          description: Relationship suggestion not found
+
+  ###############################
+  # Deduplication Service API   #
+  ###############################
+  /duplicates/check:
+    post:
+      summary: Check duplicates for a person
+      responses:
+        "200":
+          description: List of possible duplicates
+
+  /duplicates/suggestions:
+    get:
+      summary: List duplicate suggestions
+      responses:
+        "200":
+          description: List of duplicate suggestions
+
+  /duplicates/suggestions/{id}:
+    put:
+      summary: Approve or reject duplicate suggestion (merge)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Duplicate suggestion updated
+        "404":
+          description: Duplicate suggestion not found
