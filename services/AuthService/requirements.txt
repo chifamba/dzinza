@@ -1,2 +1,8 @@
-fastapi==0.110.0
-uvicorn==0.29.0
+fastapi
+uvicorn[standard]
+asyncpg
+psycopg2-binary
+pydantic[email]
+python-dotenv
+PyJWT
+passlib[bcrypt]
