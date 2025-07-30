@@ -51,7 +51,11 @@ MOCK_TRANSLATIONS = {
 }
 
 # --- Auth ---
-def get_current_user(token: str = Depends(HTTPBearer())):
+from fastapi.security import HTTPBearer
+
+security = HTTPBearer()
+
+def get_current_user(token: str = Depends(security)):
     try:
         payload = jwt.decode(token.credentials, JWT_SECRET, algorithms=[ALGORITHM])
         return {"user_id": payload["sub"]}
