@@ -60,7 +60,7 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - backend_service
+      - api-gateway
     environment:
       - NODE_ENV=production
       - REACT_APP_ENVIRONMENT=production
@@ -276,6 +276,169 @@ services:
       - dzinza-network
     restart: unless-stopped
 
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: dzinza-api-gateway
+    ports:
+      - "8000:8000"
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      - adminmoderationservice
+      - analyticsservice
+      - audithistoryservice
+      - authservice
+      - extendedservicesopenapi
+      - genealogyservice
+      - graphqueryservice
+      - localizationservice
+      - mediastorageservice
+      - searchdiscoveryservice
+      - community-marketplace-service
+      - deduplication-service
+      - notification-service
+      - relationship-verification-service
+      - trust-access-control-service
+
+  adminmoderationservice:
+    build:
+      context: ./services/AdminModerationService
+      dockerfile: Dockerfile
+    container_name: dzinza-adminmoderationservice
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  analyticsservice:
+    build:
+      context: ./services/AnalyticsService
+      dockerfile: Dockerfile
+    container_name: dzinza-analyticsservice
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  audithistoryservice:
+    build:
+      context: ./services/AuditHistoryService
+      dockerfile: Dockerfile
+    container_name: dzinza-audithistoryservice
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  authservice:
+    build:
+      context: ./services/AuthService
+      dockerfile: Dockerfile
+    container_name: dzinza-authservice
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  extendedservicesopenapi:
+    build:
+      context: ./services/ExtendedServicesOpenapi
+      dockerfile: Dockerfile
+    container_name: dzinza-extendedservicesopenapi
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  genealogyservice:
+    build:
+      context: ./services/GenealogyService
+      dockerfile: Dockerfile
+    container_name: dzinza-genealogyservice
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  graphqueryservice:
+    build:
+      context: ./services/GraphQueryService
+      dockerfile: Dockerfile
+    container_name: dzinza-graphqueryservice
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  localizationservice:
+    build:
+      context: ./services/LocalizationService
+      dockerfile: Dockerfile
+    container_name: dzinza-localizationservice
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  mediastorageservice:
+    build:
+      context: ./services/MediaStorageService
+      dockerfile: Dockerfile
+    container_name: dzinza-mediastorageservice
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  searchdiscoveryservice:
+    build:
+      context: ./services/SearchDiscoveryService
+      dockerfile: Dockerfile
+    container_name: dzinza-searchdiscoveryservice
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  community-marketplace-service:
+    build:
+      context: ./services/community-marketplace-service
+      dockerfile: Dockerfile
+    container_name: dzinza-community-marketplace-service
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  deduplication-service:
+    build:
+      context: ./services/deduplication-service
+      dockerfile: Dockerfile
+    container_name: dzinza-deduplication-service
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: dzinza-notification-service
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  relationship-verification-service:
+    build:
+      context: ./services/relationship-verification-service
+      dockerfile: Dockerfile
+    container_name: dzinza-relationship-verification-service
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  trust-access-control-service:
+    build:
+      context: ./services/trust-access-control-service
+      dockerfile: Dockerfile
+    container_name: dzinza-trust-access-control-service
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   mongodb_data:
@@ -294,39 +457,3 @@ volumes:
 networks:
   dzinza-network:
     driver: bridge # Default network driver, can be customized if needed
-
-x-skaffold:
-  profiles:
-    - name: local
-      build:
-        artifacts:
-          - image: adminmoderationservice
-            context: services/AdminModerationService
-          - image: analyticsservice
-            context: services/AnalyticsService
-          - image: audithistoryservice
-            context: services/AuditHistoryService
-          - image: authservice
-            context: services/AuthService
-          - image: extendedservicesopenapi
-            context: services/ExtendedServicesOpenapi
-          - image: genealogyservice
-            context: services/GenealogyService
-          - image: graphqueryservice
-            context: services/GraphQueryService
-          - image: localizationservice
-            context: services/LocalizationService
-          - image: mediastorageservice
-            context: services/MediaStorageService
-          - image: searchdiscoveryservice
-            context: services/SearchDiscoveryService
-          - image: community-marketplace-service
-            context: services/community-marketplace-service
-          - image: deduplication-service
-            context: services/deduplication-service
-          - image: notification-service
-            context: services/notification-service
-          - image: relationship-verification-service
-            context: services/relationship-verification-service
-          - image: trust-access-control-service
-            context: services/trust-access-control-service
