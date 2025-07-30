@@ -1,208 +1,231 @@
-from fastapi import FastAPI, Depends, Query, HTTPException, status, Path, Body
+from fastapi import FastAPI, Depends, HTTPException, status, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
 from uuid import UUID, uuid4
 from datetime import datetime, timedelta
 import jwt
 import asyncpg
+import os
+from passlib.context import CryptContext
 
 from shared.logging import setup_logging
 from shared.healthcheck import get_healthcheck_router
 
-app = FastAPI()
-logger = setup_logging("AuthService")
+# --- Environment Variables & Constants ---
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/db")
+JWT_SECRET = os.getenv("JWT_SECRET", "a_very_secret_key")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
+# --- FastAPI App Initialization ---
+app = FastAPI(
+    title="FamilyTree Auth Service",
+    description="API for user authentication, registration, and authorization.",
+    version="1.0.0"
+)
+logger = setup_logging("AuthService")
 app.include_router(get_healthcheck_router("AuthService"))
 
+# --- Security & Hashing ---
 security = HTTPBearer()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# --- Pydantic Models ---
 class UserBase(BaseModel):
     email: EmailStr
     username: str
     first_name: str
     last_name: str
-    preferred_language: Optional[str] = "en"
-    timezone: Optional[str] = "UTC"
+    preferred_language: str = "en"
+    timezone: str = "UTC"
 
 class UserCreate(UserBase):
     password: str
 
 class UserResponse(UserBase):
     id: UUID
-    isActive: bool
-    isSuperuser: bool
+    is_active: bool = Field(alias="isActive")
+    is_superuser: bool = Field(alias="isSuperuser")
     roles: List[str]
-    emailVerified: bool
-    mfaEnabled: bool
-    lastLoginAt: Optional[datetime]
-    createdAt: datetime
-    updatedAt: datetime
+    email_verified: bool = Field(alias="emailVerified")
+    mfa_enabled: bool = Field(alias="mfaEnabled")
+    last_login_at: Optional[datetime] = Field(alias="lastLoginAt")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
     preferences: Optional[Dict[str, Any]]
 
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
+
 class AuthTokens(BaseModel):
-    accessToken: str
-    refreshToken: str
-    expiresIn: int
+    access_token: str = Field(alias="accessToken")
+    refresh_token: str = Field(alias="refreshToken")
+    expires_in: int = Field(alias="expiresIn")
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
-    mfaCode: Optional[str] = None
+    mfa_code: Optional[str] = Field(None, alias="mfaCode")
 
 class LoginResponse(BaseModel):
     message: str
     user: UserResponse
     tokens: AuthTokens
-    requireMfa: Optional[bool] = False
+    require_mfa: bool = Field(False, alias="requireMfa")
 
 class RegisterRequest(BaseModel):
-    firstName: str
-    lastName: str
+    first_name: str = Field(alias="firstName")
+    last_name: str = Field(alias="lastName")
     email: EmailStr
     password: str
     username: str
-    preferredLanguage: Optional[str] = "en"
+    preferred_language: str = Field("en", alias="preferredLanguage")
 
 class MessageResponse(BaseModel):
     message: str
 
 class RefreshTokenRequest(BaseModel):
-    refreshToken: str
+    refresh_token: str = Field(alias="refreshToken")
 
-class RefreshTokenResponse(BaseModel):
-    tokens: AuthTokens
+# --- JWT & Auth Functions ---
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET, algorithm=ALGORITHM)
 
-def verify_jwt(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    if not credentials or not credentials.credentials:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing or invalid token")
+def create_refresh_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET, algorithm=ALGORITHM)
+
+def create_auth_tokens(user_id: UUID, roles: List[str]) -> AuthTokens:
+    access_token = create_access_token(data={"sub": str(user_id), "roles": roles})
+    refresh_token = create_refresh_token(data={"sub": str(user_id)})
+    return AuthTokens(
+        accessToken=access_token,
+        refreshToken=refresh_token,
+        expiresIn=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     try:
-        payload = jwt.decode(credentials.credentials, "your_jwt_secret", algorithms=["HS256"])
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
-        return {"token": credentials.credentials, "user_id": user_id}
+        if user_id is None:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
+        return {"user_id": UUID(user_id), "roles": payload.get("roles", [])}
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token has expired")
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
 
-DATABASE_URL = "postgresql://dzinza_user:db_password@localhost:5432/dzinza_db"
+def require_role(role: str):
+    def role_checker(user: dict = Depends(get_current_user)):
+        if role not in user.get("roles", []):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, f"Requires '{role}' role")
+        return user
+    return role_checker
 
-async def get_db_pool():
-    if not hasattr(app.state, "db_pool"):
-        app.state.db_pool = await asyncpg.create_pool(DATABASE_URL)
-    return app.state.db_pool
-
+# --- Database Pool ---
 @app.on_event("startup")
 async def startup():
-    await get_db_pool()
+    app.state.db_pool = await asyncpg.create_pool(DATABASE_URL)
 
 @app.on_event("shutdown")
 async def shutdown():
-    if hasattr(app.state, "db_pool"):
-        await app.state.db_pool.close()
+    await app.state.db_pool.close()
 
-@app.post("/users/register", response_model=Dict[str, Any], status_code=201, tags=["Auth"])
-async def register_user(
-    body: RegisterRequest = Body(...),
-):
-    pool = await get_db_pool()
-    user_id = uuid4()
+async def get_db_pool():
+    return app.state.db_pool
+
+# --- API Endpoints ---
+@app.post("/users/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
+async def register_user(req: RegisterRequest, pool: asyncpg.Pool = Depends(get_db_pool)):
+    hashed_password = pwd_context.hash(req.password)
     now = datetime.utcnow()
     query = """
-        INSERT INTO users (id, email, username, first_name, last_name, preferred_language, timezone, password_hash, is_active, is_superuser, roles, email_verified, mfa_enabled, last_login_at, created_at, updated_at, preferences)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, FALSE, ARRAY['user'], FALSE, FALSE, NULL, $9, $9, '{}')
-        RETURNING id, email, username, first_name, last_name, preferred_language, timezone, is_active, is_superuser, roles, email_verified, mfa_enabled, last_login_at, created_at, updated_at, preferences
-    """
-    # NOTE: Replace with real password hashing
-    password_hash = body.password + "_hashed"
-    async with pool.acquire() as conn:
-        result = await conn.fetchrow(query, str(user_id), body.email, body.username, body.firstName, body.lastName, body.preferredLanguage, "UTC", password_hash, now)
-    if not result:
-        raise HTTPException(status_code=500, detail="User registration failed")
-    user = dict(result)
-    tokens = {
-        "accessToken": "access_token_example",
-        "refreshToken": "refresh_token_example",
-        "expiresIn": 3600
-    }
-    return {"user": user, "tokens": tokens}
-
-@app.post("/users/login", response_model=LoginResponse, tags=["Auth"])
-async def login_user(
-    body: LoginRequest = Body(...),
-):
-    pool = await get_db_pool()
-    query = """
-        SELECT * FROM users WHERE email = $1
-    """
-    async with pool.acquire() as conn:
-        user = await conn.fetchrow(query, body.email)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    # NOTE: Replace with real password verification
-    if user["password_hash"] != body.password + "_hashed":
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    tokens = AuthTokens(
-        accessToken="access_token_example",
-        refreshToken="refresh_token_example",
-        expiresIn=3600
-    )
-    user_response = UserResponse(**user)
-    return LoginResponse(message="Login successful", user=user_response, tokens=tokens, requireMfa=False)
-
-@app.get("/users/{id}", response_model=UserResponse, tags=["Auth"])
-async def get_user_profile(
-    id: UUID = Path(..., description="User ID"),
-    token: dict = Depends(verify_jwt)
-):
-    pool = await get_db_pool()
-    query = "SELECT * FROM users WHERE id = $1"
-    async with pool.acquire() as conn:
-        user = await conn.fetchrow(query, str(id))
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return UserResponse(**user)
-
-@app.put("/users/{id}", response_model=UserResponse, tags=["Auth"])
-async def update_user_profile(
-    id: UUID = Path(..., description="User ID"),
-    body: UserBase = Body(...),
-    token: dict = Depends(verify_jwt)
-):
-    pool = await get_db_pool()
-    query = """
-        UPDATE users SET email = $2, username = $3, first_name = $4, last_name = $5, preferred_language = $6, timezone = $7, updated_at = $8
-        WHERE id = $1
+        INSERT INTO users (id, email, username, first_name, last_name, preferred_language, timezone, password_hash, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, 'UTC', $7, $8, $8)
         RETURNING *
     """
-    now = datetime.utcnow()
-    async with pool.acquire() as conn:
-        user = await conn.fetchrow(query, str(id), body.email, body.username, body.first_name, body.last_name, body.preferred_language, body.timezone, now)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return UserResponse(**user)
+    try:
+        user_record = await pool.fetchrow(
+            query, uuid4(), req.email, req.username, req.first_name, req.last_name, req.preferred_language, hashed_password, now
+        )
+    except asyncpg.exceptions.UniqueViolationError:
+        raise HTTPException(status.HTTP_409_CONFLICT, "User with this email or username already exists")
 
-@app.post("/tokens/refresh", response_model=RefreshTokenResponse, tags=["Auth"])
-async def refresh_token(
-    body: RefreshTokenRequest = Body(...),
-):
-    # NOTE: Replace with real refresh token validation and generation
-    tokens = AuthTokens(
-        accessToken="access_token_example",
-        refreshToken="refresh_token_example",
-        expiresIn=3600
-    )
-    return RefreshTokenResponse(tokens=tokens)
+    user = UserResponse.from_orm(user_record)
+    tokens = create_auth_tokens(user.id, user.roles)
+    return LoginResponse(message="User registered successfully", user=user, tokens=tokens)
 
-@app.post("/users/{id}/verify-email", response_model=MessageResponse, tags=["Auth"])
-async def verify_email(
-    id: UUID = Path(..., description="User ID"),
-    body: Dict[str, str] = Body(...),
-):
-    # NOTE: Replace with real email verification logic
-    token = body.get("token")
-    if not token or token != "valid_token_example":
-        raise HTTPException(status_code=400, detail="Invalid verification token")
+@app.post("/users/login", response_model=LoginResponse)
+async def login_user(req: LoginRequest, pool: asyncpg.Pool = Depends(get_db_pool)):
+    user_record = await pool.fetchrow("SELECT * FROM users WHERE email = $1", req.email)
+    if not user_record or not pwd_context.verify(req.password, user_record['password_hash']):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
+
+    user = UserResponse.from_orm(user_record)
+    if not user.is_active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Account is inactive")
+
+    # MFA logic would go here. For now, we assume it's not required.
+
+    await pool.execute("UPDATE users SET last_login_at = $1 WHERE id = $2", datetime.utcnow(), user.id)
+
+    tokens = create_auth_tokens(user.id, user.roles)
+    return LoginResponse(message="Login successful", user=user, tokens=tokens)
+
+@app.get("/users/{user_id}", response_model=UserResponse, dependencies=[Depends(get_current_user)])
+async def get_user_profile(user_id: UUID, pool: asyncpg.Pool = Depends(get_db_pool)):
+    user_record = await pool.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+    if not user_record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    return UserResponse.from_orm(user_record)
+
+@app.put("/users/{user_id}", response_model=UserResponse)
+async def update_user_profile(user_id: UUID, req: UserBase, current_user: dict = Depends(get_current_user), pool: asyncpg.Pool = Depends(get_db_pool)):
+    if user_id != current_user['user_id'] and "admin" not in current_user['roles']:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Cannot update another user's profile")
+
+    query = """
+        UPDATE users SET email = $1, username = $2, first_name = $3, last_name = $4, preferred_language = $5, timezone = $6, updated_at = $7
+        WHERE id = $8 RETURNING *
+    """
+    try:
+        updated_user = await pool.fetchrow(
+            query, req.email, req.username, req.first_name, req.last_name, req.preferred_language, req.timezone, datetime.utcnow(), user_id
+        )
+    except asyncpg.exceptions.UniqueViolationError:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email or username is already taken")
+
+    if not updated_user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    return UserResponse.from_orm(updated_user)
+
+@app.post("/tokens/refresh", response_model=AuthTokens)
+async def refresh_token(req: RefreshTokenRequest, pool: asyncpg.Pool = Depends(get_db_pool)):
+    try:
+        payload = jwt.decode(req.refresh_token, JWT_SECRET, algorithms=[ALGORITHM])
+        user_id = UUID(payload.get("sub"))
+        user = await pool.fetchrow("SELECT roles FROM users WHERE id = $1", user_id)
+        if not user:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid refresh token")
+        return create_auth_tokens(user_id, user['roles'])
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired refresh token")
+
+@app.post("/users/{user_id}/verify-email", response_model=MessageResponse)
+async def verify_email(user_id: UUID, token: str = Body(..., embed=True), pool: asyncpg.Pool = Depends(get_db_pool)):
+    # This is a placeholder. Real implementation would use a secure, single-use token
+    # stored in the database or cache with an expiry.
+    if token != "valid_verification_token":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid verification token")
+
+    await pool.execute("UPDATE users SET email_verified = TRUE WHERE id = $1", user_id)
     return MessageResponse(message="Email verified successfully")
