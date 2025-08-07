@@ -102,6 +102,28 @@ services:
       timeout: 10s
       retries: 3
 
+  # Neo4j Graph Database for Genealogy
+  neo4j:
+    image: neo4j:5.18
+    container_name: neo4j
+    ports:
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    environment:
+      - NEO4J_AUTH=neo4j/testpassword
+      - NEO4J_PLUGINS=["apoc"]
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider --timeout=1 http://localhost:7474 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # Redis Cache & Session Store
   redis:
     image: redis:8.0.2-alpine
@@ -266,6 +288,7 @@ services:
       - postgres
       - mongodb
       - redis
+      - neo4j
 
   analytics_service:
     build:
