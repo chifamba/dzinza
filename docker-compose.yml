@@ -542,6 +542,8 @@ volumes:
   garage2_meta:
   garage3_data:
   garage3_meta:
+  neo4j_data:
+  neo4j_logs:
 
 networks:
   dzinza-network:

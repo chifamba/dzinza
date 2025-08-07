@@ -236,18 +236,23 @@ This document outlines the enhanced to-do list for the FamilyTree project, organ
 
 ### Core Family Tree Operations
 
-- [ ] **Create Family Tree:** Create an API endpoint to create a new family tree
-- [ ] **Read Family Tree:** Create an API endpoint to read a family tree
-- [ ] **Add Family Member:** Create an API endpoint to add a family member to a tree
-- [ ] **Update Family Member:** Create an API endpoint to edit a family member's details
-- [ ] **Delete Family Member:** Create an API endpoint to remove a family member from a tree
-- [ ] **Create Family Tree Templates:** Provide starter templates for different family structures
-- [ ] **Implement Tree Permissions:** Control who can view/edit different parts of trees
+- [x] **Create Family Tree:** Create an API endpoint to create a new family tree
+
+### Infrastructure
+
+- [x] **Integrate Neo4j as backend:** Add Neo4j to Docker Compose, requirements, and implement connection utility
+- [x] **Read Family Tree:** Create an API endpoint to read a family tree
+- [x] **Add Family Member:** Create an API endpoint to add a family member to a tree
+- [x] **Update Family Member:** Create an API endpoint to edit a family member's details
+- [x] **Delete Family Member:** Create an API endpoint to remove a family member from a tree
+- [x] **Create Family Tree Templates:** Provide starter templates for different family structures
+- [x] **Implement Tree Permissions:** Control who can view/edit different parts of trees
 
 ### Relationship Modeling
 
-- [ ] **Define Parent-Child Model:** Define data models for parent-child relationships
-- [ ] **Define Spousal Model:** Define data models for spousal relationships
+- [x] **Define Parent-Child Model:** Define data models for parent-child relationships
+- [x] **Define Spousal Model:** Define data models for spousal relationships
+- [x] **Add Relationship:** Create an API endpoint to add a relationship between persons
 - [ ] **Implement Adoption Relationships:** Handle adoptive vs biological relationships
 - [ ] **Create Step-Family Support:** Model step-parent/step-child relationships
 - [ ] **Implement Multiple Marriages:** Handle multiple spouses and divorces

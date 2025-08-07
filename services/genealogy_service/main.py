@@ -3,11 +3,13 @@
 from fastapi import FastAPI
 from shared.app_logging import setup_logging
 from shared.healthcheck import get_healthcheck_router
+from .handlers import router as genealogy_router
 
 app = FastAPI()
 logger = setup_logging("genealogy_service")
 
 app.include_router(get_healthcheck_router("genealogy_service"))
+app.include_router(genealogy_router)
 
 if __name__ == "__main__":
     import uvicorn
