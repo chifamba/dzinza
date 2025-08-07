@@ -253,16 +253,16 @@ This document outlines the enhanced to-do list for the FamilyTree project, organ
 - [x] **Define Parent-Child Model:** Define data models for parent-child relationships
 - [x] **Define Spousal Model:** Define data models for spousal relationships
 - [x] **Add Relationship:** Create an API endpoint to add a relationship between persons
-- [ ] **Implement Adoption Relationships:** Handle adoptive vs biological relationships
-- [ ] **Create Step-Family Support:** Model step-parent/step-child relationships
-- [ ] **Implement Multiple Marriages:** Handle multiple spouses and divorces
-- [ ] **Create Relationship Validation:** Validate relationship logic and detect conflicts
+- [x] **Implement Adoption Relationships:** Handle adoptive vs biological relationships
+- [x] **Create Step-Family Support:** Model step-parent/step-child relationships
+- [x] **Implement Multiple Marriages:** Handle multiple spouses and divorces
+- [x] **Create Relationship Validation:** Validate relationship logic and detect conflicts
 
 ### Data Management
 
-- [ ] **Implement Custom Fields:** Allow users to add custom attributes to profiles
-- [ ] **Create Event Timeline:** Track birth, death, marriage, and other life events
-- [ ] **Implement Source Citations:** Allow citing sources for genealogical information
+- [x] **Implement Custom Fields:** Allow users to add custom attributes to profiles
+- [x] **Create Event Timeline:** Track birth, death, marriage, and other life events
+- [x] **Implement Source Citations:** Allow citing sources for genealogical information
 - [ ] **Create DNA Integration:** Connect with DNA testing services for relationship verification
 - [ ] **Implement Historical Records:** Link to historical documents and records
 
@@ -272,10 +272,10 @@ This document outlines the enhanced to-do list for the FamilyTree project, organ
 - [ ] **Visualize as Diagram:** Implement a feature to visualize family trees as a diagram
 - [ ] **Create Interactive Timeline:** Show family history on an interactive timeline
 - [ ] **Implement Tree Comparison:** Compare different family trees for common ancestors
-- [ ] **Export to GEDCOM:** Implement a feature to export family tree data to GEDCOM format
-- [ ] **Import from GEDCOM:** Implement a feature to import family tree data from GEDCOM format
+- [x] **Export to GEDCOM:** Implement a feature to export family tree data to GEDCOM format
+- [x] **Import from GEDCOM:** Implement a feature to import family tree data from GEDCOM format
 - [ ] **Create PDF Reports:** Generate printable family tree reports
-- [ ] **Implement Tree Statistics:** Show statistics about tree size, completeness, etc.
+- [x] **Implement Tree Statistics:** Show statistics about tree size, completeness, etc.
 
 ## Graph Query Service
 

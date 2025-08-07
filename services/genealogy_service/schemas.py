@@ -40,6 +40,7 @@ class Fact(BaseModel):
     date_string: Optional[str] = None
     place: Optional[str] = None
     description: Optional[str] = None
+    citations: List[str] = []
 
 class Person(BaseModel):
     id: UUID
@@ -96,12 +97,14 @@ class RelationshipEvent(BaseModel):
     date_exact: Optional[str] = None
     place: Optional[str] = None
     description: Optional[str] = None
+    citations: List[str] = []
 
 class RelationshipType(str, Enum):
     SPOUSE = "SPOUSE"
     PARENT_CHILD = "PARENT_CHILD"
     SIBLING = "SIBLING"
     ADOPTIVE = "ADOPTIVE"
+    STEP_PARENT_CHILD = "STEP_PARENT_CHILD"
     OTHER = "OTHER"
 
 class SpousalStatus(str, Enum):
