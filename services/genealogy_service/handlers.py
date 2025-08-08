@@ -5,7 +5,7 @@ from datetime import datetime
 import re
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from uuid import uuid4
-from .schemas import FamilyTreeCreate, FamilyTree, PersonCreate, Person, Relationship, RelationshipType, RelationshipEvent, Fact
+from .schemas import FamilyTreeCreate, FamilyTree, PersonCreate, Person, Relationship, RelationshipType, RelationshipEvent, Fact, DNAData, HistoricalRecord
 from typing import List, Any
 from fastapi import Response
 from .models import get_neo4j_driver
@@ -51,6 +51,93 @@ def create_family_tree(payload: FamilyTreeCreate):
             last_gedcom_import=None,
             last_gedcom_export=None
         )
+
+@router.post("/persons/{id}/historical_records", response_model=List[HistoricalRecord])
+def add_historical_record(id: str, record: HistoricalRecord):
+    driver = get_neo4j_driver()
+    with driver.session() as session:
+        # Get current records
+        result = session.run(
+            """
+            MATCH (p:Person {id: $id})
+            RETURN p.historical_records AS records
+            """,
+            id=id
+        )
+        db_record = result.single()
+        records = []
+        if db_record and db_record["records"]:
+            try:
+                records = [HistoricalRecord.parse_obj(r) for r in json.loads(db_record["records"])]
+            except Exception:
+                records = []
+        records.append(record)
+        session.run(
+            """
+            MATCH (p:Person {id: $id})
+            SET p.historical_records = $records
+            """,
+            id=id,
+            records=json.dumps([r.dict() for r in records])
+        )
+    return records
+
+@router.get("/persons/{id}/historical_records", response_model=List[HistoricalRecord])
+def get_historical_records(id: str):
+    driver = get_neo4j_driver()
+    with driver.session() as session:
+        result = session.run(
+            """
+            MATCH (p:Person {id: $id})
+            RETURN p.historical_records AS records
+            """,
+            id=id
+        )
+        db_record = result.single()
+        if not db_record or not db_record["records"]:
+            return []
+        try:
+            return [HistoricalRecord.parse_obj(r) for r in json.loads(db_record["records"])]
+        except Exception:
+            raise HTTPException(status_code=500, detail="Invalid historical records format")
+
+@router.post("/persons/{id}/dna", response_model=DNAData)
+def set_person_dna(id: str, dna: DNAData):
+    driver = get_neo4j_driver()
+    with driver.session() as session:
+        result = session.run(
+            """
+            MATCH (p:Person {id: $id})
+            SET p.dna_data = $dna_data
+            RETURN p
+            """,
+            id=id,
+            dna_data=dna.json()
+        )
+        record = result.single()
+        if not record:
+            raise HTTPException(status_code=404, detail="Person not found")
+    return dna
+
+@router.get("/persons/{id}/dna", response_model=DNAData)
+def get_person_dna(id: str):
+    driver = get_neo4j_driver()
+    with driver.session() as session:
+        result = session.run(
+            """
+            MATCH (p:Person {id: $id})
+            RETURN p.dna_data AS dna_data
+            """,
+            id=id
+        )
+        record = result.single()
+        if not record or not record["dna_data"]:
+            raise HTTPException(status_code=404, detail="DNA data not found")
+        dna_data = record["dna_data"]
+        try:
+            return DNAData.parse_raw(dna_data)
+        except Exception:
+            raise HTTPException(status_code=500, detail="Invalid DNA data format")
 
 @router.get("/familytrees/{id}/statistics")
 def get_tree_statistics(id: str):
@@ -298,6 +385,119 @@ def export_gedcom(id: str):
     gedcom_content = "\n".join(gedcom_lines)
 
     return Response(content=gedcom_content, media_type="application/x-gedcom")
+
+@router.get("/familytrees/compare")
+def compare_family_trees(tree1_id: str, tree2_id: str):
+    """
+    Compares two family trees and returns a list of common ancestors (by name and birth date).
+    """
+    driver = get_neo4j_driver()
+    with driver.session() as session:
+        # Get all persons in tree 1
+        result1 = session.run(
+            """
+            MATCH (t:FamilyTree {id: $id})-[:HAS_MEMBER]->(p:Person)
+            RETURN p.given_name AS given_name, p.surname AS surname, p.birth_date_string AS birth_date
+            """,
+            id=tree1_id
+        )
+        persons1 = set(
+            (r["given_name"], r["surname"], r["birth_date"])
+            for r in result1
+        )
+        # Get all persons in tree 2
+        result2 = session.run(
+            """
+            MATCH (t:FamilyTree {id: $id})-[:HAS_MEMBER]->(p:Person)
+            RETURN p.given_name AS given_name, p.surname AS surname, p.birth_date_string AS birth_date
+            """,
+            id=tree2_id
+        )
+        persons2 = set(
+            (r["given_name"], r["surname"], r["birth_date"])
+            for r in result2
+        )
+        # Find common ancestors by name and birth date
+        common = persons1 & persons2
+        return [
+            {
+                "given_name": gn,
+                "surname": sn,
+                "birth_date": bd
+            }
+            for (gn, sn, bd) in common
+        ]
+
+@router.get("/familytrees/{id}/timeline", response_model=List[Any])
+def get_family_tree_timeline(id: str):
+    """
+    Returns a timeline of all events for all persons in the family tree, sorted by date.
+    """
+    driver = get_neo4j_driver()
+    timeline = []
+    with driver.session() as session:
+        # Get all persons in the tree
+        result = session.run(
+            """
+            MATCH (t:FamilyTree {id: $id})-[:HAS_MEMBER]->(p:Person)
+            RETURN p.id AS person_id, p.given_name AS given_name, p.surname AS surname
+            """,
+            id=id
+        )
+        persons = [dict(record) for record in result]
+
+        # For each person, get facts and relationship events
+        for person in persons:
+            pid = person["person_id"]
+            name = f"{person.get('given_name', '')} {person.get('surname', '')}".strip()
+            # Facts
+            facts_result = session.run(
+                """
+                MATCH (p:Person {id: $id})-[:HAS_FACT]->(f:Fact)
+                RETURN f
+                """,
+                id=pid
+            )
+            for record in facts_result:
+                fact_node = record["f"]
+                fact_data = dict(fact_node)
+                fact_data["event_type"] = "Fact"
+                fact_data["person_id"] = pid
+                fact_data["person_name"] = name
+                timeline.append(fact_data)
+            # Relationship events
+            rel_result = session.run(
+                """
+                MATCH (p:Person {id: $id})-[r:RELATIONSHIP]-(other:Person)
+                RETURN r
+                """,
+                id=pid
+            )
+            for record in rel_result:
+                relationship_node = record["r"]
+                events_json = relationship_node.get("events", "[]")
+                events_data = json.loads(events_json)
+                for event_data in events_data:
+                    event_data["event_type"] = event_data.get("event_type", "Relationship Event")
+                    event_data["person_id"] = pid
+                    event_data["person_name"] = name
+                    timeline.append(event_data)
+
+    # Sort timeline by date
+    def get_date(event):
+        date_str = event.get("date_exact") or event.get("date_string")
+        if not date_str:
+            return None
+        try:
+            return datetime.fromisoformat(date_str)
+        except (ValueError, TypeError):
+            return None
+
+    events_with_dates = [e for e in timeline if get_date(e) is not None]
+    events_without_dates = [e for e in timeline if get_date(e) is None]
+    sorted_events = sorted(events_with_dates, key=get_date)
+    sorted_events.extend(events_without_dates)
+    return sorted_events
 
 @router.get("/persons/{id}/timeline", response_model=List[Any])
 def get_person_timeline(id: str):
@@ -716,6 +916,149 @@ def update_tree_permissions(id: str, permissions: dict):
         if not record:
             raise HTTPException(status_code=404, detail="Family tree not found")
         return {"permissions": record["permissions"]}
+
+@router.get("/familytrees/{id}/diagram", response_model=Any)
+def get_family_tree_diagram(id: str):
+    """
+    Returns the family tree as a graph (nodes and edges) for diagram visualization.
+    """
+    driver = get_neo4j_driver()
+    with driver.session() as session:
+        # Get all persons in the tree
+        result = session.run(
+            """
+            MATCH (t:FamilyTree {id: $id})-[:HAS_MEMBER]->(p:Person)
+            RETURN p
+            """,
+            id=id
+        )
+        persons = [record["p"] for record in result]
+
+        # Get all relationships in the tree
+        result = session.run(
+            """
+            MATCH (p1:Person)-[r:RELATIONSHIP {tree_id: $id}]->(p2:Person)
+            RETURN p1.id AS source, p2.id AS target, r.type AS type
+            """,
+            id=id
+        )
+        relationships = [dict(record) for record in result]
+
+    nodes = [
+        {
+            "id": p["id"],
+            "label": f"{p.get('given_name', '')} {p.get('surname', '')}".strip(),
+            "data": p
+        }
+        for p in persons
+    ]
+    edges = [
+        {
+            "source": rel["source"],
+            "target": rel["target"],
+            "type": rel["type"]
+        }
+        for rel in relationships
+    ]
+    return {"nodes": nodes, "edges": edges}
+
+from fastapi.responses import StreamingResponse
+import io
+
+@router.get("/familytrees/{id}/pdf_report")
+def get_family_tree_pdf_report(id: str):
+    """
+    Generates a printable PDF report for the family tree.
+    """
+    try:
+        from fpdf import FPDF
+    except ImportError:
+        raise HTTPException(status_code=500, detail="PDF generation library not installed")
+
+    driver = get_neo4j_driver()
+    with driver.session() as session:
+        result = session.run(
+            """
+            MATCH (t:FamilyTree {id: $id})-[:HAS_MEMBER]->(p:Person)
+            RETURN p
+            """,
+            id=id
+        )
+        persons = [record["p"] for record in result]
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="Family Tree Report", ln=True, align="C")
+    pdf.ln(10)
+    for person in persons:
+        name = f"{person.get('given_name', '')} {person.get('surname', '')}".strip()
+        pdf.cell(0, 10, txt=name, ln=True)
+        if person.get('birth_date_string'):
+            pdf.cell(0, 10, txt=f"Birth: {person['birth_date_string']}", ln=True)
+        if person.get('death_date_string'):
+            pdf.cell(0, 10, txt=f"Death: {person['death_date_string']}", ln=True)
+        pdf.ln(5)
+
+    pdf_output = io.BytesIO()
+    pdf.output(pdf_output)
+    pdf_output.seek(0)
+    return StreamingResponse(pdf_output, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=family_tree_{id}.pdf"})
+
+@router.get("/familytrees/{id}/chart", response_model=Any)
+def get_family_tree_chart(id: str):
+    """
+    Returns the family tree as a nested dict suitable for chart visualization.
+    """
+    driver = get_neo4j_driver()
+    with driver.session() as session:
+        # Get root person
+        result = session.run(
+            """
+            MATCH (t:FamilyTree {id: $id})
+            RETURN t.root_person_id AS root_id
+            """,
+            id=id
+        )
+        record = result.single()
+        if not record or not record["root_id"]:
+            raise HTTPException(status_code=404, detail="Root person not found")
+        root_id = record["root_id"]
+
+        def build_tree(person_id):
+            person_result = session.run(
+                """
+                MATCH (p:Person {id: $id})
+                RETURN p
+                """,
+                id=person_id
+            )
+            person_node = person_result.single()
+            if not person_node:
+                return None
+            p = person_node["p"]
+            children_result = session.run(
+                """
+                MATCH (p:Person {id: $id})<-[:RELATIONSHIP {type: 'PARENT_CHILD'}]-(c:Person)
+                RETURN c.id AS child_id
+                """,
+                id=person_id
+            )
+            children = []
+            for child in children_result:
+                subtree = build_tree(child["child_id"])
+                if subtree:
+                    children.append(subtree)
+            return {
+                "id": p["id"],
+                "name": f"{p.get('given_name', '')} {p.get('surname', '')}".strip(),
+                "children": children
+            }
+
+        tree = build_tree(root_id)
+        if not tree:
+            raise HTTPException(status_code=404, detail="Family tree not found or empty")
+        return tree
 
 @router.get("/familytrees/{id}", response_model=FamilyTree)
 def get_family_tree(id: str):

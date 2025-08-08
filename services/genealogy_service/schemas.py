@@ -5,6 +5,21 @@ from typing import List, Optional, Any
 from uuid import UUID
 from enum import Enum
 
+class HistoricalRecord(BaseModel):
+    title: str
+    record_type: Optional[str] = None
+    url: Optional[HttpUrl] = None
+    date: Optional[str] = None
+    description: Optional[str] = None
+    file_id: Optional[UUID] = None
+
+class DNAData(BaseModel):
+    provider: Optional[str] = None
+    test_date: Optional[str] = None
+    raw_data_url: Optional[HttpUrl] = None
+    match_summary: Optional[str] = None
+    notes: Optional[str] = None
+
 class PrivacySetting(str, Enum):
     PUBLIC = "PUBLIC"
     FAMILY_TREE_ONLY = "FAMILY_TREE_ONLY"
@@ -71,6 +86,8 @@ class Person(BaseModel):
     potential_duplicates: List[UUID] = []
     merged_into_id: Optional[UUID] = None
     merged_from_ids: List[UUID] = []
+    dna_data: Optional[DNAData] = None
+    historical_records: List[HistoricalRecord] = []
 
 class FamilyTreeSettings(BaseModel):
     allow_collaboration: Optional[bool] = True
@@ -160,3 +177,5 @@ class PersonCreate(BaseModel):
     privacy_settings: Optional[PersonPrivacySettings] = None
     facts: List[Fact] = []
     identifiers: List[Identifier] = []
+    dna_data: Optional[DNAData] = None
+    historical_records: List[HistoricalRecord] = []
