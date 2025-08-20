@@ -1,2 +1,10 @@
 fastapi
 uvicorn
+psycopg2-binary
+SQLAlchemy
+pydantic-settings
+passlib[bcrypt]
+python-jose[cryptography]
+python-jwt
+alembic
+requests

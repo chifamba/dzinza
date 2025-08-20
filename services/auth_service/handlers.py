@@ -10,20 +10,24 @@ from datetime import datetime, timedelta
 import requests
 import os
 
-router = APIRouter()
-users: List[User] = []
-JWT_SECRET = "secret"
-JWT_ALGORITHM = "HS256"
-blacklisted_tokens = set()
-active_sessions = {}
-roles = {}
-permissions = {}
+from sqlalchemy.orm import Session
+from . import models, schemas
+from .database import get_db
+from fastapi import Depends
 
-email_mfa_codes = {}
-app_mfa_secrets = {}
-sms_mfa_codes = {}
-recovery_codes = {}
-hardware_keys = {}
+router = APIRouter()
+
+# In-memory stores will be replaced by database logic
+# users: List[User] = []
+# blacklisted_tokens = set()
+# active_sessions = {}
+# roles = {}
+# permissions = {}
+# email_mfa_codes = {}
+# app_mfa_secrets = {}
+# sms_mfa_codes = {}
+# recovery_codes = {}
+# hardware_keys = {}
 
 @router.post("/register_hardware_key", response_model=HardwareKeyResponse)
 def register_hardware_key(payload: RegisterHardwareKeyRequest):
@@ -175,12 +179,12 @@ def link_social_account(payload: SocialAccountLinkRequest):
     })
     return {"message": f"{payload.provider} account linked to {payload.user_email}"}
 
-def create_jwt(user_id: str, expires_delta: timedelta):
+def create_jwt(user_id: str, expires_delta: timedelta, secret: str = settings.jwt_secret):
     payload = {
         "sub": user_id,
         "exp": datetime.utcnow() + expires_delta
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return jwt.encode(payload, secret, algorithm=settings.JWT_ALGORITHM)
 
 def validate_password(password: str):
     if len(password) < 8:
@@ -194,21 +198,22 @@ def validate_password(password: str):
     if not any(c in "!@#$%^&*()-_=+[]{}|;:,.<>?/" for c in password):
         raise HTTPException(status_code=400, detail="Password must contain a special character")
 
-@router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest):
-    if any(u.email == payload.email for u in users):
+@router.post("/register", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
+def register(payload: schemas.RegisterRequest, db: Session = Depends(get_db)):
+    db_user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+
     validate_password(payload.password)
-    user = User(
-        id=uuid4(),
-        email=payload.email,
-        password_hash=bcrypt.hash(payload.password),
-        is_active=True,
-        roles=[],
-        mfa_enabled=False
-    )
-    users.append(user)
-    return user
+
+    hashed_password = bcrypt.hash(payload.password)
+    db_user = models.User(email=payload.email, password_hash=hashed_password)
+
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    return db_user
 
 @router.post("/assign_role")
 def assign_role(email: str, role_name: str):
@@ -419,37 +424,46 @@ def login_google(payload: GoogleLoginRequest):
     refresh_token = create_jwt(str(user.id), timedelta(days=7))
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
-@router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest):
-    now = datetime.utcnow()
-    attempts = login_attempts.get(payload.email, [])
-    # Remove attempts older than 10 minutes
-    attempts = [t for t in attempts if (now - t).total_seconds() < 600]
-    if len(attempts) >= 5:
-        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
-    user = next((u for u in users if u.email == payload.email), None)
-    if not user or not bcrypt.verify(payload.password, user.password_hash):
-        attempts.append(now)
-        login_attempts[payload.email] = attempts
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    login_attempts[payload.email] = []
-    access_token = create_jwt(str(user.id), timedelta(minutes=30))
-    refresh_token = create_jwt(str(user.id), timedelta(days=7))
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+from .config import settings
 
-@router.post("/refresh_token", response_model=TokenResponse)
+@router.post("/login", response_model=schemas.TokenResponse)
+def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if not user or not bcrypt.verify(payload.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    access_token = create_jwt(
+        str(user.id),
+        timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh_token = create_jwt(
+        str(user.id),
+        timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    return schemas.TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+@router.post("/refresh_token", response_model=schemas.TokenResponse)
 def refresh_token(token: str):
-    if token in blacklisted_tokens:
-        raise HTTPException(status_code=401, detail="Token blacklisted")
+    # Blacklist logic to be implemented with a persistent store
+    # if token in blacklisted_tokens:
+    #     raise HTTPException(status_code=401, detail="Token blacklisted")
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, settings.jwt_refresh_secret, algorithms=[settings.JWT_ALGORITHM])
         user_id = payload["sub"]
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
-    access_token = create_jwt(user_id, timedelta(minutes=30))
-    refresh_token = create_jwt(user_id, timedelta(days=7))
-    active_sessions[user_id] = access_token
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+    access_token = create_jwt(
+        user_id,
+        timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    new_refresh_token = create_jwt(
+        user_id,
+        timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        secret=settings.jwt_refresh_secret
+    )
+
+    return schemas.TokenResponse(access_token=access_token, refresh_token=new_refresh_token)
 
 @router.post("/blacklist_token")
 def blacklist_token(token: str):
