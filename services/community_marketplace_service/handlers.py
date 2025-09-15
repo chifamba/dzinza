@@ -1,184 +1,171 @@
-"""Request handlers for community_marketplace_service service."""
+"""Handlers for Community Marketplace Service."""
 
-from fastapi import APIRouter
-from typing import List
+from fastapi import APIRouter, HTTPException, UploadFile, File
+from pydantic import BaseModel
+from typing import List, Dict, Optional
 
 router = APIRouter()
 
-saved_searches = {}
+# In-memory storage for demo
+_messages = {}
+_offers = {}
 
-listings: List[dict] = []
+class Message(BaseModel):
+    sender_id: str
+    receiver_id: str
+    listing_id: str
+    content: str
+    timestamp: str
+    thread_id: Optional[str] = None
+    attachments: Optional[List[str]] = None
 
-CATEGORIES = [
-    "Books",
-    "Antiques",
-    "Photos",
-    "Documents",
-    "DNA Kits",
-    "Services",
-    "Other"
-]
+@router.post("/market/message/")
+def send_message(msg: Message):
+    thread = msg.thread_id or f"{msg.sender_id}-{msg.receiver_id}-{msg.listing_id}"
+    _messages.setdefault(thread, []).append(msg.dict())
+    return {"thread_id": thread, "message_count": len(_messages[thread])}
 
-@router.get("/categories")
-def get_categories():
-    return {"categories": CATEGORIES}
+@router.get("/market/messages/{thread_id}")
+def get_messages(thread_id: str):
+    return {"thread_id": thread_id, "messages": _messages.get(thread_id, [])}
 
-from datetime import datetime, timedelta
+@router.post("/market/message/encrypted/")
+def send_encrypted_message(msg: Message):
+    # Stub for encrypted messaging
+    return {"thread_id": msg.thread_id, "encrypted": True, "status": "not implemented"}
 
-@router.post("/listings")
-def create_listing(listing: dict):
-    # Default status to 'active' if not provided
-    if "status" not in listing:
-        listing["status"] = "active"
-    # Default expiration to 30 days from now if not provided
-    if "expires_at" not in listing:
-        listing["expires_at"] = (datetime.utcnow() + timedelta(days=30)).isoformat()
-    # Initialize analytics fields
-    listing["views"] = 0
-    listing["inquiries"] = 0
-    listing["conversions"] = 0
-    listing["featured"] = False
-    listings.append(listing)
-    return {"message": "Listing created", "listing": listing}
+@router.post("/market/message/attachment/")
+def upload_attachment(file: UploadFile = File(...)):
+    # Stub: just return filename
+    return {"filename": file.filename}
 
-@router.patch("/listings/{listing_id}/feature")
-def feature_listing(listing_id: int, featured: bool):
-    if 0 <= listing_id < len(listings):
-        listings[listing_id]["featured"] = featured
-        return {"message": "Listing feature status updated", "listing": listings[listing_id]}
-    return {"error": "Listing not found"}
+class Offer(BaseModel):
+    buyer_id: str
+    listing_id: str
+    amount: float
+    message: Optional[str] = None
+    status: str = "pending"
 
-@router.get("/listings/featured")
-def get_featured_listings():
-    return {"featured_listings": [l for l in listings if l.get("featured")]}
+@router.post("/market/offer/")
+def make_offer(offer: Offer):
+    key = f"{offer.buyer_id}-{offer.listing_id}"
+    _offers[key] = offer.dict()
+    return {"offer_id": key, "status": offer.status}
 
-@router.post("/listings/{listing_id}/view")
-def increment_listing_view(listing_id: int):
-    if 0 <= listing_id < len(listings):
-        listings[listing_id]["views"] += 1
-        return {"message": "View incremented", "views": listings[listing_id]["views"]}
-    return {"error": "Listing not found"}
+@router.get("/market/offer/{offer_id}")
+def get_offer(offer_id: str):
+    return _offers.get(offer_id, {})
 
-@router.get("/listings/{listing_id}/analytics")
-def get_listing_analytics(listing_id: int):
-    if 0 <= listing_id < len(listings):
-        analytics = {
-            "views": listings[listing_id].get("views", 0),
-            "inquiries": listings[listing_id].get("inquiries", 0),
-            "conversions": listings[listing_id].get("conversions", 0)
-        }
-        return analytics
-    return {"error": "Listing not found"}
+@router.post("/market/offer/{offer_id}/accept")
+def accept_offer(offer_id: str):
+    if offer_id in _offers:
+        _offers[offer_id]["status"] = "accepted"
+        return {"offer_id": offer_id, "status": "accepted"}
+    raise HTTPException(status_code=404, detail="Offer not found")
 
-@router.post("/listings/expire")
-def expire_old_listings():
-    now = datetime.utcnow()
-    expired = []
-    for l in listings:
-        if l["status"] == "active" and "expires_at" in l:
-            try:
-                expires = datetime.fromisoformat(l["expires_at"])
-                if expires < now:
-                    l["status"] = "expired"
-                    expired.append(l)
-            except Exception:
-                continue
-    return {"expired_listings": expired}
+@router.post("/market/offer/{offer_id}/reject")
+def reject_offer(offer_id: str):
+    if offer_id in _offers:
+        _offers[offer_id]["status"] = "rejected"
+        return {"offer_id": offer_id, "status": "rejected"}
+    raise HTTPException(status_code=404, detail="Offer not found")
 
-@router.patch("/listings/{listing_id}/status")
-def update_listing_status(listing_id: int, status: str):
-    if 0 <= listing_id < len(listings):
-        listings[listing_id]["status"] = status
-        return {"message": "Listing status updated", "listing": listings[listing_id]}
-    return {"error": "Listing not found"}
+# --- Payment Processing Stubs ---
+@router.post("/market/payment/stripe/")
+def pay_stripe(listing_id: str, buyer_id: str, amount: float):
+    # Stub for Stripe integration
+    return {"status": "paid (stripe stub)", "listing_id": listing_id, "buyer_id": buyer_id, "amount": amount}
 
-@router.get("/listings/{listing_id}")
-def read_listing(listing_id: int):
-    if 0 <= listing_id < len(listings):
-        return listings[listing_id]
-    return {"error": "Listing not found"}
+@router.post("/market/payment/paypal/")
+def pay_paypal(listing_id: str, buyer_id: str, amount: float):
+    # Stub for PayPal integration
+    return {"status": "paid (paypal stub)", "listing_id": listing_id, "buyer_id": buyer_id, "amount": amount}
 
-@router.get("/users/{user_id}/listings")
-def read_user_listings(user_id: str):
-    user_listings = [l for l in listings if l.get("user_id") == user_id]
-    return user_listings
+@router.post("/market/payment/escrow/")
+def escrow_payment(listing_id: str, buyer_id: str, amount: float):
+    # Stub for escrow service
+    return {"status": "escrowed (stub)", "listing_id": listing_id, "buyer_id": buyer_id, "amount": amount}
 
-@router.put("/listings/{listing_id}")
-def update_listing(listing_id: int, updated: dict):
-    if 0 <= listing_id < len(listings):
-        listings[listing_id].update(updated)
-        return {"message": "Listing updated", "listing": listings[listing_id]}
-    return {"error": "Listing not found"}
+@router.post("/market/payment/refund/")
+def refund_payment(listing_id: str, buyer_id: str, amount: float):
+    # Stub for refund system
+    return {"status": "refunded (stub)", "listing_id": listing_id, "buyer_id": buyer_id, "amount": amount}
 
-@router.delete("/listings/{listing_id}")
-def delete_listing(listing_id: int):
-    if 0 <= listing_id < len(listings):
-        deleted = listings.pop(listing_id)
-        return {"message": "Listing deleted", "listing": deleted}
-    return {"error": "Listing not found"}
+@router.get("/market/payment/analytics/")
+def payment_analytics():
+    # Stub for payment analytics
+    return {"status": "analytics (stub)"}
 
-@router.post("/users/{user_id}/saved_searches")
-def save_search(user_id: str, search: dict):
-    if user_id not in saved_searches:
-        saved_searches[user_id] = []
-    saved_searches[user_id].append(search)
-    return {"message": "Search saved", "search": search}
+@router.post("/market/payment/currency/")
+def set_currency(listing_id: str, currency: str):
+    # Stub for multi-currency support
+    return {"listing_id": listing_id, "currency": currency}
 
-@router.get("/users/{user_id}/saved_searches")
-def list_saved_searches(user_id: str):
-    return {"saved_searches": saved_searches.get(user_id, [])}
+# --- Rating and Review System ---
+_ratings = {}
+_reviews = {}
+_review_flags = {}
+_review_responses = {}
 
-@router.delete("/users/{user_id}/saved_searches/{search_idx}")
-def delete_saved_search(user_id: str, search_idx: int):
-    if user_id in saved_searches and 0 <= search_idx < len(saved_searches[user_id]):
-        deleted = saved_searches[user_id].pop(search_idx)
-        return {"message": "Saved search deleted", "search": deleted}
-    return {"error": "Saved search not found"}
+from typing import Any
 
-@router.get("/search/suggestions")
-def search_suggestions(q: str = ""):
-    suggestions = set()
-    for listing in listings:
-        title = listing.get("title", "")
-        if q.lower() in title.lower():
-            suggestions.add(title)
-    return {"suggestions": list(suggestions)}
+class Rating(BaseModel):
+    user_id: str
+    seller_id: str
+    rating: int  # 1-5
 
-@router.get("/search")
-def search_listings(
-    q: str = "",
-    category: str = "",
-    min_price: float = None,
-    max_price: float = None,
-    condition: str = "",
-    location: str = "",
-    radius_km: float = None,
-    date_posted_after: str = "",
-    date_posted_before: str = ""
-):
-    results = []
-    for listing in listings:
-        if q.lower() not in str(listing).lower():
-            continue
-        if category and listing.get("category", "").lower() != category.lower():
-            continue
-        price = listing.get("price")
-        if min_price is not None and (price is None or price < min_price):
-            continue
-        if max_price is not None and (price is None or price > max_price):
-            continue
-        if condition and listing.get("condition", "").lower() != condition.lower():
-            continue
-        if location and listing.get("location", "").lower() != location.lower():
-            continue
-        if date_posted_after:
-            posted = listing.get("date_posted")
-            if posted and posted < date_posted_after:
-                continue
-        if date_posted_before:
-            posted = listing.get("date_posted")
-            if posted and posted > date_posted_before:
-                continue
-        # radius_km is a placeholder; real implementation would require geo-coordinates
-        results.append(listing)
-    return {"results": results}
+@router.post("/market/rating/")
+def create_rating(rating: Rating):
+    key = f"{rating.user_id}-{rating.seller_id}"
+    _ratings[key] = rating.rating
+    return {"rating_id": key, "rating": rating.rating}
+
+@router.get("/market/rating/{seller_id}")
+def get_ratings(seller_id: str):
+    ratings = [v for k, v in _ratings.items() if k.endswith(f"-{seller_id}")]
+    avg = sum(ratings) / len(ratings) if ratings else 0
+    return {"seller_id": seller_id, "average_rating": avg, "count": len(ratings)}
+
+class Review(BaseModel):
+    user_id: str
+    seller_id: str
+    content: str
+    verified: bool = False
+
+@router.post("/market/review/")
+def create_review(review: Review):
+    key = f"{review.user_id}-{review.seller_id}"
+    _reviews[key] = review.dict()
+    return {"review_id": key}
+
+@router.get("/market/review/{seller_id}")
+def get_reviews(seller_id: str):
+    return [v for k, v in _reviews.items() if k.endswith(f"-{seller_id}")]
+
+@router.post("/market/review/{review_id}/flag")
+def flag_review(review_id: str, reason: str):
+    _review_flags.setdefault(review_id, []).append(reason)
+    return {"review_id": review_id, "flags": _review_flags[review_id]}
+
+@router.post("/market/review/{review_id}/response")
+def respond_to_review(review_id: str, response: str):
+    _review_responses[review_id] = response
+    return {"review_id": review_id, "response": response}
+
+@router.get("/market/rating/analytics/{seller_id}")
+def rating_analytics(seller_id: str):
+    ratings = [v for k, v in _ratings.items() if k.endswith(f"-{seller_id}")]
+    return {
+        "seller_id": seller_id,
+        "average_rating": sum(ratings) / len(ratings) if ratings else 0,
+        "ratings": ratings,
+        "count": len(ratings)
+    }
+
+@router.get("/market/review/verify/{review_id}")
+def verify_review(review_id: str):
+    review = _reviews.get(review_id)
+    if review:
+        review["verified"] = True
+        return {"review_id": review_id, "verified": True}
+    return {"review_id": review_id, "verified": False}

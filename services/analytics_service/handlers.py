@@ -285,3 +285,15 @@ def export_analytics_data(format: str = "json"):
         return {"export": "CSV export not implemented in placeholder"}
     else:
         return {"error": "Unsupported export format"}
+
+@router.get("/grafana/metrics/")
+def grafana_metrics():
+    # Stub for Grafana integration
+    return {
+        "metrics": [
+            {"name": "daily_active_users", "value": 1234},
+            {"name": "monthly_active_users", "value": 5678},
+            {"name": "api_errors", "value": 12},
+            {"name": "avg_response_time_ms", "value": 210},
+        ]
+    }

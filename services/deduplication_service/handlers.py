@@ -5,6 +5,33 @@ from typing import List, Dict
 
 router = APIRouter()
 
+# --- UI and Notification Stubs ---
+
+@router.get("/dedup/review_ui/")
+def review_ui():
+    # Stub for moderator review UI
+    return {"status": "review UI (stub)"}
+
+@router.get("/dedup/manual_merge_ui/")
+def manual_merge_ui():
+    # Stub for manual merge UI
+    return {"status": "manual merge UI (stub)"}
+
+@router.get("/dedup/batch_processing_ui/")
+def batch_processing_ui():
+    # Stub for batch processing UI
+    return {"status": "batch processing UI (stub)"}
+
+@router.post("/dedup/user_notification/")
+def user_notification(user_id: str):
+    # Stub for user notification
+    return {"user_id": user_id, "status": "notified (stub)"}
+
+@router.post("/dedup/user_merge_approval/")
+def user_merge_approval(user_id: str, merge_id: str, approved: bool):
+    # Stub for user merge approval
+    return {"user_id": user_id, "merge_id": merge_id, "approved": approved}
+
 # Example in-memory profiles list for demonstration
 profiles: List[Dict] = []
 merge_history: List[Dict] = []
@@ -194,3 +221,8 @@ def deduplicate_email():
         else:
             seen[email] = profile
     return {"duplicates": duplicates}
+
+@router.get("/deduplicate/ml")
+def deduplicate_ml():
+    # Stub for ML-based deduplication
+    return {"status": "ML deduplication not implemented (stub)"}

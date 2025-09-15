@@ -5,10 +5,10 @@ from datetime import datetime
 import re
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from uuid import uuid4
-from .schemas import FamilyTreeCreate, FamilyTree, PersonCreate, Person, Relationship, RelationshipType, RelationshipEvent, Fact, DNAData, HistoricalRecord
+from schemas import FamilyTreeCreate, FamilyTree, PersonCreate, Person, Relationship, RelationshipType, RelationshipEvent, Fact, DNAData, HistoricalRecord
 from typing import List, Any
 from fastapi import Response
-from .models import get_neo4j_driver
+from models import get_neo4j_driver
 
 router = APIRouter()
 

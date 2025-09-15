@@ -119,7 +119,11 @@ services:
       - dzinza-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider --timeout=1 http://localhost:7474 || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q --spider --timeout=1 http://localhost:7474 || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -541,6 +545,26 @@ services:
       - PYTHONPATH=/app:/app/shared
     volumes:
       - ./services/trust_access_control_service:/app
+      - ./services/shared:/app/shared
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - mongodb
+      - redis
+
+  help_support_service:
+    build:
+      context: .
+      dockerfile: services/help_support_service/Dockerfile
+    container_name: help_support_service
+    ports:
+      - "8014:8000"
+    environment:
+      - PYTHONPATH=/app:/app/shared
+    volumes:
+      - ./services/help_support_service:/app
       - ./services/shared:/app/shared
     networks:
       - dzinza-network
