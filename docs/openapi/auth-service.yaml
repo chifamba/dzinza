@@ -5,8 +5,8 @@ info:
   description: API for user authentication, registration, and authorization.
 
 servers:
-  - url: https://api.familytree.com/auth
-    description: Production server
+  - url: http://localhost:8000
+    description: Local development server
 
 components:
   securitySchemes:
@@ -16,42 +16,7 @@ components:
       bearerFormat: JWT
 
   schemas:
-    UserBase:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-        username:
-          type: string
-        first_name:
-          type: string
-        last_name:
-          type: string
-        preferred_language:
-          type: string
-          example: en
-        timezone:
-          type: string
-          example: UTC
-      required:
-        - email
-        - username
-        - first_name
-        - last_name
-
-    UserCreate:
-      allOf:
-        - $ref: '#/components/schemas/UserBase'
-        - type: object
-          properties:
-            password:
-              type: string
-              format: password
-          required:
-            - password
-
-    UserResponse:
+    User:
       type: object
       properties:
         id:
@@ -60,73 +25,46 @@ components:
         email:
           type: string
           format: email
-        username:
-          type: string
         first_name:
           type: string
         last_name:
           type: string
-        preferred_language:
-          type: string
-        timezone:
-          type: string
-        isActive:
-          type: boolean
-        isSuperuser:
+        is_active:
           type: boolean
         roles:
           type: array
           items:
             type: string
-        emailVerified:
+        mfa_enabled:
           type: boolean
-        mfaEnabled:
-          type: boolean
-        lastLoginAt:
-          type: string
-          format: date-time
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        preferences:
-          type: object
-          properties:
-            notifications:
-              type: object
-              properties:
-                email:
-                  type: boolean
-                push:
-                  type: boolean
-                newsletter:
-                  type: boolean
-            privacy:
-              type: object
-              properties:
-                profileVisibility:
-                  type: string
-                allowMessages:
-                  type: boolean
-                showOnlineStatus:
-                  type: boolean
-            theme:
-              type: string
-            timezone:
-              type: string
+        linked_accounts:
+          type: array
+          items:
+            type: object
 
-    AuthTokens:
+    UserUpdateRequest:
       type: object
       properties:
-        accessToken:
+        first_name:
           type: string
-        refreshToken:
+        last_name:
           type: string
-        expiresIn:
-          type: integer
-          description: Seconds until token expires
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+      required:
+        - email
+        - password
 
     LoginRequest:
       type: object
@@ -136,72 +74,31 @@ components:
           format: email
         password:
           type: string
-          format: password
-        mfaCode:
-          type: string
-          nullable: true
       required:
         - email
         - password
 
-    LoginResponse:
+    TokenResponse:
       type: object
       properties:
-        message:
+        access_token:
           type: string
-        user:
-          $ref: '#/components/schemas/UserResponse'
-        tokens:
-          $ref: '#/components/schemas/AuthTokens'
-        requireMfa:
-          type: boolean
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          default: "bearer"
 
-    RegisterRequest:
+    GoogleLoginRequest:
       type: object
       properties:
-        firstName:
-          type: string
-        lastName:
-          type: string
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          format: password
-        username:
-          type: string
-        preferredLanguage:
+        id_token:
           type: string
       required:
-        - firstName
-        - lastName
-        - email
-        - password
-        - username
-
-    MessageResponse:
-      type: object
-      properties:
-        message:
-          type: string
-
-    RefreshTokenRequest:
-      type: object
-      properties:
-        refreshToken:
-          type: string
-      required:
-        - refreshToken
-
-    RefreshTokenResponse:
-      type: object
-      properties:
-        tokens:
-          $ref: '#/components/schemas/AuthTokens'
+        - id_token
 
 paths:
-  /users/register:
+  /register:
     post:
       summary: Register a new user
       requestBody:
@@ -216,14 +113,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  user:
-                    $ref: '#/components/schemas/UserResponse'
-                  tokens:
-                    $ref: '#/components/schemas/AuthTokens'
+                $ref: '#/components/schemas/User'
 
-  /users/login:
+  /login:
     post:
       summary: Login user and obtain tokens
       requestBody:
@@ -238,17 +130,103 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                $ref: '#/components/schemas/TokenResponse'
         '401':
-          description: Unauthorized - invalid credentials or MFA required
+          description: Unauthorized - invalid credentials
 
-  /users/{id}:
+  /login/google:
+    post:
+      summary: Google social login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+
+  /assign_role:
+    post:
+      summary: Assign a role to a user
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+        - name: role_name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Role assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /refresh_token:
+    post:
+      summary: Refresh the access token
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+
+  /revoke_role:
+    post:
+      summary: Revoke a role from a user
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+        - name: role_name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Role revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /users/{user_id}:
     get:
       summary: Get user profile by ID
       security:
         - BearerAuth: []
       parameters:
-        - name: id
+        - name: user_id
           in: path
           required: true
           schema:
@@ -260,7 +238,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserResponse'
+                $ref: '#/components/schemas/User'
         '404':
           description: User not found
 
@@ -269,7 +247,7 @@ paths:
       security:
         - BearerAuth: []
       parameters:
-        - name: id
+        - name: user_id
           in: path
           required: true
           schema:
@@ -280,68 +258,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserBase'
+              $ref: '#/components/schemas/UserUpdateRequest'
       responses:
         '200':
           description: User profile updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserResponse'
+                $ref: '#/components/schemas/User'
         '400':
           description: Bad request
         '404':
           description: User not found
-
-  /tokens/refresh:
-    post:
-      summary: Refresh access token using refresh token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RefreshTokenRequest'
-      responses:
-        '200':
-          description: Token refreshed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RefreshTokenResponse'
-        '401':
-          description: Invalid or expired refresh token
-
-  /users/{id}/verify-email:
-    post:
-      summary: Confirm user's email address
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                token:
-                  type: string
-              required:
-                - token
-      responses:
-        '200':
-          description: Email verified successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-        '400':
-          description: Invalid verification token
-
-security:
-  - BearerAuth: []

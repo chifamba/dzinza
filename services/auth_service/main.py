@@ -3,11 +3,18 @@
 from fastapi import FastAPI
 from shared.app_logging import setup_logging
 from shared.healthcheck import get_healthcheck_router
+from .database import Base, engine
+from . import handlers
+
+# Create the database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 logger = setup_logging("auth_service")
 
 app.include_router(get_healthcheck_router("auth_service"))
+app.include_router(handlers.router)
+
 
 if __name__ == "__main__":
     import uvicorn

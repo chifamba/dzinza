@@ -7,7 +7,8 @@ from uuid import UUID, uuid4
 class User(BaseModel):
     id: UUID
     email: EmailStr
-    password_hash: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     is_active: bool = True
     roles: Optional[List[str]] = []
     mfa_enabled: bool = False
@@ -16,6 +17,8 @@ class User(BaseModel):
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -87,3 +90,7 @@ class AuthenticateHardwareKeyRequest(BaseModel):
 class HardwareKeyResponse(BaseModel):
     success: bool
     message: str
+
+class UserUpdateRequest(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
