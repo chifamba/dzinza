@@ -2,8 +2,8 @@
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
-from .database import get_db
-from . import models, schemas
+from database import get_db
+import models, schemas
 from typing import List
 from uuid import uuid4
 from passlib.hash import bcrypt
@@ -11,18 +11,15 @@ import jwt
 from datetime import datetime, timedelta
 import requests
 import os
-from .config import JWT_SECRET
+from .config import JWT_SECRET, REDIS_URL
+import redis
+import json
 
 router = APIRouter()
 JWT_ALGORITHM = "HS256"
 
-# In-memory storage for MFA codes and login attempts, can be moved to Redis in production
-email_mfa_codes = {}
-app_mfa_secrets = {}
-sms_mfa_codes = {}
-recovery_codes = {}
-hardware_keys = {}
-login_attempts = {}
+# Initialize Redis client
+redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 def create_jwt(user_id: str, expires_delta: timedelta):
     payload = {
@@ -63,19 +60,29 @@ def register(payload: schemas.RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=schemas.TokenResponse)
 def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
-    now = datetime.utcnow()
-    attempts = login_attempts.get(payload.email, [])
-    attempts = [t for t in attempts if (now - t).total_seconds() < 600]
-    if len(attempts) >= 5:
+    # Rate limiting using Redis
+    attempts_key = f"login_attempts:{payload.email}"
+    now_ts = datetime.utcnow().timestamp()
+    
+    # Remove attempts older than 10 minutes (600 seconds)
+    redis_client.zremrangebyscore(attempts_key, 0, now_ts - 600)
+    
+    # Count current attempts
+    attempts_count = redis_client.zcard(attempts_key)
+    
+    if attempts_count >= 5:
         raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
 
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user or not user.password_hash or not bcrypt.verify(payload.password, user.password_hash):
-        attempts.append(now)
-        login_attempts[payload.email] = attempts
+        # Record failed attempt
+        redis_client.zadd(attempts_key, {str(now_ts): now_ts})
+        # Set expiry for the key to clean up eventually (e.g., 1 hour)
+        redis_client.expire(attempts_key, 3600)
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    login_attempts[payload.email] = []
+    # Clear attempts on successful login
+    redis_client.delete(attempts_key)
     access_token = create_jwt(str(user.id), timedelta(minutes=30))
     refresh_token = create_jwt(str(user.id), timedelta(days=7))
     return schemas.TokenResponse(access_token=access_token, refresh_token=refresh_token)
@@ -113,19 +120,25 @@ def enable_email_mfa(payload: schemas.EnableEmailMFARequest, db: Session = Depen
     user = get_user_by_email(payload.email, db)
     import random
     code = f"{random.randint(100000, 999999)}"
-    email_mfa_codes[payload.email] = code
+    
+    # Store code in Redis with 10 minute expiration
+    redis_client.setex(f"email_mfa:{payload.email}", 600, code)
+    
     print(f"Email MFA code for {payload.email}: {code}")
     return {"message": f"MFA code sent to {payload.email}"}
 
 @router.post("/verify_email_mfa")
 def verify_email_mfa(payload: schemas.VerifyEmailMFARequest, db: Session = Depends(get_db)):
     user = get_user_by_email(payload.email, db)
-    code = email_mfa_codes.get(payload.email)
+    
+    code = redis_client.get(f"email_mfa:{payload.email}")
+    
     if not code or code != payload.code:
         raise HTTPException(status_code=400, detail="Invalid MFA code")
     user.mfa_enabled = True
     db.commit()
-    del email_mfa_codes[payload.email]
+    
+    redis_client.delete(f"email_mfa:{payload.email}")
     return {"message": f"Email MFA enabled for {payload.email}"}
 
 def find_or_create_social_user(email: str, db: Session) -> models.User:
@@ -139,7 +152,7 @@ def find_or_create_social_user(email: str, db: Session) -> models.User:
 
 @router.post("/login/google", response_model=schemas.TokenResponse)
 def login_google(payload: schemas.GoogleLoginRequest, db: Session = Depends(get_db)):
-    from .config import GOOGLE_CLIENT_ID
+    from config import GOOGLE_CLIENT_ID
     resp = requests.get("https://oauth2.googleapis.com/tokeninfo", params={"id_token": payload.id_token})
     if resp.status_code != 200:
         raise HTTPException(status_code=401, detail="Invalid Google ID token")

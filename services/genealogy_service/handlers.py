@@ -3,7 +3,9 @@
 import json
 from datetime import datetime
 import re
-from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File, Header
+import jwt
+from config import JWT_SECRET
 from uuid import uuid4
 from schemas import FamilyTreeCreate, FamilyTree, PersonCreate, Person, Relationship, RelationshipType, RelationshipEvent, Fact, DNAData, HistoricalRecord
 from typing import List, Any
@@ -13,7 +15,19 @@ from models import get_neo4j_driver
 router = APIRouter()
 
 @router.post("/familytrees", response_model=FamilyTree, status_code=status.HTTP_201_CREATED)
-def create_family_tree(payload: FamilyTreeCreate):
+def get_current_user(authorization: str = Header(...)):
+    """Extract user ID from JWT token in Authorization header."""
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise HTTPException(status_code=401, detail="Invalid auth scheme")
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+def create_family_tree(payload: FamilyTreeCreate, owner_id: str = Depends(get_current_user)):
     driver = get_neo4j_driver()
     tree_id = str(uuid4())
     with driver.session() as session:
@@ -24,7 +38,8 @@ def create_family_tree(payload: FamilyTreeCreate):
                 name: $name,
                 description: $description,
                 privacy: $privacy,
-                root_person_id: $root_person_id
+                root_person_id: $root_person_id,
+                owner_id: $owner_id
             })
             RETURN t
             """,
@@ -32,7 +47,8 @@ def create_family_tree(payload: FamilyTreeCreate):
             name=payload.name,
             description=payload.description,
             privacy=payload.privacy.value,
-            root_person_id=str(payload.root_person_id)
+            root_person_id=str(payload.root_person_id),
+            owner_id=owner_id
         )
         record = result.single()
         if not record:
@@ -42,7 +58,7 @@ def create_family_tree(payload: FamilyTreeCreate):
             id=tree_id,
             name=payload.name,
             description=payload.description,
-            owner_id=uuid4(),  # Placeholder, should be set from auth context
+            owner_id=owner_id,
             root_person_id=payload.root_person_id,
             collaborators=None,
             privacy=payload.privacy,
@@ -358,6 +374,8 @@ def export_gedcom(id: str):
     # Add families
     fam_id_counter = 1
     person_to_fam_spouse = {}
+    fam_children = {}
+    # First, process spouse relationships to create families
     for rel in relationships:
         if rel['r']['type'] == 'SPOUSE':
             fam_id = f"F{fam_id_counter}"
@@ -366,19 +384,30 @@ def export_gedcom(id: str):
             gedcom_lines.append(f"1 WIFE @{rel['p2_id']}@")
             person_to_fam_spouse[rel['p1_id']] = fam_id
             person_to_fam_spouse[rel['p2_id']] = fam_id
+            fam_children[fam_id] = []
             fam_id_counter += 1
 
+    # Then, associate children with existing families or create new ones
     for rel in relationships:
         if rel['r']['type'] == 'PARENT_CHILD':
             parent_id = rel['p1_id']
             child_id = rel['p2_id']
             if parent_id in person_to_fam_spouse:
                 fam_id = person_to_fam_spouse[parent_id]
-                # This is not quite right, it will create duplicate FAM records.
-                # A better approach is to create the FAM records first, then add children.
-                # I will fix this in the next iteration. For now, this is a start.
+                fam_children[fam_id].append(child_id)
+            else:
+                # Create a new family for this parent-child if no spouse family exists
+                fam_id = f"F{fam_id_counter}"
                 gedcom_lines.append(f"0 @{fam_id}@ FAM")
+                gedcom_lines.append(f"1 HUSB @{parent_id}@")  # Assume parent as husband for simplicity
                 gedcom_lines.append(f"1 CHIL @{child_id}@")
+                fam_id_counter += 1
+
+    # Finally, add child entries to families
+    for fam_id, children in fam_children.items():
+        for child_id in children:
+            gedcom_lines.append(f"0 @{fam_id}@ FAM")
+            gedcom_lines.append(f"1 CHIL @{child_id}@")
 
 
     gedcom_lines.append("0 TRLR")
