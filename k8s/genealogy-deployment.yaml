@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: genealogy-service
+  labels:
+    app: genealogy-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: genealogy-service
+  template:
+    metadata:
+      labels:
+        app: genealogy-service
+    spec:
+      containers:
+      - name: genealogy-service
+        image: dzinza/genealogy-service:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: NEO4J_URI
+          value: "bolt://neo4j:7687"
+        - name: NEO4J_USER
+          value: "neo4j"
+        - name: NEO4J_PASSWORD
+          value: "testpassword"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: dzinza-secrets
+              key: JWT_SECRET
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: genealogy-service
+spec:
+  selector:
+    app: genealogy-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000

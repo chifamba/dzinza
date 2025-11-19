@@ -2,3 +2,7 @@ fastapi
 uvicorn
 psycopg2-binary
 SQLAlchemy
+passlib[bcrypt]
+pyjwt
+requests
+redis

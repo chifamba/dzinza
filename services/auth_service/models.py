@@ -3,7 +3,7 @@
 from sqlalchemy import create_engine, Column, String, Boolean, ForeignKey, Table
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.dialects.postgresql import UUID
-from .database import Base
+from database import Base
 import uuid
 
 # Association table for User and Role many-to-many relationship
