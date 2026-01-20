@@ -1,5 +1,0 @@
-value:
-  access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMGVlYmM5OS05YzBiLTRlZjgtYmI2ZC02YmI5YmQzODBhMTEiLCJlbWFpbCI6InRlc3RAZG9pemEuY29tIiwiZXhwIjoxNjk4NDA5MjMwfQ.example"
-  token_type: "bearer"
-summary: Example successful login response.
-description: Returns access token for API authentication. Refresh token is set as HTTP-only cookie.

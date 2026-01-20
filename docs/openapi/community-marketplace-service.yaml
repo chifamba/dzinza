@@ -1,0 +1,201 @@
+openapi: 3.0.3
+info:
+  title: Community Marketplace Service API
+  version: 1.0.0
+  description: API for sharing resources, knowledge, and tools among the genealogy community.
+servers:
+  - url: https://api.example.com/community-marketplace
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    MarketplaceItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - user_id
+        - title
+        - created_at
+paths:
+  /marketplace/items:
+    get:
+      summary: List marketplace items
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          description: Filter by tags
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of marketplace items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketplaceItem'
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  total_records:
+                    type: integer
+                  total_pages:
+                    type: integer
+    post:
+      summary: Create a marketplace item
+      security:
+        - BearerAuth: []
+      requestBody:
+        description: Marketplace item to create
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - title
+      responses:
+        '201':
+          description: Marketplace item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketplaceItem'
+  /marketplace/items/{id}:
+    get:
+      summary: Get a marketplace item by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Marketplace item details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketplaceItem'
+        '404':
+          description: Item not found
+    put:
+      summary: Update a marketplace item
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Updated marketplace item data
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Marketplace item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketplaceItem'
+        '404':
+          description: Item not found
+    delete:
+      summary: Delete a marketplace item
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Item deleted
+        '404':
+          description: Item not found
+security:
+  - BearerAuth: []

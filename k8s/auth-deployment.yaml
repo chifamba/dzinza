@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  labels:
+    app: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: dzinza/auth-service:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://dzinza_user:db_password@postgres:5432/dzinza_db"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: dzinza-secrets
+              key: JWT_SECRET
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: dzinza-secrets
+              key: REDIS_URL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000

@@ -1,0 +1,186 @@
+openapi: 3.0.3
+info:
+  title: Trust & Access Control Service API
+  version: 1.0.0
+  description: API for managing user trust levels and access permissions for family trees and branches.
+servers:
+  - url: https://api.example.com/trust-access-control
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    TrustLevel:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        trust_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - user_id
+        - trust_score
+    AccessRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        family_tree_id:
+          type: string
+          format: uuid
+        access_type:
+          type: string
+          enum: [VIEW, EDIT]
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        requested_at:
+          type: string
+          format: date-time
+      required:
+        - user_id
+        - family_tree_id
+        - access_type
+        - status
+        - requested_at
+paths:
+  /trust-levels/{user_id}:
+    get:
+      summary: Get trust level of a user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Trust level details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustLevel'
+        '404':
+          description: User trust level not found
+
+  /access-requests:
+    post:
+      summary: Request access to a family tree
+      security:
+        - BearerAuth: []
+      requestBody:
+        description: Access request details
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessRequest'
+      responses:
+        '201':
+          description: Access request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRequest'
+    get:
+      summary: List access requests with filters
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED]
+          description: Filter by status
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by user
+        - name: family_tree_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by family tree
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of access requests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AccessRequest'
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  total_records:
+                    type: integer
+                  total_pages:
+                    type: integer
+  /access-requests/{id}:
+    put:
+      summary: Approve or reject an access request
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Update access request status
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [APPROVED, REJECTED]
+              required:
+                - status
+      responses:
+        '200':
+          description: Access request updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessRequest'
+        '404':
+          description: Access request not found
+security:
+  - BearerAuth: []
