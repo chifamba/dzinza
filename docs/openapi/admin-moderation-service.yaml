@@ -1,0 +1,160 @@
+openapi: 3.1.0
+info:
+  title: Admin & Moderation Service API
+  version: 1.0.0
+  description: API for managing abuse, user disputes, and content moderation.
+servers:
+  - url: https://api.dzinza.org/admin
+    description: Production server
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    AbuseReport:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        reporter_id:
+          type: string
+          format: uuid
+        reported_user_id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [OPEN, RESOLVED, REJECTED]
+        created_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+    BanAction:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        banned_by:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        banned_at:
+          type: string
+          format: date-time
+paths:
+  /admin/reports:
+    get:
+      summary: Fetch submitted abuse or conflict reports
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [OPEN, RESOLVED, REJECTED]
+          description: Filter by report status
+        - name: reporter_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by reporter
+        - name: reported_user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by reported user
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of abuse reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AbuseReport"
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  total_records:
+                    type: integer
+                  total_pages:
+                    type: integer
+        "400":
+          description: Bad request (invalid parameters)
+        "401":
+          description: Unauthorized (missing or invalid token)
+        "403":
+          description: Forbidden (insufficient permissions)
+        "404":
+          description: No abuse reports found
+        "500":
+          description: Internal server error
+  /admin/users/{userId}/ban:
+    post:
+      summary: Ban malicious users
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+              required:
+                - reason
+      responses:
+        "201":
+          description: User banned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BanAction"
+        "400":
+          description: Bad request (invalid userId or reason)
+        "401":
+          description: Unauthorized (missing or invalid token)
+        "403":
+          description: Forbidden (insufficient permissions)
+        "404":
+          description: User not found
+        "500":
+          description: Internal server error
+security:
+  - BearerAuth: []

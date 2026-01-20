@@ -1,0 +1,151 @@
+openapi: 3.0.3
+info:
+  title: Deduplication Service API
+  version: 1.0.0
+  description: API for detecting and merging duplicate persons across family trees.
+servers:
+  - url: https://api.example.com/deduplication
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    DuplicateCheckRequest:
+      type: object
+      properties:
+        person_id:
+          type: string
+          format: uuid
+      required:
+        - person_id
+    DuplicateSuggestion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        person1_id:
+          type: string
+          format: uuid
+        person2_id:
+          type: string
+          format: uuid
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        status:
+          type: string
+          enum: [PENDING, MERGED, REJECTED]
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - person1_id
+        - person2_id
+        - confidence
+        - status
+paths:
+  /duplicates/check:
+    post:
+      summary: Check duplicates for a person
+      security:
+        - BearerAuth: []
+      requestBody:
+        description: Person ID to check duplicates
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DuplicateCheckRequest'
+      responses:
+        '200':
+          description: List of possible duplicates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DuplicateSuggestion'
+
+  /duplicates/suggestions:
+    get:
+      summary: List duplicate suggestions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, MERGED, REJECTED]
+          description: Filter by status
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of duplicate suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DuplicateSuggestion'
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  total_records:
+                    type: integer
+                  total_pages:
+                    type: integer
+  /duplicates/suggestions/{id}:
+    put:
+      summary: Approve or reject duplicate suggestion (merge)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Update status of duplicate suggestion
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [MERGED, REJECTED]
+              required:
+                - status
+      responses:
+        '200':
+          description: Duplicate suggestion updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DuplicateSuggestion'
+        '404':
+          description: Duplicate suggestion not found
+security:
+  - BearerAuth: []

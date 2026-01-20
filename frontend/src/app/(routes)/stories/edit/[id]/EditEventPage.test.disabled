@@ -1,2 +1,0 @@
-// NOTE: This test is disabled because it references a missing './page' import, which does not exist in this Vite/React project.
-// If you add the correct file or migrate, you can re-enable this test.
