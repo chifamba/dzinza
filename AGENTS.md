@@ -26,7 +26,7 @@ Dzinza is a decentralized, community-driven genealogy platform enabling users to
 
 #### Backend Services
 
-- **Language:** Go 1.22+
+- **Language:** Go 1.26+
 - **HTTP Framework:** Gin
 - **Location:** `services/<service_name>/`
 - **Project Layout:**

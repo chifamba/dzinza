@@ -315,7 +315,7 @@ For Phase 1 (local development), the frontend calls services directly by port nu
 
 | Component | Technology | Version | Notes |
 |-----------|-----------|---------|-------|
-| **Language** | Go (Golang) | 1.22+ | All services implemented in Go |
+| **Language** | Go (Golang) | 1.26+ | All services implemented in Go |
 | **HTTP Framework** | Gin | Latest | High-performance HTTP framework with middleware support, JSON validation, route grouping |
 | **Server** | Go `net/http` (via Gin) | Built-in | No external server required; Go's standard library HTTP server is production-grade |
 | **Neo4j Driver** | `neo4j/neo4j-go-driver/v5` | v5 | Official Go driver for graph operations (Bolt protocol) |
@@ -372,7 +372,7 @@ For Phase 1 (local development), the frontend calls services directly by port nu
 ### 6.1 Prerequisites
 
 - Docker Desktop (or Docker Engine + Docker Compose v2)
-- Go 1.22+ (for local service development outside Docker)
+- Go 1.26+ (for local service development outside Docker)
 - Node.js 20+ and npm (for frontend)
 - Git
 
@@ -496,7 +496,7 @@ Secrets are stored as plain text files in `/secrets/` (git-ignored) and mounted 
 | P0 | `genealogy_service` — Rewrite in Go with Gin, neo4j-go-driver; fix GEDCOM export duplicate FAM bug | 🔴 Todo |
 | P0 | Frontend — Login, Registration, Tree Viewer pages (functional) | ⚠️ Partial |
 | P0 | Add MailHog to `docker-compose.yml` for email testing | 🔴 Todo |
-| P0 | Update `docker-compose.yml` for Go service builds (multi-stage Dockerfile with `golang:1.22-alpine`) | 🔴 Todo |
+| P0 | Update `docker-compose.yml` for Go service builds (multi-stage Dockerfile with `golang:1.26-alpine`) | 🔴 Todo |
 | P1 | `audit_history_service` — Implement in Go, wire to PostgreSQL | 🔴 Todo |
 | P1 | `media_storage_service` — Implement in Go, wire to Garage + PostgreSQL | 🔴 Todo |
 | P1 | `notification_service` — Implement in Go, wire email sending via MailHog | 🔴 Todo |
@@ -622,4 +622,4 @@ Full OpenAPI specifications are maintained in `docs/openapi/`:
 | 1.0 | 2026-01-19 | Initial specification |
 | 2.0 | 2026-02-12 | Added tech stack, NFRs, assumptions |
 | 3.0 | 2026-02-13 | Major revision: added service inventory, defined inter-service event bus (Redis Pub/Sub), added local email strategy (MailHog), expanded RBAC model, clarified all stubbed vs. functional services, restructured for agentic development clarity |
-| 3.1 | 2026-02-13 | Backend language set to **Go 1.22+** with Gin framework, GORM, neo4j-go-driver. Existing Python/FastAPI stubs are legacy and will be migrated to Go. Updated all library references, service structure, shared code, testing tools, and Phase 1 tasks to reflect Go migration |
+| 3.1 | 2026-02-13 | Backend language set to **Go 1.26+** with Gin framework, GORM, neo4j-go-driver. Existing Python/FastAPI stubs are legacy and will be migrated to Go. Updated all library references, service structure, shared code, testing tools, and Phase 1 tasks to reflect Go migration |

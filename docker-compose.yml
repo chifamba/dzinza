@@ -277,7 +277,7 @@ services:
   # ============================================================
   # Go microservices will be added here as they are implemented.
   # Each service will use a multi-stage Dockerfile:
-  #   Build stage: golang:1.22-alpine
+  #   Build stage: golang:1.26-alpine
   #   Runtime stage: alpine:3.19 (or scratch)
   #
   # Example (uncomment when auth_service is implemented):
