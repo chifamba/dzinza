@@ -47,11 +47,11 @@ services:
   #   build:
   #     context: ./base
   #     dockerfile: Dockerfile
-  #   image: dzinza-python-base:latest # Optional: tag the base image
+
 
   # PostgreSQL Database
   postgres:
-    image: postgres:17.5-alpine
+    image: postgres:17.8-alpine
     container_name: postgres
     ports:
       - "${DB_PORT:-5432}:5432"
@@ -80,7 +80,7 @@ services:
 
   # MongoDB for Genealogy Data
   mongodb:
-    image: mongo:8.0-noble
+    image: mongo:8.0-noble  # No alpine variant available for MongoDB
     container_name: mongodb
     ports:
       - "27017:27017"
@@ -104,7 +104,7 @@ services:
 
   # Neo4j Graph Database for Genealogy
   neo4j:
-    image: neo4j:5.18
+    image: neo4j:2026.01.4
     container_name: neo4j
     ports:
       - "7474:7474" # HTTP
@@ -130,7 +130,7 @@ services:
 
   # Redis Cache & Session Store
   redis:
-    image: redis:8.0.2-alpine
+    image: redis:8.6.0-alpine
     container_name: redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -152,7 +152,7 @@ services:
 
   # Elasticsearch for Search
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
     container_name: elasticsearch
     ports:
       - "9200:9200"
@@ -189,7 +189,7 @@ services:
 
   # Prometheus Monitoring
   prometheus:
-    image: prom/prometheus:v3.4.1
+    image: prom/prometheus:v3.9.1
     container_name: prometheus
     ports:
       - "9091:9090"
@@ -207,7 +207,7 @@ services:
 
   # Grafana Dashboard
   grafana:
-    image: grafana/grafana:11.1.0
+    image: grafana/grafana:12.3.3
     container_name: grafana
     ports:
       - "3300:3000"
@@ -225,7 +225,7 @@ services:
 
   # Garage S3-compatible Service
   garage1:
-    image: dxflrs/garage:v2.0.0
+    image: dxflrs/garage:v2.2.0
     container_name: dzinza-garage1
     hostname: garage1
     ports:
@@ -241,7 +241,7 @@ services:
     restart: unless-stopped
 
   garage2:
-    image: dxflrs/garage:v2.0.0
+    image: dxflrs/garage:v2.2.0
     container_name: dzinza-garage2
     hostname: garage2
     ports:
@@ -257,7 +257,7 @@ services:
     restart: unless-stopped
 
   garage3:
-    image: dxflrs/garage:v2.0.0
+    image: dxflrs/garage:v2.2.0
     container_name: dzinza-garage3
     hostname: garage3
     ports:

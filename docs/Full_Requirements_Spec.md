@@ -347,12 +347,12 @@ For Phase 1 (local development), the frontend calls services directly by port nu
 
 | Component | Image | Version | Purpose | Port(s) |
 |-----------|-------|---------|---------|---------|
-| **PostgreSQL** | `postgres:17.5-alpine` | 17.5 | User accounts, audit logs, notifications, relational data | 5432 |
-| **Neo4j** | `neo4j:5.18` (+ APOC) | 5.18 | Core genealogy graph (persons, relationships, trees) | 7474 (HTTP), 7687 (Bolt) |
+| **PostgreSQL** | `postgres:17.8-alpine` | 17.8 | User accounts, audit logs, notifications, relational data | 5432 |
+| **Neo4j** | `neo4j:2026.01.4` (+ APOC) | 2026.01 | Core genealogy graph (persons, relationships, trees) | 7474 (HTTP), 7687 (Bolt) |
 | **MongoDB** | `mongo:8.0-noble` | 8.0 | Unstructured data (support tickets) | 27017 |
-| **Elasticsearch** | `elasticsearch:8.12.0` | 8.12 | Full-text search indexing | 9200 |
-| **Redis** | `redis:8.0.2-alpine` | 8.0 | Session cache, rate limiting, Pub/Sub event bus | 6379 |
-| **Garage** | `dxflrs/garage:v2.0.0` | 2.0 | S3-compatible object storage (3-node cluster) | 39000–39003 (S3 API) |
+| **Elasticsearch** | `elasticsearch:9.3.0` | 9.3 | Full-text search indexing | 9200 |
+| **Redis** | `redis:8.6.0-alpine` | 8.6 | Session cache, rate limiting, Pub/Sub event bus | 6379 |
+| **Garage** | `dxflrs/garage:v2.2.0` | 2.2 | S3-compatible object storage (3-node cluster) | 39000–39003 (S3 API) |
 
 ### 5.4 DevOps & Observability
 
@@ -360,8 +360,8 @@ For Phase 1 (local development), the frontend calls services directly by port nu
 |-----------|-----------|---------|------|
 | **Containerization** | Docker + Docker Compose | Local development orchestration | — |
 | **Orchestration (Prod)** | Kubernetes | Production deployment (manifests in `/k8s/`) | — |
-| **Metrics** | Prometheus (`prom/prometheus:v3.4.1`) | Scrape service `/metrics` endpoints | 9091 |
-| **Dashboards** | Grafana (`grafana/grafana:11.1.0`) | System health visualization | 3300 |
+| **Metrics** | Prometheus (`prom/prometheus:v3.9.1`) | Scrape service `/metrics` endpoints | 9091 |
+| **Dashboards** | Grafana (`grafana/grafana:12.3.3`) | System health visualization | 3300 |
 | **Email (Local Dev)** | MailHog or MailPit | SMTP capture server for testing | 1025 (SMTP), 8025 (Web UI) |
 | **Secret Management** | Docker Secrets | Files in `/secrets/` mounted at `/run/secrets/` | — |
 
