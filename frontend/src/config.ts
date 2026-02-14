@@ -1,5 +1,5 @@
-export const AUTH_API_URL = 'http://localhost:8003';
-export const GENEALOGY_API_URL = 'http://localhost:8006';
+export const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8003';
+export const GENEALOGY_API_URL = import.meta.env.VITE_GENEALOGY_API_URL || 'http://localhost:8006';
 
 export const getAuthHeaders = () => {
   const token = localStorage.getItem('token');
