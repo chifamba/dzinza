@@ -9,40 +9,66 @@
 ## Project Stack
 
 **Frontend**: React 18+, TypeScript, Tailwind CSS, React Query, Zustand, i18next
-**Backend**: Node.js 18+, Express/Fastify, PostgreSQL (Prisma), JWT Auth, Zod Validation
+**Backend**: Go 1.24+, Gin (HTTP), GORM (PostgreSQL), Neo4j Go Driver, Redis, Elasticsearch
+**Databases**: PostgreSQL, Neo4j, MongoDB, Redis, Elasticsearch
+**Infrastructure**: Docker Compose (local), Kubernetes (production), Prometheus, Grafana, Garage S3
 
 ## Coding Guidelines
 
-### Security
+### Go Services — Security
 
-- ✅ Validate inputs (Zod)
-- ✅ Hash passwords (bcrypt)
-- ✅ Use secure headers (helmet, cors)
-- ❌ Don’t log sensitive data
+- ✅ Validate inputs with struct tags (`binding:"required,email"`) and service-layer checks
+- ✅ Hash passwords with `bcrypt` (min cost 12)
+- ✅ Use JWT with `golang-jwt/jwt/v5`
+- ✅ Secrets from `/run/secrets/` or env vars (never hardcoded)
+- ✅ Rate limiting with `golang.org/x/time/rate`
+- ❌ Never log passwords, tokens, or PII
 
-### React Components
+### Go Services — Error Handling
 
-- ✅ Use TypeScript interfaces
-- ✅ React Query for data
-- ✅ Error boundaries + loading states
+- ✅ Wrap errors with context: `fmt.Errorf("failed to create user: %w", err)`
+- ✅ Use custom error types for domain errors (`ErrUserNotFound`, `ErrInvalidInput`)
+- ✅ Structured logging with `log/slog`
+- ❌ Never silently ignore errors (`result, _ := doSomething()`)
+- ❌ Never use `panic()` in production code
+
+### Go Services — Architecture
+
+- ✅ Layered: Handler → Service → Repository
+- ✅ Dependency injection via constructors and interfaces
+- ✅ Keep handlers thin — validate input, call service, return response
+- ✅ Use `context.Context` for cancellation and timeouts
+- ✅ Use parameterized queries (GORM handles this)
+- ❌ No business logic in handlers
 
 ### API Design
 
-- ✅ RESTful routes with middleware
-- ✅ Input validation, auth, clear responses
+- ✅ RESTful routes with Gin middleware
+- ✅ Consistent error response struct (`ErrorResponse`)
+- ✅ Standard HTTP status codes (400, 401, 403, 404, 409, 422, 500)
 
-### Patterns to Follow
+### React Components
 
+- ✅ Use TypeScript interfaces (never `any`, prefer `unknown`)
+- ✅ React Query for data fetching
+- ✅ Error boundaries + loading states
 - ✅ Tailwind over inline styles
-- ✅ `unknown` instead of `any`
-- ✅ React state, avoid direct DOM manipulation
 
 ## Performance & Testing
 
+### Go
+- ✅ Connection pooling with GORM (`SetMaxIdleConns`, `SetMaxOpenConns`)
+- ✅ Table-driven tests with `testify`
+- ✅ Integration tests with `testcontainers-go`
+- ✅ Race detector: `go test ./... -race`
+- ✅ Coverage: `go test ./... -cover`
+- ✅ Min coverage: 80% overall, 85% services, 70% handlers
+
+### Frontend
 - ✅ Lazy load large components
 - ✅ Use `React.memo` for static renders
 - ✅ Paginate large queries
-- ✅ Write RTL/component & API tests
+- ✅ Write Vitest/Playwright tests
 
 ## Accessibility
 
@@ -58,12 +84,12 @@
 ## Need Help?
 
 - Security → escalate immediately
-- Architecture → `docs/SYSTEM_ARCHITECTURE.md`
-- Code Standards → `docs/CODE_STANDARDS.md`
+- Architecture → `docs/Full_Requirements_Spec.md`
+- Code Standards → `AGENTS.md`
 
 ---
 
 ✅ Default to secure, maintainable, accessible code
 ❌ Never expose secrets, skip validation, or break conventions
 
-- After each task, ensure that the build passes and all tests are green. Fix any issues before proceeding to the next task.\_
+- After each task, ensure that the build passes and all tests are green. Fix any issues before proceeding to the next task.

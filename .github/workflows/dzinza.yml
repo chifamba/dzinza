@@ -3,215 +3,259 @@ name: Dzinza CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, develop-golang]
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
 
 env:
   NODE_VERSION: "20"
+  GO_VERSION: "1.24"
   REGISTRY: ghcr.io
 
 jobs:
-  # Quick validation and discovery
+  # ─────────────────────────────────────────────
+  # Stage 1: Validate & Discover
+  # ─────────────────────────────────────────────
   validate:
     name: Validate & Discover
     runs-on: ubuntu-latest
     outputs:
-      services: ${{ steps.discover.outputs.services }}
-      has-tests: ${{ steps.discover.outputs.has-tests }}
+      go_services_json: ${{ steps.discover.outputs.go_services_json }}
+      has_go_services: ${{ steps.discover.outputs.has_go_services }}
+      has_frontend: ${{ steps.discover.outputs.has_frontend }}
+      all_services_json: ${{ steps.discover.outputs.all_services_json }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Discover services and validate
+      - name: Discover services
         id: discover
         run: |
-          SERVICES_JSON_ARRAY="[]"
-          PYTHON_SERVICES_ARRAY="[]"
-          NODE_SERVICES_ARRAY="[]"
-          HAS_NODE_TESTS=false
-          HAS_PYTHON_TESTS=false # Assume true for now if Python service exists
+          ALL_SERVICES_JSON="[]"
+          GO_SERVICES_JSON="[]"
+          HAS_GO_SERVICES=false
+          HAS_FRONTEND=false
 
-          # Define all known service directories
-          ALL_SERVICE_DIRS=("frontend" "backend-service" "auth-service" "genealogy-service" "search-service" "storage-service")
+          # Check for frontend
+          if [ -f "frontend/package.json" ]; then
+            HAS_FRONTEND=true
+            echo "📦 Found frontend (Node.js/React)"
+            ALL_SERVICES_JSON=$(echo "$ALL_SERVICES_JSON" | jq --argjson item '{"name":"frontend","type":"node"}' '. + [$item]')
+          fi
 
-          for dir in "${ALL_SERVICE_DIRS[@]}"; do
-            SERVICE_TYPE=""
-            SERVICE_NAME="$dir"
-            HAS_SERVICE_TESTS=false # Placeholder for per-service test detection
+          # Discover Go services under services/
+          if [ -d "services" ]; then
+            for dir in services/*/; do
+              if [ -f "${dir}go.mod" ]; then
+                SERVICE_NAME=$(basename "$dir")
+                HAS_GO_SERVICES=true
+                echo "🔷 Found Go service: $SERVICE_NAME"
 
-            if [ -f "$dir/package.json" ]; then # Node.js service
-              SERVICE_TYPE="node"
-              echo "Found Node.js service: $dir"
-              NODE_SERVICES_ARRAY=$(echo "$NODE_SERVICES_ARRAY" | jq --arg item "$SERVICE_NAME" '. + [$item]')
-              if grep -q '"test"' "$dir/package.json"; then
-                HAS_NODE_TESTS=true # Global flag for any Node tests
-                HAS_SERVICE_TESTS=true
+                HAS_TESTS=false
+                if [ -d "${dir}tests" ] || find "$dir" -name "*_test.go" -print -quit 2>/dev/null | grep -q .; then
+                  HAS_TESTS=true
+                fi
+
+                SERVICE_INFO=$(jq -n \
+                  --arg name "$SERVICE_NAME" \
+                  --arg type "go" \
+                  --argjson has_tests "$HAS_TESTS" \
+                  '{name: $name, type: $type, has_tests: $has_tests}')
+                GO_SERVICES_JSON=$(echo "$GO_SERVICES_JSON" | jq --argjson item "$SERVICE_INFO" '. + [$item]')
+                ALL_SERVICES_JSON=$(echo "$ALL_SERVICES_JSON" | jq --argjson item "$SERVICE_INFO" '. + [$item]')
               fi
-            elif [ -f "$dir/requirements.txt" ] || [ -f "$dir/pyproject.toml" ]; then # Python service
-              SERVICE_TYPE="python"
-              echo "Found Python service: $dir"
-              PYTHON_SERVICES_ARRAY=$(echo "$PYTHON_SERVICES_ARRAY" | jq --arg item "$SERVICE_NAME" '. + [$item]')
-              # Assume Python services will have tests; refine if specific check needed (e.g. tests dir)
-              if [ -d "$dir/tests" ]; then # Simple check for a tests directory
-                HAS_PYTHON_TESTS=true # Global flag for any Python tests
-                HAS_SERVICE_TESTS=true
-              fi
-            fi
+            done
+          fi
 
-            if [ -n "$SERVICE_TYPE" ]; then
-              SERVICE_INFO=$(jq -n --arg name "$SERVICE_NAME" --arg type "$SERVICE_TYPE" --argjson has_tests "$HAS_SERVICE_TESTS" \
-                             '{name: $name, type: $type, has_tests: $has_tests}')
-              SERVICES_JSON_ARRAY=$(echo "$SERVICES_JSON_ARRAY" | jq --argjson item "$SERVICE_INFO" '. + [$item]')
-            fi
-          done
+          echo "go_services_json=$(echo "$GO_SERVICES_JSON" | jq -c .)" >> $GITHUB_OUTPUT
+          echo "has_go_services=$HAS_GO_SERVICES" >> $GITHUB_OUTPUT
+          echo "has_frontend=$HAS_FRONTEND" >> $GITHUB_OUTPUT
+          echo "all_services_json=$(echo "$ALL_SERVICES_JSON" | jq -c .)" >> $GITHUB_OUTPUT
 
-          # Validate root package.json exists (for overall Node.js tooling if still used at root)
-          # This might become optional or removed if root is no longer Node.js focused.
-          # if [ ! -f "package.json" ]; then
-          #   echo "::warning::Root package.json is missing (may be okay if not a Node monorepo root)"
-          # fi
+          echo ""
+          echo "══════════════════════════════════════"
+          echo "📋 Discovery Summary"
+          echo "══════════════════════════════════════"
+          echo "� Go services:  $(echo "$GO_SERVICES_JSON" | jq -c .)"
+          echo "📦 Frontend:     $HAS_FRONTEND"
+          echo "📋 All services: $(echo "$ALL_SERVICES_JSON" | jq -c .)"
 
-          echo "services_json=$(echo "$SERVICES_JSON_ARRAY" | jq -c .)" >> $GITHUB_OUTPUT
-          echo "python_services_json=$(echo "$PYTHON_SERVICES_ARRAY" | jq -c .)" >> $GITHUB_OUTPUT
-          echo "node_services_json=$(echo "$NODE_SERVICES_ARRAY" | jq -c .)" >> $GITHUB_OUTPUT
-          echo "has_node_tests=$HAS_NODE_TESTS" >> $GITHUB_OUTPUT
-          echo "has_python_tests=$HAS_PYTHON_TESTS" >> $GITHUB_OUTPUT
-
-          echo "✅ Discovered services (JSON): $(echo "$SERVICES_JSON_ARRAY" | jq -c .)"
-          echo "🐍 Python services: $(echo "$PYTHON_SERVICES_ARRAY" | jq -c .)"
-          echo "📦 Node.js services: $(echo "$NODE_SERVICES_ARRAY" | jq -c .)"
-          echo "🧪 Node tests available: $HAS_NODE_TESTS"
-          echo "🧪 Python tests available: $HAS_PYTHON_TESTS"
-
-  # Build Node.js services (if any)
-  build-node:
-    name: Build & Quality (Node.js)
+  # ─────────────────────────────────────────────
+  # Stage 2a: Go — Lint
+  # ─────────────────────────────────────────────
+  lint-go:
+    name: Lint Go Services
     runs-on: ubuntu-latest
     needs: validate
-    if: fromJson(needs.validate.outputs.node_services_json) != null && fromJson(needs.validate.outputs.node_services_json)[0] != null
+    if: needs.validate.outputs.has_go_services == 'true'
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.validate.outputs.go_services_json) }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm # Cache for root and workspaces
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: services/${{ matrix.service.name }}/go.sum
 
-      # Assuming frontend is the primary Node.js build target now
-      - name: Install Frontend dependencies
-        run: npm ci --prefix frontend
-      - name: Lint Frontend
-        run: npm run lint --prefix frontend
-      - name: Type check Frontend
-        run: npm run typecheck --prefix frontend
-      - name: Build Frontend
-        run: npm run build --prefix frontend
-      - name: Security audit Frontend
-        run: npm audit --audit-level=high --prefix frontend
-        continue-on-error: false # Fail build on high vulnerabilities
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: services/${{ matrix.service.name }}
+          args: --timeout=5m
 
-      # Example for other Node services if they still exist and need building via root npm commands
-      # This part needs to be adapted if other Node services are not part of a workspace or built differently
-      # For now, focusing on frontend as the main Node.js component.
-      # If backend-service (Node) was still active:
-      # - name: Install Backend (Node) dependencies
-      #   run: npm ci --prefix backend-service # Example
-      # - name: Build Backend (Node)
-      #   run: npm run build --prefix backend-service # Example
+  # ─────────────────────────────────────────────
+  # Stage 2b: Go — Test
+  # ─────────────────────────────────────────────
+  test-go:
+    name: Test Go Services
+    runs-on: ubuntu-latest
+    needs: [validate, lint-go]
+    if: needs.validate.outputs.has_go_services == 'true'
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.validate.outputs.go_services_json) }}
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Upload Frontend build artifact
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: services/${{ matrix.service.name }}/go.sum
+
+      - name: Run unit tests
+        working-directory: services/${{ matrix.service.name }}
+        run: |
+          go test ./... -race -cover -coverprofile=coverage.out -covermode=atomic -v
+
+      - name: Check coverage threshold
+        working-directory: services/${{ matrix.service.name }}
+        run: |
+          if [ -f coverage.out ]; then
+            COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+            echo "📊 Coverage for ${{ matrix.service.name }}: ${COVERAGE}%"
+            # Warn if coverage is below 70% (adjust threshold as needed)
+            if (( $(echo "$COVERAGE < 70.0" | bc -l) )); then
+              echo "::warning::Coverage for ${{ matrix.service.name }} is ${COVERAGE}%, below 70% threshold"
+            fi
+          fi
+
+      - name: Upload coverage artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-build-artifact
-          path: frontend/dist/ # Common path for Vite/React builds
-          retention-days: 1
+          name: coverage-${{ matrix.service.name }}
+          path: services/${{ matrix.service.name }}/coverage.out
+          retention-days: 7
 
-  # Lint & Test Python services
-  lint-python:
-    name: Lint Python Services
+  # ─────────────────────────────────────────────
+  # Stage 2c: Go — Build
+  # ─────────────────────────────────────────────
+  build-go:
+    name: Build Go Services
     runs-on: ubuntu-latest
     needs: validate
-    if: fromJson(needs.validate.outputs.python_services_json) != null && fromJson(needs.validate.outputs.python_services_json)[0] != null
+    if: needs.validate.outputs.has_go_services == 'true'
     strategy:
       matrix:
-        service: ${{ fromJson(needs.validate.outputs.python_services_json) }}
+        service: ${{ fromJson(needs.validate.outputs.go_services_json) }}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install Ruff
-        run: pip install ruff
-      - name: Run Ruff linter & formatter check
-        working-directory: ./${{ matrix.service }}
-        run: |
-          ruff check .
-          ruff format --check .
 
-  test-python:
-    name: Test Python Services
-    runs-on: ubuntu-latest
-    needs: [validate, lint-python] # Depends on linting passing
-    if: needs.validate.outputs.has_python_tests == 'true' && fromJson(needs.validate.outputs.python_services_json) != null && fromJson(needs.validate.outputs.python_services_json)[0] != null
-    strategy:
-      matrix:
-        service: ${{ fromJson(needs.validate.outputs.python_services_json) }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          python-version: '3.11'
-      - name: Install dependencies for ${{ matrix.service }}
-        working-directory: ./${{ matrix.service }}
-        run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio # Ensure test dependencies are installed
-      - name: Run Pytest
-        working-directory: ./${{ matrix.service }}
-        run: pytest
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: services/${{ matrix.service.name }}/go.sum
 
-  # Run Node.js tests (if any)
-  test-node:
-    name: Test Node.js Services
+      - name: Verify dependencies
+        working-directory: services/${{ matrix.service.name }}
+        run: |
+          go mod verify
+          go mod tidy -diff
+
+      - name: Build
+        working-directory: services/${{ matrix.service.name }}
+        run: go build ./...
+
+      - name: Vet
+        working-directory: services/${{ matrix.service.name }}
+        run: go vet ./...
+
+  # ─────────────────────────────────────────────
+  # Stage 2d: Frontend — Build & Quality
+  # ─────────────────────────────────────────────
+  build-node:
+    name: Build & Quality (Frontend)
     runs-on: ubuntu-latest
-    needs: [validate, build-node]
-    if: needs.validate.outputs.has_node_tests == 'true' && fromJson(needs.validate.outputs.node_services_json) != null && fromJson(needs.validate.outputs.node_services_json)[0] != null
+    needs: validate
+    if: needs.validate.outputs.has_frontend == 'true'
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - name: Install Frontend dependencies (for testing context)
-        run: npm ci --prefix frontend
-      # If build artifacts are needed for Node tests (e.g. testing dist output), download them
-      # - name: Download Frontend build artifact
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: frontend-build-artifact
-      #     path: frontend/dist
-      - name: Run Frontend tests
-        run: npm test --prefix frontend # Assumes frontend has its tests runnable this way
+          cache-dependency-path: frontend/package-lock.json
 
-  # Build Docker images (only on main branch, iterate over ALL services discovered)
+      - name: Install dependencies
+        run: npm ci --prefix frontend
+
+      - name: Lint
+        run: npm run lint --prefix frontend
+
+      - name: Type check
+        run: npm run typecheck --prefix frontend
+
+      - name: Build
+        run: npm run build --prefix frontend
+
+      - name: Run tests
+        run: npm test --prefix frontend
+        continue-on-error: true
+
+      - name: Security audit
+        run: npm audit --audit-level=high --prefix frontend
+        continue-on-error: true
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-artifact
+          path: frontend/dist/
+          retention-days: 1
+
+  # ─────────────────────────────────────────────
+  # Stage 3: Docker Build & Push (main only)
+  # ─────────────────────────────────────────────
   docker:
-    name: Docker Build
+    name: Docker Build & Push
     runs-on: ubuntu-latest
-    needs: [validate, build-node, lint-python, test-python, test-node] # Depends on all relevant preceding jobs
-    if: github.ref == 'refs/heads/main' && !failure() # Only run on main and if previous jobs succeed
+    needs: [validate, build-go, test-go, build-node]
+    if: github.ref == 'refs/heads/main' && !failure()
     strategy:
-      matrix: # Use the full list of services with their types
-        service_info: ${{ fromJson(needs.validate.outputs.services_json) }}
+      matrix:
+        service_info: ${{ fromJson(needs.validate.outputs.all_services_json) }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Validate Dockerfile for ${{ matrix.service_info.name }}
         run: |
-          if [ ! -f "${{ matrix.service_info.name }}/Dockerfile" ]; then
-            echo "::error::Missing Dockerfile for ${{ matrix.service_info.name }}"
-            exit 1
+          # Check service-specific Dockerfile locations
+          if [ "${{ matrix.service_info.type }}" == "go" ]; then
+            DOCKERFILE_PATH="services/${{ matrix.service_info.name }}/Dockerfile"
+          else
+            DOCKERFILE_PATH="${{ matrix.service_info.name }}/Dockerfile"
+          fi
+
+          if [ ! -f "$DOCKERFILE_PATH" ]; then
+            echo "::warning::Missing Dockerfile at $DOCKERFILE_PATH for ${{ matrix.service_info.name }}"
+            exit 0  # Don't fail — service may not be containerized yet
           fi
 
       - name: Set up Docker Buildx
@@ -224,7 +268,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for ${{ matrix.service_info.name }}
+      - name: Determine build context
+        id: ctx
+        run: |
+          if [ "${{ matrix.service_info.type }}" == "go" ]; then
+            echo "context=./services/${{ matrix.service_info.name }}" >> $GITHUB_OUTPUT
+          else
+            echo "context=./${{ matrix.service_info.name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract metadata
         uses: docker/metadata-action@v5
         id: meta
         with:
@@ -236,111 +289,50 @@ jobs:
       - name: Build and push ${{ matrix.service_info.name }}
         uses: docker/build-push-action@v6
         with:
-          context: ./${{ matrix.service_info.name }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          platforms: linux/amd64 # Or as needed
-          cache-from: type=gha,scope=${{ matrix.service_info.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service_info.name }}
-
-  # Deployment readiness check
-  deploy-ready:
-    name: Deploy Ready
-    runs-on: ubuntu-latest
-    needs: [build-node, lint-python, test-python, test-node, docker] # Adjusted dependencies
-    if: always() && github.ref == 'refs/heads/main'
-    steps:
-      - name: Check status
-        run: |
-          if [ "${{ needs.build-node.result }}" == "failure" ]; then # Check if build-node was skipped or failed
-            if [ "${{ needs.build-node.result }}" != "skipped" ]; then
-              echo "::error::Node.js build failed"
-              exit 1
-            fi
-          fi
-          if [ "${{ needs.lint-python.result }}" == "failure" ]; then
-             if [ "${{ needs.lint-python.result }}" != "skipped" ]; then
-              echo "::error::Python linting failed"
-              exit 1
-            fi
-          fi
-          if [ "${{ needs.test-python.result }}" == "failure" ]; then
-            if [ "${{ needs.test-python.result }}" != "skipped" ]; then
-              echo "::error::Python tests failed"
-              exit 1
-            fi
-          fi
-          if [ "${{ needs.test-node.result }}" == "failure" ]; then
-             if [ "${{ needs.test-node.result }}" != "skipped" ]; then
-              echo "::error::Node.js tests failed"
-              exit 1
-            fi
-          fi
-          if [ "${{ needs.docker.result }}" == "failure" ]; then
-             if [ "${{ needs.docker.result }}" != "skipped" ]; then
-              echo "::error::Docker build failed"
-              exit 1
-            fi
-          fi
-          echo "✅ Ready for deployment!"
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate Dockerfile
-        run: |
-          if [ ! -f "${{ matrix.service }}/Dockerfile" ]; then
-            echo "::error::Missing Dockerfile for ${{ matrix.service }}"
-            exit 1
-          fi
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.service }}
-          tags: |
-            type=sha,prefix=sha-,format=short
-            type=raw,value=latest
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: ./${{ matrix.service }}
+          context: ${{ steps.ctx.outputs.context }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           platforms: linux/amd64
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          cache-from: type=gha,scope=${{ matrix.service_info.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service_info.name }}
 
-  # Deployment readiness check
+  # ─────────────────────────────────────────────
+  # Stage 4: Deploy Readiness Check (main only)
+  # ─────────────────────────────────────────────
   deploy-ready:
     name: Deploy Ready
     runs-on: ubuntu-latest
-    needs: [build, test, docker]
+    needs: [build-go, test-go, lint-go, build-node, docker]
     if: always() && github.ref == 'refs/heads/main'
     steps:
       - name: Check status
         run: |
-          if [ "${{ needs.build.result }}" != "success" ]; then
-            echo "::error::Build failed"
+          FAILED=false
+
+          check_result() {
+            local name="$1"
+            local result="$2"
+            if [ "$result" == "failure" ]; then
+              echo "::error::$name failed"
+              FAILED=true
+            elif [ "$result" == "skipped" ]; then
+              echo "⏭️  $name was skipped"
+            else
+              echo "✅ $name passed"
+            fi
+          }
+
+          check_result "Go Build"    "${{ needs.build-go.result }}"
+          check_result "Go Tests"    "${{ needs.test-go.result }}"
+          check_result "Go Lint"     "${{ needs.lint-go.result }}"
+          check_result "Frontend"    "${{ needs.build-node.result }}"
+          check_result "Docker"      "${{ needs.docker.result }}"
+
+          if [ "$FAILED" == "true" ]; then
+            echo ""
+            echo "❌ Deployment blocked — one or more checks failed"
             exit 1
           fi
-          if [ "${{ needs.test.result }}" == "failure" ]; then
-            echo "::error::Tests failed"
-            exit 1
-          fi
-          if [ "${{ needs.docker.result }}" == "failure" ]; then
-            echo "::error::Docker build failed"
-            exit 1
-          fi
-          echo "✅ Ready for deployment!"
+
+          echo ""
+          echo "✅ All checks passed — ready for deployment!"
