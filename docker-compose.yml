@@ -134,7 +134,7 @@ services:
     container_name: redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
-    command: ["redis-server", "--requirepass", "redis_secure_password_789"]
+    command: ["sh", "-c", "redis-server --requirepass $(cat /run/secrets/redis_password)"]
     secrets: # Grant access to the secret
       - redis_password
     volumes:
@@ -145,10 +145,21 @@ services:
       - dzinza-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "redis_secure_password_789", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a $(cat /run/secrets/redis_password) ping"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # MailHog for Email Testing
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+    networks:
+      - dzinza-network
+    restart: unless-stopped
 
   # Elasticsearch for Search
   elasticsearch:

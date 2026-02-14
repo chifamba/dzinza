@@ -27,33 +27,33 @@
 
 ### 0.1 Fix Environment & Configuration
 
-- [ ] **T-0.1.1** — Update `.env` service ports to match spec (auth=8003, genealogy=8006, media=8009, etc.)
+- [x] **T-0.1.1** — Update `.env` service ports to match spec (auth=8003, genealogy=8006, media=8009, etc.)
   - File: `.env`
   - Done when: All `*_SERVICE_PORT` and `*_SERVICE_URL` values match `Full_Requirements_Spec.md` §4.2
 
-- [ ] **T-0.1.2** — Update `.env` SMTP settings from Ethereal to MailHog (`SMTP_HOST=mailhog`, `SMTP_PORT=1025`)
+- [x] **T-0.1.2** — Update `.env` SMTP settings from Ethereal to MailHog (`SMTP_HOST=mailhog`, `SMTP_PORT=1025`)
   - File: `.env`
   - Done when: SMTP_HOST=mailhog and SMTP_PORT=1025
 
-- [ ] **T-0.1.3** — Add MailHog container to `docker-compose.yml`
+- [x] **T-0.1.3** — Add MailHog container to `docker-compose.yml`
   - File: `docker-compose.yml`
   - Done when: `mailhog` service is defined with ports `1025:1025` (SMTP) and `8025:8025` (Web UI) on `dzinza-network`
 
-- [ ] **T-0.1.4** — Update `docker-compose.yml` to read Redis password from secret file instead of hardcoded command
+- [x] **T-0.1.4** — Update `docker-compose.yml` to read Redis password from secret file instead of hardcoded command
   - File: `docker-compose.yml`
   - Done when: Redis `command` reads password from `/run/secrets/redis_password` or env var referencing secret
 
-- [ ] **T-0.1.5** — Update frontend Vite dev port from `3000` to `5173` to match spec
+- [x] **T-0.1.5** — Update frontend Vite dev port from `3000` to `5173` to match spec
   - File: `frontend/vite.config.ts`
   - Done when: `server.port` is `5173`
 
-- [ ] **T-0.1.6** — Update `.env` frontend VITE_* URLs to match spec port numbers
+- [x] **T-0.1.6** — Update `.env` frontend VITE_* URLs to match spec port numbers
   - Files: `.env`
   - Done when: `VITE_API_URL`, `VITE_AUTH_SERVICE_URL`, etc. use ports 8003, 8006, etc.
 
 ### 0.2 GitHub Actions CI Update
 
-- [ ] **T-0.2.1** — Rewrite `.github/workflows/dzinza.yml` for Go services
+- [x] **T-0.2.1** — Rewrite `.github/workflows/dzinza.yml` for Go services
   - File: `.github/workflows/dzinza.yml`
   - Done when: CI runs `go build`, `go test`, `golangci-lint` for all services under `services/`
 
@@ -68,30 +68,30 @@
 
 > **Agent scope:** One agent owns all of `pkg/`. No service can start until this is done.
 
-- [ ] **T-1.1.1** — Initialize Go module at `services/pkg/`
+- [x] **T-1.1.1** — Initialize Go module at `services/pkg/`
   - Run: `cd services/pkg && go mod init github.com/chifamba/dzinza/services/pkg`
   - Done when: `services/pkg/go.mod` exists with correct module path
 
-- [ ] **T-1.1.2** — Implement `pkg/config/` — Configuration loader
+- [x] **T-1.1.2** — Implement `pkg/config/` — Configuration loader
   - Read env vars + Docker secrets from `/run/secrets/`
   - Use `spf13/viper` or `caarlos0/env`
   - Done when: `LoadConfig()` returns a typed struct with DB, Redis, JWT, SMTP settings; unit tests pass
 
-- [ ] **T-1.1.3** — Implement `pkg/logging/` — Structured logging setup
+- [x] **T-1.1.3** — Implement `pkg/logging/` — Structured logging setup
   - Use `log/slog` with JSON output handler
   - Provide `NewLogger(serviceName string) *slog.Logger`
   - Done when: Logger produces structured JSON; unit tests pass
 
-- [ ] **T-1.1.4** — Implement `pkg/health/` — Health check handler
+- [x] **T-1.1.4** — Implement `pkg/health/` — Health check handler
   - Return `GET /health` → `{"status": "ok", "service": "<name>"}`
   - Done when: Handler returns correct JSON; unit test passes
 
-- [ ] **T-1.1.5** — Implement `pkg/auth/` — JWT middleware
+- [x] **T-1.1.5** — Implement `pkg/auth/` — JWT middleware
   - Validate Bearer tokens, extract claims (user_id, roles)
   - Use `golang-jwt/jwt/v5`
   - Done when: Middleware correctly validates tokens and rejects expired/invalid ones; unit tests pass
 
-- [ ] **T-1.1.6** — Implement `pkg/response/` — JSON response helpers
+- [x] **T-1.1.6** — Implement `pkg/response/` — JSON response helpers
   - Provide `Success()`, `Error()`, `Paginated()` response constructors
   - Match error format: `{"detail": "Human-readable message"}`
   - Done when: Helpers produce correct JSON structures; unit tests pass
