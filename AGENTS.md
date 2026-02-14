@@ -22,67 +22,101 @@ Dzinza is a decentralized, community-driven genealogy platform enabling users to
   ```bash
   npm run dev      # Development server
   npm run build    # Production build
-  npm run test     # Run tests
   ```
 
 #### Backend Services
 
-- **Framework:** FastAPI (Python)
+- **Language:** Go 1.22+
+- **HTTP Framework:** Gin
+- **Location:** `services/<service_name>/`
+- **Project Layout:**
+  ```
+  services/<service_name>/
+  ├── cmd/
+  │   └── main.go           # Entry point
+  ├── internal/
+  │   ├── handlers/         # HTTP route handlers
+  │   ├── models/           # Data models (GORM structs, DTOs)
+  │   ├── repository/       # Database access layer
+  │   ├── service/          # Business logic
+  │   └── middleware/       # Auth, logging, CORS middleware
+  ├── Dockerfile
+  ├── go.mod
+  └── go.sum
+  ```
+- **Shared Code:** `services/pkg/` — Common logging, health checks, auth middleware, config, response helpers
 - **Primary Services:**
-  - `auth-service` - Authentication and authorization
-  - `backend-service` - Core business logic
-  - `genealogy-service` - Family tree management
-  - `search-service` - Search functionality
-  - `storage-service` - File/media storage
+  - `auth_service` — Authentication and authorization (PostgreSQL, Redis)
+  - `genealogy_service` — Family tree management (Neo4j)
+  - `media_storage_service` — File/media storage (Garage S3)
+  - `search_discovery_service` — Search functionality (Elasticsearch)
+  - `notification_service` — User notifications (PostgreSQL, Redis)
+  - See `docs/Full_Requirements_Spec.md` for the complete service inventory (15 services)
 
 #### Data Layer
 
 - **Neo4j:** Primary genealogy data (graph structure)
 - **PostgreSQL:** Relational data, user accounts
-- **MongoDB:** Document storage
-- **Redis:** Caching, session management
+- **MongoDB:** Document storage (support tickets)
+- **Redis:** Caching, session management, Pub/Sub event bus
 - **Elasticsearch:** Full-text search indexing
 
 #### Infrastructure
 
 - **Docker Compose:** Local orchestration
 - **Prometheus & Grafana:** Monitoring and metrics
-- **Garage:** S3-compatible object storage
+- **Garage:** S3-compatible object storage (3-node cluster)
+- **MailHog:** Local SMTP capture for email testing
 
 ## Development Workflow
 
 ### Quick Start
 
 ```bash
-# Start full development environment
-./scripts/start-dev.sh
+# Start infrastructure services (databases, cache, storage)
+docker compose up -d
 
-# Stop all services
-./scripts/stop-dev.sh
+# Start frontend dev server
+cd frontend && npm install && npm run dev
 
-# Or use VS Code tasks (Cmd+Shift+P → "Run Task")
-# 🚀 Start Full Development Environment
+# Run a Go service locally (example: auth)
+cd services/auth_service && go run cmd/main.go
 ```
 
-### Common Tasks (via VS Code)
+### Key Libraries (Go)
 
-- `🔧 Start Backend Service Only`
-- `🎨 Start Frontend Only`
-- `🗄️ Start Database Services`
-- `🧪 Run All Tests`
-- `✨ Lint All Code`
+| Purpose | Library |
+|---------|---------|
+| HTTP Framework | `github.com/gin-gonic/gin` |
+| PostgreSQL ORM | `gorm.io/gorm` + `gorm.io/driver/postgres` (pgx) |
+| Neo4j Driver | `github.com/neo4j/neo4j-go-driver/v5` |
+| MongoDB Driver | `go.mongodb.org/mongo-driver` |
+| JWT | `github.com/golang-jwt/jwt/v5` |
+| Redis | `github.com/redis/go-redis/v9` |
+| Validation | `github.com/go-playground/validator/v10` |
+| Config | `github.com/spf13/viper` or `github.com/caarlos0/env` |
+| Logging | `log/slog` (stdlib) or `github.com/rs/zerolog` |
+| OpenAPI | `github.com/swaggo/swag` |
+| S3 Client | `github.com/aws/aws-sdk-go-v2` |
+| Testing | `github.com/stretchr/testify` |
 
 ### Project Structure
 
 ```
 dzinza/
 ├── frontend/              # React TypeScript SPA
-├── auth-service/          # Authentication microservice
-├── backend-service/       # Core API service
-├── genealogy-service/     # Family tree logic
+├── services/              # Go microservices
+│   ├── pkg/               # Shared Go packages (logging, auth, config)
+│   ├── auth_service/      # Authentication service
+│   ├── genealogy_service/ # Family tree logic
+│   └── .../               # Other services
+├── docs/                  # Requirements spec, OpenAPI specs
+│   ├── Full_Requirements_Spec.md
+│   └── openapi/           # Per-service OpenAPI YAML files
+├── database/              # DB init scripts
 ├── scripts/               # Development and deployment scripts
-├── docs/                  # API documentation (OpenAPI specs)
 ├── k8s/                   # Kubernetes manifests
+├── secrets/               # Docker secrets (git-ignored)
 └── docker-compose.yml     # Local development orchestration
 ```
 
@@ -90,73 +124,60 @@ dzinza/
 
 ### Code Style
 
-- **Frontend:** ESLint + Prettier configuration in `eslint.config.js`
-- **Backend:** Python type hints, FastAPI patterns
+- **Go:** Follow standard Go conventions (`gofmt`, `golint`), use struct tags for validation and JSON
+- **Frontend:** ESLint + Prettier
 - **API Design:** RESTful conventions, OpenAPI 3.0 specifications
 
 ### Testing
 
+- **Go:** `go test ./...` with `testify` for assertions, `testcontainers-go` for integration tests
 - **Frontend:** Component tests (Vitest), E2E tests (Playwright)
-- **Backend:** pytest with asyncio support
-- **Coverage:** Aim for >80% coverage on critical paths
+- **Coverage:** Aim for >80% coverage on business logic
 
 ### API Documentation
 
-OpenAPI specifications are in `docs/openapi/`. Each service maintains its own spec.
+OpenAPI specifications are in `docs/openapi/`. Each service maintains its own spec, generated via `swaggo/swag` annotations or maintained manually.
 
 ### Authentication Flow
 
-- JWT-based authentication
+- JWT-based authentication (access + refresh tokens)
 - Session management via Redis
-- Refer to `auth-service/SESSION_MANAGEMENT.md` for details
+- Middleware in `services/pkg/auth/` for token validation
 
 ## Key Documentation Files
 
-- `README.md` - Project overview
-- `ARCHITECTURE.md` - Detailed architecture documentation
-- `DATA_MODELS.md` - Database schemas and models
-- `docs/API.md` - API endpoint documentation
-- Service-specific READMEs in each service directory
+- `docs/Full_Requirements_Spec.md` — Complete requirements specification (source of truth)
+- `docs/openapi/` — Per-service OpenAPI specs
+- `DATA_MODELS.md` — Database schemas and models
+- `docker-compose.yml` — Infrastructure services configuration
 
 ## Environment Configuration
 
-- Environment variables defined in `.env` files (not tracked)
-- Sample configuration in `backup.env`
-- Database connection strings in service config files
-
-## CI/CD
-
-- GitHub Actions workflows for automated testing and deployment
-- Docker image building and registry pushing
-- Scripts in `scripts/` for various automation tasks
+- Environment variables and Docker secrets (files in `/secrets/`)
+- Services read config from env vars and `/run/secrets/` files
+- See `docs/Full_Requirements_Spec.md` Section 6.5 for secret inventory
 
 ## Working with This Codebase
 
 ### Before Making Changes
 
-1. Check relevant documentation in `docs/`
+1. Check `docs/Full_Requirements_Spec.md` for requirements context
 2. Review existing tests for patterns
-3. Ensure development environment is running
-4. Check for TypeScript/Python type errors
+3. Ensure Docker infrastructure is running (`docker compose up -d`)
+4. Check for Go build errors (`go build ./...`)
 
-### When Adding Features
+### When Adding a New Service
 
-1. Update OpenAPI specs if adding API endpoints
-2. Add appropriate tests (unit + integration)
-3. Update relevant documentation
-4. Follow existing patterns in the codebase
+1. Create directory: `services/<service_name>/cmd/main.go`, `internal/`, `Dockerfile`, `go.mod`
+2. Import shared packages from `services/pkg/`
+3. Add service to `docker-compose.yml`
+4. Add/update OpenAPI spec in `docs/openapi/`
+5. Add appropriate tests
 
 ### Common Pitfalls to Avoid
 
 - Don't bypass authentication/authorization checks
-- Always validate user input
+- Always validate user input via struct tags
 - Maintain backward compatibility in APIs
-- Keep database migrations reversible
 - Don't commit sensitive credentials or keys
-
-## Getting Help
-
-- Check existing documentation in `docs/`
-- Review similar implementations in the codebase
-- Examine test files for usage examples
-- Look for TODO comments for known issues
+- Use the shared `pkg/` packages for consistency (logging, health, auth)

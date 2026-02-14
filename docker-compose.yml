@@ -272,307 +272,42 @@ services:
       - dzinza-network
     restart: unless-stopped
 
-  # Admin Moderation Service
-  admin_moderation_service:
-    build:
-      context: .
-      dockerfile: services/admin_moderation_service/Dockerfile
-    container_name: admin_moderation_service
-    ports:
-      - "8000:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/admin_moderation_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: no #unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-      - neo4j
-
-  analytics_service:
-    build:
-      context: .
-      dockerfile: services/analytics_service/Dockerfile
-    container_name: analytics_service
-    ports:
-      - "8001:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/analytics_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  audit_history_service:
-    build:
-      context: .
-      dockerfile: services/audit_history_service/Dockerfile
-    container_name: audit_history_service
-    ports:
-      - "8002:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/audit_history_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  auth_service:
-    build:
-      context: .
-      dockerfile: services/auth_service/Dockerfile
-    container_name: auth_service
-    ports:
-      - "8003:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/auth_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  community_marketplace_service:
-    build:
-      context: .
-      dockerfile: services/community_marketplace_service/Dockerfile
-    container_name: community_marketplace_service
-    ports:
-      - "8004:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/community_marketplace_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  deduplication_service:
-    build:
-      context: .
-      dockerfile: services/deduplication_service/Dockerfile
-    container_name: deduplication_service
-    ports:
-      - "8005:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/deduplication_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  genealogy_service:
-    build:
-      context: .
-      dockerfile: services/genealogy_service/Dockerfile
-    container_name: genealogy_service
-    ports:
-      - "8006:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/genealogy_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  graph_query_service:
-    build:
-      context: .
-      dockerfile: services/graph_query_service/Dockerfile
-    container_name: graph_query_service
-    ports:
-      - "8007:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/graph_query_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  localization_service:
-    build:
-      context: .
-      dockerfile: services/localization_service/Dockerfile
-    container_name: localization_service
-    ports:
-      - "8008:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/localization_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  media_storage_service:
-    build:
-      context: .
-      dockerfile: services/media_storage_service/Dockerfile
-    container_name: media_storage_service
-    ports:
-      - "8009:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/media_storage_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  notification_service:
-    build:
-      context: .
-      dockerfile: services/notification_service/Dockerfile
-    container_name: notification_service
-    ports:
-      - "8010:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/notification_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  relationship_verification_service:
-    build:
-      context: .
-      dockerfile: services/relationship_verification_service/Dockerfile
-    container_name: relationship_verification_service
-    ports:
-      - "8011:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/relationship_verification_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  search_discovery_service:
-    build:
-      context: .
-      dockerfile: services/search_discovery_service/Dockerfile
-    container_name: search_discovery_service
-    ports:
-      - "8012:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/search_discovery_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  trust_access_control_service:
-    build:
-      context: .
-      dockerfile: services/trust_access_control_service/Dockerfile
-    container_name: trust_access_control_service
-    ports:
-      - "8013:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/trust_access_control_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
-
-  help_support_service:
-    build:
-      context: .
-      dockerfile: services/help_support_service/Dockerfile
-    container_name: help_support_service
-    ports:
-      - "8014:8000"
-    environment:
-      - PYTHONPATH=/app:/app/shared
-    volumes:
-      - ./services/help_support_service:/app
-      - ./services/shared:/app/shared
-    networks:
-      - dzinza-network
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - mongodb
-      - redis
+  # ============================================================
+  # APPLICATION SERVICES (Go)
+  # ============================================================
+  # Go microservices will be added here as they are implemented.
+  # Each service will use a multi-stage Dockerfile:
+  #   Build stage: golang:1.22-alpine
+  #   Runtime stage: alpine:3.19 (or scratch)
+  #
+  # Example (uncomment when auth_service is implemented):
+  # auth_service:
+  #   build:
+  #     context: .
+  #     dockerfile: services/auth_service/Dockerfile
+  #   container_name: auth_service
+  #   ports:
+  #     - "8003:8000"
+  #   environment:
+  #     - DB_HOST=postgres
+  #     - DB_PORT=5432
+  #     - DB_NAME=${DB_NAME:-dzinza_db}
+  #     - DB_USER=${DB_USER:-dzinza_user}
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   secrets:
+  #     - db_password
+  #     - jwt_secret
+  #     - jwt_refresh_secret
+  #     - redis_password
+  #   networks:
+  #     - dzinza-network
+  #   restart: unless-stopped
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
 
   # Define named volumes
 volumes:
