@@ -101,20 +101,20 @@
 > **Agent scope:** One agent owns this entire service. Depends on `pkg/` being complete.
 > **Spec refs:** §3.1, §9.2, `docs/openapi/auth-service.yaml`
 
-- [ ] **T-1.2.1** — Scaffold `auth_service` directory structure
+- [x] **T-1.2.1** — Scaffold `auth_service` directory structure
   - Create: `cmd/main.go`, `internal/{handlers,models,repository,service,middleware}/`, `Dockerfile`, `go.mod`, `.golangci.yml`
   - Done when: Directory structure matches AGENTS.md §1 template; `go build ./...` succeeds
 
-- [ ] **T-1.2.2** — Implement user models and DTOs
+- [x] **T-1.2.2** — Implement user models and DTOs
   - GORM models: `User` (id, email, hashed_password, roles, created_at, updated_at)
   - DTOs: `RegisterRequest`, `LoginRequest`, `TokenResponse`, `RefreshRequest`
   - Done when: Models compile; struct tags include `json`, `binding` (validation), `gorm` tags
 
-- [ ] **T-1.2.3** — Implement user repository (PostgreSQL via GORM)
+- [x] **T-1.2.3** — Implement user repository (PostgreSQL via GORM)
   - Methods: `CreateUser`, `GetByEmail`, `GetByID`, `EmailExists`
   - Done when: Repository interface defined; GORM implementation compiles; unit tests with mocks pass
 
-- [ ] **T-1.2.4** — Implement auth service layer (business logic)
+- [x] **T-1.2.4** — Implement auth service layer (business logic)
   - Registration: validate input, check duplicate email, hash password (bcrypt cost 12), create user
   - Login: verify credentials, generate JWT access (30min) + refresh (7d) tokens
   - Token refresh: validate refresh token, issue new pair
@@ -122,27 +122,27 @@
   - Password policy: min 8 chars, uppercase, lowercase, digit, special char
   - Done when: All business logic unit tests pass with mocked repository
 
-- [ ] **T-1.2.5** — Implement auth HTTP handlers + routes
+- [x] **T-1.2.5** — Implement auth HTTP handlers + routes
   - Endpoints: `POST /register`, `POST /login`, `POST /refresh_token`, `POST /blacklist_token`
   - Wire Gin router, CORS middleware, request logging
   - Done when: All endpoints match `docs/openapi/auth-service.yaml`; handler tests pass
 
-- [ ] **T-1.2.6** — Implement RBAC (role assignment/revocation)
+- [x] **T-1.2.6** — Implement RBAC (role assignment/revocation)
   - Models: `Role`, `UserTreeRole` (many-to-many: user ↔ role ↔ tree)
   - Endpoints: `POST /assign_role`, `POST /revoke_role`
   - Platform roles: Admin, Moderator, User; Tree roles: Admin, Editor, Viewer
   - Done when: Roles persist in PostgreSQL; endpoint tests pass
 
-- [ ] **T-1.2.7** — Implement Redis rate limiting middleware
+- [x] **T-1.2.7** — Implement Redis rate limiting middleware
   - Limit: 5 login attempts per 10 minutes per IP
   - Use `go-redis/redis/v9`
   - Done when: Rate limiting blocks excess requests; integration test passes
 
-- [ ] **T-1.2.8** — Write multi-stage Dockerfile for `auth_service`
+- [x] **T-1.2.8** — Write multi-stage Dockerfile for `auth_service`
   - Build: `golang:1.26-alpine`; Runtime: `alpine:3.19`
   - Done when: `docker build` produces a working image; container starts and responds on `/health`
 
-- [ ] **T-1.2.9** — Add `auth_service` to `docker-compose.yml`
+- [x] **T-1.2.9** — Add `auth_service` to `docker-compose.yml`
   - Port: `8003:8000`; depends_on: postgres (healthy), redis (healthy)
   - Mount secrets: `db_password`, `jwt_secret`, `jwt_refresh_secret`, `redis_password`
   - Done when: `docker compose up auth_service` starts and `/health` returns OK
