@@ -284,6 +284,26 @@ services:
     restart: unless-stopped
 
   # ============================================================
+  # FRONTEND
+  # ============================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      - auth_service
+
+  # ============================================================
   # APPLICATION SERVICES (Go)
   # ============================================================
   # Go microservices will be added here as they are implemented.
