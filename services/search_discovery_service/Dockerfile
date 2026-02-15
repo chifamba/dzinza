@@ -5,8 +5,8 @@ RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 
-# Copy shared pkg first (dependency layer)
-COPY services/pkg /app/services/pkg
+# Copy shared pkg go.mod/go.sum (dependency layer)
+COPY services/pkg/go.mod services/pkg/go.sum /app/services/pkg/
 
 # Copy go.mod/go.sum for dependency caching
 COPY services/search_discovery_service/go.mod services/search_discovery_service/go.sum /app/services/search_discovery_service/
@@ -15,6 +15,7 @@ WORKDIR /app/services/search_discovery_service
 RUN go mod download
 
 # Copy source and build a fully static binary
+COPY services/pkg /app/services/pkg
 COPY services/search_discovery_service /app/services/search_discovery_service
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /search_discovery_service ./cmd/main.go
 

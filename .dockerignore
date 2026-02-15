@@ -1,0 +1,39 @@
+# Version control
+.git
+.github
+
+# Frontend (not needed by Go services)
+frontend/node_modules
+frontend/dist
+
+# Build caches
+.gocache
+
+# IDE & OS
+.vscode
+.idea
+.DS_Store
+*.swp
+
+# Documentation & deployment
+docs
+k8s
+grafana
+prometheus
+scripts
+garage
+
+# Environment & secrets (mounted at runtime, not build time)
+.env
+.env.*
+secrets
+
+# Docker
+docker-compose.yml
+
+# Misc
+*.md
+!services/**/README.md
+LICENSE
+coverage
+tmp

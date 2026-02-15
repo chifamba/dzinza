@@ -5,8 +5,8 @@ RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 
-# Copy shared pkg first (dependency layer)
-COPY services/pkg /app/services/pkg
+# Copy shared pkg go.mod/go.sum (dependency layer)
+COPY services/pkg/go.mod services/pkg/go.sum /app/services/pkg/
 
 # Copy go.mod/go.sum for dependency caching
 COPY services/integration_service/go.mod services/integration_service/go.sum /app/services/integration_service/
@@ -15,6 +15,7 @@ WORKDIR /app/services/integration_service
 RUN go mod download
 
 # Copy source and build a fully static binary
+COPY services/pkg /app/services/pkg
 COPY services/integration_service /app/services/integration_service
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /integration_service ./cmd/main.go
 

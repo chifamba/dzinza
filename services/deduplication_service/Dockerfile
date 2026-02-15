@@ -5,8 +5,8 @@ RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 
-# Copy shared pkg first (dependency layer)
-COPY services/pkg /app/services/pkg
+# Copy shared pkg go.mod/go.sum (dependency layer)
+COPY services/pkg/go.mod services/pkg/go.sum /app/services/pkg/
 
 # Copy go.mod/go.sum for dependency caching
 COPY services/deduplication_service/go.mod services/deduplication_service/go.sum /app/services/deduplication_service/
@@ -15,8 +15,9 @@ WORKDIR /app/services/deduplication_service
 RUN go mod download
 
 # Copy source and build a fully static binary
+COPY services/pkg /app/services/pkg
 COPY services/deduplication_service /app/services/deduplication_service
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /deduplication_service ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -v -ldflags="-s -w" -o /deduplication_service ./cmd/main.go
 
 # ---- Runtime stage (scratch = binary only, zero attack surface) ----
 FROM scratch
