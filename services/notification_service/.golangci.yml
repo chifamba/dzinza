@@ -1,0 +1,56 @@
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - revive
+    - gosec
+    - bodyclose
+    - stylecheck
+    - cyclop
+    - dupl
+    - funlen
+    - gocognit
+    - nestif
+    - gocyclo
+
+linters-settings:
+  funlen:
+    lines: 100
+    statements: 50
+  gocyclo:
+    min-complexity: 15
+  gocognit:
+    min-complexity: 20
+  cyclop:
+    max-complexity: 15
+  nestif:
+    min-complexity: 5
+  revive:
+    rules:
+      - name: exported
+        severity: warning
+      - name: var-naming
+      - name: indent-error-flow
+      - name: error-return
+      - name: error-strings
+      - name: receiver-naming
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - funlen
+        - dupl
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+run:
+  timeout: 5m
+  tests: true

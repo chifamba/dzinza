@@ -1,0 +1,51 @@
+type Name {
+  given_name: String!
+  surname: String!
+  prefix: String
+  suffix: String
+  nickname: String
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  UNKNOWN
+}
+
+type Person {
+  id: ID!
+  primary_name: Name!
+  alternate_names: [Name!]
+  gender: Gender!
+  birth_date_string: String
+  birth_date_exact: String
+  birth_place: String
+  death_date_string: String
+  death_date_exact: String
+  is_living: Boolean!
+  biography: String
+  clan: String
+  tribe: String
+  tree_id: ID!
+  
+  parents: [Person!]!
+  children: [Person!]!
+  spouses: [Person!]!
+  siblings: [Person!]!
+}
+
+type FamilyTree {
+  id: ID!
+  name: String!
+  description: String
+  owner_id: ID!
+  root_person: Person
+  persons: [Person!]!
+}
+
+type Query {
+  person(id: ID!): Person
+  tree(id: ID!): FamilyTree
+  searchPersons(name: String!, limit: Int): [Person!]!
+}

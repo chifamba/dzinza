@@ -1,0 +1,150 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dzinza-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  tls:
+  - hosts:
+    - dzinza.org
+    secretName: dzinza-tls
+  rules:
+  - host: dzinza.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
+      - path: /api/auth
+        pathType: Prefix
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 80
+      - path: /api/genealogy
+        pathType: Prefix
+        backend:
+          service:
+            name: genealogy-service
+            port:
+              number: 80
+      - path: /api/search
+        pathType: Prefix
+        backend:
+          service:
+            name: search-discovery-service
+            port:
+              number: 80
+      - path: /api/trust
+        pathType: Prefix
+        backend:
+          service:
+            name: trust-access-control-service
+            port:
+              number: 80
+      - path: /api/moderation
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-moderation-service
+            port:
+              number: 80
+      - path: /api/audit
+        pathType: Prefix
+        backend:
+          service:
+            name: audit-history-service
+            port:
+              number: 80
+      - path: /api/media
+        pathType: Prefix
+        backend:
+          service:
+            name: media-storage-service
+            port:
+              number: 80
+      - path: /api/notifications
+        pathType: Prefix
+        backend:
+          service:
+            name: notification-service
+            port:
+              number: 80
+      - path: /api/analytics
+        pathType: Prefix
+        backend:
+          service:
+            name: analytics-service
+            port:
+              number: 80
+      - path: /api/marketplace
+        pathType: Prefix
+        backend:
+          service:
+            name: community-marketplace-service
+            port:
+              number: 80
+      - path: /api/deduplication
+        pathType: Prefix
+        backend:
+          service:
+            name: deduplication-service
+            port:
+              number: 80
+      - path: /api/query
+        pathType: Prefix
+        backend:
+          service:
+            name: graph-query-service
+            port:
+              number: 80
+      - path: /api/localization
+        pathType: Prefix
+        backend:
+          service:
+            name: localization-service
+            port:
+              number: 80
+      - path: /api/verification
+        pathType: Prefix
+        backend:
+          service:
+            name: relationship-verification-service
+            port:
+              number: 80
+      - path: /api/help
+        pathType: Prefix
+        backend:
+          service:
+            name: help-support-service
+            port:
+              number: 80
+      - path: /api/ai
+        pathType: Prefix
+        backend:
+          service:
+            name: ai-moderation-service
+            port:
+              number: 80
+      - path: /api/backup
+        pathType: Prefix
+        backend:
+          service:
+            name: backup-recovery-service
+            port:
+              number: 80
+      - path: /api/integration
+        pathType: Prefix
+        backend:
+          service:
+            name: integration-service
+            port:
+              number: 80

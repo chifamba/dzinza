@@ -18,20 +18,25 @@ spec:
       - name: auth-service
         image: dzinza/auth-service:latest
         ports:
-        - containerPort: 8000
+        - containerPort: 8003
         env:
-        - name: DATABASE_URL
-          value: "postgresql://dzinza_user:db_password@postgres:5432/dzinza_db"
+        - name: DB_HOST
+          value: "postgres"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: "dzinza_user"
+        - name: DB_NAME
+          value: "dzinza_db"
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: dzinza-secrets
               key: JWT_SECRET
-        - name: REDIS_URL
-          valueFrom:
-            secretKeyRef:
-              name: dzinza-secrets
-              key: REDIS_URL
 ---
 apiVersion: v1
 kind: Service
@@ -43,4 +48,4 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8000
+      targetPort: 8003

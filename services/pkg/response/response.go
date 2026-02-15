@@ -6,25 +6,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ErrorResponse defines the standard error structure.
+type ErrorResponse struct {
+	Detail string `json:"detail"`
+}
+
 // Success sends a JSON success response.
 func Success(c *gin.Context, data interface{}) {
-	c.JSON(http.StatusOK, gin.H{
-		"data": data,
-	})
+	c.JSON(http.StatusOK, data)
 }
 
 // Created sends a JSON created response.
 func Created(c *gin.Context, data interface{}) {
-	c.JSON(http.StatusCreated, gin.H{
-		"data": data,
-	})
+	c.JSON(http.StatusCreated, data)
 }
 
-// Error sends a JSON error response.
+// Error sends a JSON error response following the spec {"detail": "..."}.
 func Error(c *gin.Context, status int, message string) {
-	c.JSON(status, gin.H{
-		"error": message,
-	})
+	c.JSON(status, ErrorResponse{Detail: message})
 }
 
 // Paginated sends a JSON paginated response.

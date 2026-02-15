@@ -1,0 +1,560 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-moderation-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-moderation-service
+  template:
+    metadata:
+      labels:
+        app: admin-moderation-service
+    spec:
+      containers:
+      - name: admin-moderation-service
+        image: dzinza/admin-moderation-service:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DB_HOST
+          value: "postgres"
+        - name: REDIS_HOST
+          value: "redis"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-moderation-service
+spec:
+  selector:
+    app: admin-moderation-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-service
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+    spec:
+      containers:
+      - name: analytics-service
+        image: dzinza/analytics-service:latest
+        ports:
+        - containerPort: 8001
+        env:
+        - name: DB_HOST
+          value: "postgres"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+spec:
+  selector:
+    app: analytics-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8001
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-history-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit-history-service
+  template:
+    metadata:
+      labels:
+        app: audit-history-service
+    spec:
+      containers:
+      - name: audit-history-service
+        image: dzinza/audit-history-service:latest
+        ports:
+        - containerPort: 8002
+        env:
+        - name: DB_HOST
+          value: "postgres"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-history-service
+spec:
+  selector:
+    app: audit-history-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8002
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: community-marketplace-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: community-marketplace-service
+  template:
+    metadata:
+      labels:
+        app: community-marketplace-service
+    spec:
+      containers:
+      - name: community-marketplace-service
+        image: dzinza/community-marketplace-service:latest
+        ports:
+        - containerPort: 8004
+        env:
+        - name: DB_HOST
+          value: "postgres"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: community-marketplace-service
+spec:
+  selector:
+    app: community-marketplace-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8004
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deduplication-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deduplication-service
+  template:
+    metadata:
+      labels:
+        app: deduplication-service
+    spec:
+      containers:
+      - name: deduplication-service
+        image: dzinza/deduplication-service:latest
+        ports:
+        - containerPort: 8005
+        env:
+        - name: NEO4J_URI
+          value: "bolt://neo4j:7687"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deduplication-service
+spec:
+  selector:
+    app: deduplication-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8005
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graph-query-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: graph-query-service
+  template:
+    metadata:
+      labels:
+        app: graph-query-service
+    spec:
+      containers:
+      - name: graph-query-service
+        image: dzinza/graph-query-service:latest
+        ports:
+        - containerPort: 8007
+        env:
+        - name: NEO4J_URI
+          value: "bolt://neo4j:7687"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: graph-query-service
+spec:
+  selector:
+    app: graph-query-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8007
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: localization-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: localization-service
+  template:
+    metadata:
+      labels:
+        app: localization-service
+    spec:
+      containers:
+      - name: localization-service
+        image: dzinza/localization-service:latest
+        ports:
+        - containerPort: 8008
+        env:
+        - name: DB_HOST
+          value: "postgres"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: localization-service
+spec:
+  selector:
+    app: localization-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8008
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-storage-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: media-storage-service
+  template:
+    metadata:
+      labels:
+        app: media-storage-service
+    spec:
+      containers:
+      - name: media-storage-service
+        image: dzinza/media-storage-service:latest
+        ports:
+        - containerPort: 8009
+        env:
+        - name: DB_HOST
+          value: "postgres"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-storage-service
+spec:
+  selector:
+    app: media-storage-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8009
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+      - name: notification-service
+        image: dzinza/notification-service:latest
+        ports:
+        - containerPort: 8010
+        env:
+        - name: DB_HOST
+          value: "postgres"
+        - name: REDIS_HOST
+          value: "redis"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8010
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: relationship-verification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: relationship-verification-service
+  template:
+    metadata:
+      labels:
+        app: relationship-verification-service
+    spec:
+      containers:
+      - name: relationship-verification-service
+        image: dzinza/relationship-verification-service:latest
+        ports:
+        - containerPort: 8011
+        env:
+        - name: DB_HOST
+          value: "postgres"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: relationship-verification-service
+spec:
+  selector:
+    app: relationship-verification-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8011
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-discovery-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: search-discovery-service
+  template:
+    metadata:
+      labels:
+        app: search-discovery-service
+    spec:
+      containers:
+      - name: search-discovery-service
+        image: dzinza/search-discovery-service:latest
+        ports:
+        - containerPort: 8012
+        env:
+        - name: ELASTICSEARCH_URL
+          value: "http://elasticsearch:9200"
+        - name: NEO4J_URI
+          value: "bolt://neo4j:7687"
+        - name: REDIS_HOST
+          value: "redis"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: search-discovery-service
+spec:
+  selector:
+    app: search-discovery-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8012
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trust-access-control-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trust-access-control-service
+  template:
+    metadata:
+      labels:
+        app: trust-access-control-service
+    spec:
+      containers:
+      - name: trust-access-control-service
+        image: dzinza/trust-access-control-service:latest
+        ports:
+        - containerPort: 8013
+        env:
+        - name: NEO4J_URI
+          value: "bolt://neo4j:7687"
+        - name: REDIS_HOST
+          value: "redis"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trust-access-control-service
+spec:
+  selector:
+    app: trust-access-control-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8013
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: help-support-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: help-support-service
+  template:
+    metadata:
+      labels:
+        app: help-support-service
+    spec:
+      containers:
+      - name: help-support-service
+        image: dzinza/help-support-service:latest
+        ports:
+        - containerPort: 8014
+        env:
+        - name: MONGODB_URI
+          value: "mongodb://mongodb:27017"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: help-support-service
+spec:
+  selector:
+    app: help-support-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8014
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-moderation-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-moderation-service
+  template:
+    metadata:
+      labels:
+        app: ai-moderation-service
+    spec:
+      containers:
+      - name: ai-moderation-service
+        image: dzinza/ai-moderation-service:latest
+        ports:
+        - containerPort: 8015
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-moderation-service
+spec:
+  selector:
+    app: ai-moderation-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8015
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backup-recovery-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backup-recovery-service
+  template:
+    metadata:
+      labels:
+        app: backup-recovery-service
+    spec:
+      containers:
+      - name: backup-recovery-service
+        image: dzinza/backup-recovery-service:latest
+        ports:
+        - containerPort: 8016
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backup-recovery-service
+spec:
+  selector:
+    app: backup-recovery-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8016
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: integration-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: integration-service
+  template:
+    metadata:
+      labels:
+        app: integration-service
+    spec:
+      containers:
+      - name: integration-service
+        image: dzinza/integration-service:latest
+        ports:
+        - containerPort: 8017
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: integration-service
+spec:
+  selector:
+    app: integration-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8017

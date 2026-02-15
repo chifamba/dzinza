@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from './api';
 
 export function Register() {
@@ -9,37 +10,49 @@ export function Register() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setMessage('');
     try {
-      await api.auth.register({ email, password, full_name: fullName });
+      await api.auth.register({ email, password, name: fullName });
       setMessage('Registration successful! Please login.');
-    } catch (err) {
-      setMessage('Registration failed.');
+    } catch (err: any) {
+      setMessage(err.message || 'Registration failed.');
     }
   };
 
   return (
-    <form onSubmit={handleRegister}>
-      <h2>Register</h2>
-      <input
-        type="text"
-        placeholder="Full Name"
-        value={fullName}
-        onChange={(e) => setFullName(e.target.value)}
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button type="submit">Register</button>
-      {message && <p>{message}</p>}
-    </form>
+    <div className="card container" style={{ maxWidth: '400px' }}>
+      <form onSubmit={handleRegister}>
+        <h2>Register</h2>
+        <div className="form-group">
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <button type="submit">Register</button>
+        {message && <p className="success-message">{message}</p>}
+        <p style={{ marginTop: '1rem' }}>
+          Already have an account? <Link to="/login">Login here</Link>
+        </p>
+      </form>
+    </div>
   );
 }

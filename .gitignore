@@ -7,6 +7,12 @@
 *.dll
 *.so
 *.dylib
+bin/
+out/
+
+# Build cache
+.gocache/
+obj/
 
 # Test binary, built with `go test -c`
 *.test

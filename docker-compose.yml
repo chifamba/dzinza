@@ -171,7 +171,7 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
       - "bootstrap.memory_lock=true"
       - "cluster.name=dzinza-elasticsearch"
       - "http.cors.enabled=true"
@@ -319,6 +319,397 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  genealogy_service:
+    build:
+      context: .
+      dockerfile: services/genealogy_service/Dockerfile
+    container_name: genealogy_service
+    ports:
+      - "8006:8006"
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=testpassword
+      - GENEALOGY_SERVICE_PORT=8006
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    secrets:
+      - jwt_secret
+      - redis_password
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  media_storage_service:
+    build:
+      context: .
+      dockerfile: services/media_storage_service/Dockerfile
+    container_name: media_storage_service
+    ports:
+      - "8009:8009"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-dzinza_db}
+      - DB_USER=${DB_USER:-dzinza_user}
+      - AWS_REGION=us-east-1
+      - S3_ENDPOINT=http://garage1:39000
+      - S3_BUCKET=dzinza-media
+      - MEDIA_STORAGE_SERVICE_PORT=8009
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - CDN_BASE_URL=http://localhost:8009/api/v1/media/content # For local dev, point back to service or a CDN emulator
+    secrets:
+      - db_password
+      - jwt_secret
+      - aws_access_key_id
+      - aws_secret_access_key
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      garage1:
+        condition: service_started
+
+  notification_service:
+    build:
+      context: .
+      dockerfile: services/notification_service/Dockerfile
+    container_name: notification_service
+    ports:
+      - "8010:8010"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-dzinza_db}
+      - DB_USER=${DB_USER:-dzinza_user}
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - NOTIFICATION_SERVICE_PORT=8010
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    secrets:
+      - db_password
+      - jwt_secret
+      - redis_password
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  search_discovery_service:
+    build:
+      context: .
+      dockerfile: services/search_discovery_service/Dockerfile
+    container_name: search_discovery_service
+    ports:
+      - "8012:8012"
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=testpassword
+      - SEARCH_SERVICE_PORT=8012
+    secrets:
+      - redis_password
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+
+  audit_history_service:
+    build:
+      context: .
+      dockerfile: services/audit_history_service/Dockerfile
+    container_name: audit_history_service
+    ports:
+      - "8002:8002"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-dzinza_db}
+      - DB_USER=${DB_USER:-dzinza_user}
+      - AUDIT_HISTORY_SERVICE_PORT=8002
+    secrets:
+      - db_password
+      - jwt_secret
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  trust_access_control_service:
+    build:
+      context: .
+      dockerfile: services/trust_access_control_service/Dockerfile
+    container_name: trust_access_control_service
+    ports:
+      - "8013:8013"
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=testpassword
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - TRUST_SERVICE_PORT=8013
+    secrets:
+      - redis_password
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  relationship_verification_service:
+    build:
+      context: .
+      dockerfile: services/relationship_verification_service/Dockerfile
+    container_name: relationship_verification_service
+    ports:
+      - "8011:8011"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-dzinza_db}
+      - DB_USER=${DB_USER:-dzinza_user}
+      - VERIFICATION_SERVICE_PORT=8011
+    secrets:
+      - db_password
+      - jwt_secret
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  deduplication_service:
+    build:
+      context: .
+      dockerfile: services/deduplication_service/Dockerfile
+    container_name: deduplication_service
+    ports:
+      - "8005:8005"
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=testpassword
+      - DEDUPLICATION_SERVICE_PORT=8005
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+  admin_moderation_service:
+    build:
+      context: .
+      dockerfile: services/admin_moderation_service/Dockerfile
+    container_name: admin_moderation_service
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-dzinza_db}
+      - DB_USER=${DB_USER:-dzinza_user}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ADMIN_SERVICE_PORT=8000
+    secrets:
+      - db_password
+      - jwt_secret
+      - redis_password
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  graph_query_service:
+    build:
+      context: .
+      dockerfile: services/graph_query_service/Dockerfile
+    container_name: graph_query_service
+    ports:
+      - "8007:8007"
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=testpassword
+      - GRAPH_QUERY_SERVICE_PORT=8007
+    secrets:
+      - jwt_secret
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+  analytics_service:
+    build:
+      context: .
+      dockerfile: services/analytics_service/Dockerfile
+    container_name: analytics_service
+    ports:
+      - "8001:8001"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-dzinza_db}
+      - DB_USER=${DB_USER:-dzinza_user}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ANALYTICS_SERVICE_PORT=8001
+    secrets:
+      - db_password
+      - redis_password
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  community_marketplace_service:
+    build:
+      context: .
+      dockerfile: services/community_marketplace_service/Dockerfile
+    container_name: community_marketplace_service
+    ports:
+      - "8004:8004"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-dzinza_db}
+      - DB_USER=${DB_USER:-dzinza_user}
+      - MARKETPLACE_SERVICE_PORT=8004
+    secrets:
+      - db_password
+      - jwt_secret
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  localization_service:
+    build:
+      context: .
+      dockerfile: services/localization_service/Dockerfile
+    container_name: localization_service
+    ports:
+      - "8008:8008"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-dzinza_db}
+      - DB_USER=${DB_USER:-dzinza_user}
+      - LOCALIZATION_SERVICE_PORT=8008
+    secrets:
+      - db_password
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  help_support_service:
+    build:
+      context: .
+      dockerfile: services/help_support_service/Dockerfile
+    container_name: help_support_service
+    ports:
+      - "8014:8014"
+    environment:
+      - MONGO_URI=mongodb://dzinza_user:testpassword@mongodb:27017
+      - HELP_SERVICE_PORT=8014
+    secrets:
+      - jwt_secret
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  ai_moderation_service:
+    build:
+      context: .
+      dockerfile: services/ai_moderation_service/Dockerfile
+    container_name: ai_moderation_service
+    ports:
+      - "8015:8015"
+    environment:
+      - AI_SERVICE_PORT=8015
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  backup_recovery_service:
+    build:
+      context: .
+      dockerfile: services/backup_recovery_service/Dockerfile
+    container_name: backup_recovery_service
+    ports:
+      - "8016:8016"
+    environment:
+      - BACKUP_SERVICE_PORT=8016
+    networks:
+      - dzinza-network
+    restart: unless-stopped
+
+  integration_service:
+    build:
+      context: .
+      dockerfile: services/integration_service/Dockerfile
+    container_name: integration_service
+    ports:
+      - "8017:8017"
+    environment:
+      - INTEGRATION_SERVICE_PORT=8017
+    networks:
+      - dzinza-network
+    restart: unless-stopped
 
   # Define named volumes
 volumes:

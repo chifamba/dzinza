@@ -32,15 +32,28 @@ cd services/<name>
 go mod init github.com/chifamba/dzinza/services/<name>
 ```
 
-## Building
+## Building & Running
+
+### Docker (Recommended)
+
+All services should be built and run using Docker to ensure environment consistency.
 
 ```bash
-# Build a single service
-cd services/<name> && go build -o bin/<name> cmd/main.go
+# Build and run all services
+docker-compose up --build
 
+# Build a single service
+docker build -f services/<name>/Dockerfile -t dzinza-<name> .
+```
+
+### Local Development (Not Recommended for Builds)
+
+If you need to run or test locally during development:
+
+```bash
 # Run locally
 cd services/<name> && go run cmd/main.go
 
-# Docker build (multi-stage)
-docker build -f services/<name>/Dockerfile -t dzinza-<name> .
+# Build a local binary (for debugging only)
+cd services/<name> && go build -o bin/<name> cmd/main.go
 ```

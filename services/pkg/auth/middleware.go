@@ -12,7 +12,15 @@ import (
 const (
 	UserIDKey = "userID"
 	RolesKey  = "roles"
+	UserKey   = "user"
 )
+
+// Claims represents the JWT claims
+type Claims struct {
+	UserID string   `json:"user_id"`
+	Roles  []string `json:"roles"`
+	jwt.RegisteredClaims
+}
 
 // AuthMiddleware creates a gin middleware that validates JWT tokens.
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
@@ -30,7 +38,8 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		}
 
 		tokenString := parts[1]
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
@@ -47,19 +56,9 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
-			return
-		}
-
-		if userID, ok := claims["user_id"].(string); ok {
-			c.Set(UserIDKey, userID)
-		}
-
-		if roles, ok := claims["roles"].([]interface{}); ok {
-			c.Set(RolesKey, roles)
-		}
+		c.Set(UserIDKey, claims.UserID)
+		c.Set(RolesKey, claims.Roles)
+		c.Set(UserKey, claims)
 
 		c.Next()
 	}

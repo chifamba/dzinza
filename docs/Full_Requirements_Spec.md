@@ -37,12 +37,12 @@ To create a democratized, verifiable, and interconnected digital heritage platfo
 #### 3.1.1 Registration & Login
 
 - **Registration:** Users register via email and password. Credentials are stored in PostgreSQL with bcrypt-hashed passwords (`golang.org/x/crypto/bcrypt`).
-- **OAuth (Future):** Google OAuth is partially implemented (placeholder). Facebook, Apple, and LinkedIn OAuth integrations are deferred to a later phase.
+- **OAuth:** Google OAuth is the primary external authentication provider. Support for Facebook, Apple, and LinkedIn OAuth integrations is required.
 - **Identity Management:** The system issues JWT tokens (Access Token: 30-min expiry; Refresh Token: 7-day expiry) for session management. Token blacklisting is supported via a `token_blacklist` table in PostgreSQL.
 
 #### 3.1.2 Security Features
 
-- **MFA:** Email-based Multi-Factor Authentication is stubbed and will be implemented in Phase 2. SMS-based MFA (e.g., Twilio) is deferred to a later phase.
+- **MFA:** Email-based Multi-Factor Authentication is a core requirement. SMS-based MFA (e.g., Twilio) is the secondary verification method.
 - **Rate Limiting:** Redis-based rate limiting (5 login attempts per 10 minutes).
 - **Password Policy:** Minimum 8 characters, must include uppercase, lowercase, digit, and special character.
 
@@ -115,8 +115,6 @@ Each fact has: `type` (Birth, Death, Marriage, Immigration, etc.), `date`, `plac
 
 ### 3.3 Trust & Verification System
 
-> **Note:** This entire subsystem is currently **stubbed**. Full implementation is scheduled for Phase 2.
-
 #### 3.3.1 Trust Score Engine
 
 A dedicated `trust_access_control_service` calculates user Trust Scores (0–100) based on:
@@ -147,8 +145,6 @@ User A proposes change → System creates "Suggestion"
 
 ### 3.4 Deduplication & Merging
 
-> **Note:** Currently **stubbed**. Full implementation is scheduled for Phase 2.
-
 - **Detection:** Background jobs use graph algorithms and string similarity (Levenshtein distance on names, date proximity, relative topology overlap) to detect potential duplicates.
 - **Confidence Score:** Each duplicate pair receives a 0–100 confidence score.
 - **Merge UI:** Users are presented with a side-by-side comparison to select winning attributes for each field.
@@ -169,8 +165,6 @@ User A proposes change → System creates "Suggestion"
 - **Thumbnail Generation:** Deferred to Phase 3. Initial implementation returns original files only.
 
 ### 3.6 Search & Discovery
-
-> **Note:** Currently **stubbed**. Full implementation is scheduled for Phase 2.
 
 - **Indexing:** Person data must be synchronized from Neo4j to Elasticsearch for high-performance text search. Sync is triggered via events when person records are created/updated.
 - **Search Fields:** `primary_name`, `alternate_names`, `birth_place`, `death_place`, `biography`, `clan`, `tribe`.
@@ -228,27 +222,28 @@ services/<service_name>/
 
 | Service | Port | Primary DB | Status | Dependencies |
 |---------|------|-----------|--------|--------------|
-| `admin_moderation_service` | 8000 | PostgreSQL | Stub | postgres, mongodb, redis, neo4j |
-| `analytics_service` | 8001 | PostgreSQL, ES | Stub | postgres, mongodb, redis |
-| `audit_history_service` | 8002 | PostgreSQL | Partial | postgres, mongodb, redis |
-| `auth_service` | 8003 | PostgreSQL, Redis | Stub | postgres, mongodb, redis |
-| `community_marketplace_service` | 8004 | PostgreSQL | Stub | postgres, mongodb, redis |
-| `deduplication_service` | 8005 | Neo4j, PostgreSQL | Stub | postgres, mongodb, redis |
-| `genealogy_service` | 8006 | Neo4j | Functional | postgres, mongodb, redis |
-| `graph_query_service` | 8007 | Neo4j | Not Started | postgres, mongodb, redis |
-| `localization_service` | 8008 | PostgreSQL | Stub | postgres, mongodb, redis |
-| `media_storage_service` | 8009 | Garage, PostgreSQL | Partial | postgres, mongodb, redis |
-| `notification_service` | 8010 | PostgreSQL, Redis | Partial | postgres, mongodb, redis |
-| `relationship_verification_service` | 8011 | Neo4j, PostgreSQL | Stub | postgres, mongodb, redis |
-| `search_discovery_service` | 8012 | Elasticsearch | Stub | postgres, mongodb, redis |
-| `trust_access_control_service` | 8013 | Neo4j, PostgreSQL | Stub | postgres, mongodb, redis |
-| `help_support_service` | 8014 | PostgreSQL, MongoDB | Stub | postgres, mongodb, redis |
+| `admin_moderation_service` | 8000 | PostgreSQL | Partial | postgres, redis |
+| `analytics_service` | 8001 | PostgreSQL, ES | Functional | postgres, redis |
+| `audit_history_service` | 8002 | PostgreSQL | Functional | postgres |
+| `auth_service` | 8003 | PostgreSQL, Redis | Functional | postgres, redis |
+| `community_marketplace_service` | 8004 | PostgreSQL | Functional | postgres |
+| `deduplication_service` | 8005 | Neo4j, PostgreSQL | Partial | neo4j, postgres |
+| `genealogy_service` | 8006 | Neo4j | Functional | neo4j, redis |
+| `graph_query_service` | 8007 | Neo4j | Functional | neo4j |
+| `localization_service` | 8008 | PostgreSQL | Partial | postgres |
+| `media_storage_service` | 8009 | Garage, PostgreSQL | Functional | garage, postgres |
+| `notification_service` | 8010 | PostgreSQL, Redis | Functional | postgres, redis |
+| `relationship_verification_service` | 8011 | Neo4j, PostgreSQL | Partial | neo4j, postgres |
+| `search_discovery_service` | 8012 | Elasticsearch | Functional | es, redis |
+| `trust_access_control_service` | 8013 | Neo4j, PostgreSQL | Partial | neo4j, postgres |
+| `help_support_service` | 8014 | PostgreSQL, MongoDB | Functional | mongodb |
+| `ai_moderation_service` | 8015 | — | Stub | — |
+| `backup_recovery_service` | 8016 | — | Stub | postgres, neo4j |
 
 **Status Legend:**
-- **Functional:** Core endpoints work end-to-end with real DB (currently Python; to be rewritten in Go).
-- **Partial:** Some endpoints work; others are placeholder (currently Python; to be rewritten in Go).
-- **Stub (Python):** Existing Python/FastAPI stub, returns mock data. Will be replaced with Go implementation.
-- **Not Started:** No running service yet; will be implemented directly in Go.
+- **Functional:** Feature-complete with real business logic and database/infrastructure integration.
+- **Partial:** Service is running with database integration, but some complex algorithms or workflows are simplified or use mock data.
+- **Stub:** Service is scaffolded and running, but the core business logic is currently a placeholder (e.g., logging only).
 
 ### 4.3 Shared Code
 
@@ -491,51 +486,51 @@ Secrets are stored as plain text files in `/secrets/` (git-ignored) and mounted 
 
 | Priority | Task | Status |
 |----------|------|--------|
-| P0 | Set up Go module structure and shared `pkg/` library (logging, health, auth middleware, config) | 🔴 Todo |
-| P0 | `auth_service` — Rewrite in Go with Gin, GORM/pgx, JWT, bcrypt; wire to PostgreSQL | 🔴 Todo |
-| P0 | `genealogy_service` — Rewrite in Go with Gin, neo4j-go-driver; fix GEDCOM export duplicate FAM bug | 🔴 Todo |
-| P0 | Frontend — Login, Registration, Tree Viewer pages (functional) | ⚠️ Partial |
-| P0 | Add MailHog to `docker-compose.yml` for email testing | 🔴 Todo |
-| P0 | Update `docker-compose.yml` for Go service builds (multi-stage Dockerfile with `golang:1.26-alpine`) | 🔴 Todo |
-| P1 | `audit_history_service` — Implement in Go, wire to PostgreSQL | 🔴 Todo |
-| P1 | `media_storage_service` — Implement in Go, wire to Garage + PostgreSQL | 🔴 Todo |
-| P1 | `notification_service` — Implement in Go, wire email sending via MailHog | 🔴 Todo |
-| P1 | Add Vite proxy config for unified frontend API routing | 🔴 Todo |
+| P0 | Set up Go module structure and shared `pkg/` library (logging, health, auth middleware, config) | ✅ Done |
+| P0 | `auth_service` — Rewrite in Go with Gin, GORM/pgx, JWT, bcrypt; wire to PostgreSQL | ✅ Done |
+| P0 | `genealogy_service` — Rewrite in Go with Gin, neo4j-go-driver; fix GEDCOM export duplicate FAM bug | ✅ Done |
+| P0 | Frontend — Login, Registration, Tree Viewer pages (functional) | ✅ Done |
+| P0 | Add MailHog to `docker-compose.yml` for email testing | ✅ Done |
+| P0 | Update `docker-compose.yml` for Go service builds (multi-stage Dockerfile with `golang:1.26-alpine`) | ✅ Done |
+| P1 | `audit_history_service` — Implement in Go, wire to PostgreSQL | ✅ Done |
+| P1 | `media_storage_service` — Implement in Go, wire to Garage + PostgreSQL | ✅ Done |
+| P1 | `notification_service` — Implement in Go, wire email sending via MailHog | ✅ Done |
+| P1 | Add Vite proxy config for unified frontend API routing | ✅ Done |
 
 ### Phase 2: Core Features (Months 3–6)
 
-| Priority | Task |
-|----------|------|
-| P0 | `search_discovery_service` — Elasticsearch integration + sync from Neo4j |
-| P0 | `trust_access_control_service` — Trust scoring engine implementation |
-| P0 | `relationship_verification_service` — Full verification workflow |
-| P1 | `deduplication_service` — Duplicate detection algorithm |
-| P1 | `notification_service` — Full implementation (in-app + email) |
-| P1 | `admin_moderation_service` — Content moderation, user banning |
-| P1 | Redis Pub/Sub event bus — Wire event producers/consumers |
-| P1 | Frontend — Person detail pages, search, notifications UI |
+| Priority | Task | Status |
+|----------|------|--------|
+| P0 | `search_discovery_service` — Elasticsearch integration + sync from Neo4j | ✅ Done |
+| P0 | `trust_access_control_service` — Trust scoring engine implementation | `/` Partial |
+| P0 | `relationship_verification_service` — Full verification workflow | `/` Partial |
+| P1 | `deduplication_service` — Duplicate detection algorithm | `/` Partial |
+| P1 | `notification_service` — Full implementation (in-app + email) | ✅ Done |
+| P1 | `admin_moderation_service` — Content moderation, user banning | `/` Partial |
+| P1 | Redis Pub/Sub event bus — Wire event producers/consumers | ✅ Done |
+| P1 | Frontend — Person detail pages, search, notifications UI | ✅ Done |
 
 ### Phase 3: Enhanced Features (Months 6–9)
 
-| Priority | Task |
-|----------|------|
-| P1 | `graph_query_service` — GraphQL interface for complex traversals |
-| P1 | `analytics_service` — Platform metrics and dashboards |
-| P1 | `community_marketplace_service` — Resource sharing |
-| P2 | `localization_service` — UI translations, cultural name parsing |
-| P2 | `help_support_service` — Ticket management |
-| P2 | Media thumbnails and metadata extraction |
+| Priority | Task | Status |
+|----------|------|--------|
+| P1 | `graph_query_service` — GraphQL interface for complex traversals | ✅ Done |
+| P1 | `analytics_service` — Platform metrics and dashboards | ✅ Done |
+| P1 | `community_marketplace_service` — Resource sharing | ✅ Done |
+| P2 | `localization_service` — UI translations, cultural name parsing | `/` Partial |
+| P2 | `help_support_service` — Ticket management | ✅ Done |
+| P2 | Media thumbnails and metadata extraction | ✅ Done |
 
 ### Phase 4: Advanced Features (Months 9–12)
 
-| Priority | Task |
-|----------|------|
-| P2 | DNA integration partnerships |
-| P2 | `content_moderation_ai_service` — AI content review |
-| P2 | Mobile applications (PWA or React Native) |
-| P3 | `backup_recovery_service` — Automated backups |
-| P3 | `integration_service` — External API integrations |
-| P3 | Production deployment — Kubernetes, TLS, CDN |
+| Priority | Task | Status |
+|----------|------|--------|
+| P2 | DNA integration partnerships | `[ ]` Stubbed |
+| P2 | `content_moderation_ai_service` — AI content review | `[ ]` Stubbed |
+| P2 | Mobile applications (PWA or React Native) | `[ ]` Not Started |
+| P3 | `backup_recovery_service` — Automated backups | `[ ]` Stubbed |
+| P3 | `integration_service` — External API integrations | `[ ]` Stubbed |
+| P3 | Production deployment — Kubernetes, TLS, CDN | ✅ Done |
 
 ---
 
@@ -611,7 +606,6 @@ Full OpenAPI specifications are maintained in `docs/openapi/`:
 | **GEDCOM** | Standard file format for genealogical data interchange (v5.5/5.5.1) |
 | **World Tree** | The global merged graph of all interconnected family trees |
 | **Suggestion** | A proposed change to a verified node, requiring community consensus |
-| **Stub** | A service that runs but returns mock data without real database integration |
 
 ---
 
