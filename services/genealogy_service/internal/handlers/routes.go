@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(r *gin.Engine, h *GenealogyHandler, jwtSecret string) {
+func RegisterRoutes(r *gin.Engine, h *GenealogyHandler, dnaH *DNAHandler, jwtSecret string) {
 	// Protected routes
 	api := r.Group("/api/v1")
 	api.Use(auth.AuthMiddleware(jwtSecret))
@@ -29,6 +29,16 @@ func RegisterRoutes(r *gin.Engine, h *GenealogyHandler, jwtSecret string) {
 			persons.GET("/:id", h.GetPerson)
 			persons.PUT("/:id", h.UpdatePerson)
 			persons.DELETE("/:id", h.DeletePerson)
+
+			// DNA Tests linked to person
+			persons.POST("/:person_id/dna_tests", dnaH.LinkDNATest)
+			persons.GET("/:person_id/dna_tests", dnaH.GetDNATests)
+		}
+
+		// DNA Test management
+		dna := api.Group("/dna")
+		{
+			dna.POST("/tests/:test_id/sync", dnaH.SyncWithProvider)
 		}
 
 		// Relationship management

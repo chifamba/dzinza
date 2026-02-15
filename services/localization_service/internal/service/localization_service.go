@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"regexp"
+
 	"github.com/chifamba/dzinza/services/localization_service/internal/repository"
 )
 
@@ -40,10 +43,41 @@ func (s *localizationService) GetTranslations(ctx context.Context, locale string
 }
 
 func (s *localizationService) ParseCulturalName(ctx context.Context, name, cultureCode string) (map[string]string, error) {
-	// Stub for cultural name parsing logic
-	// In a real implementation, this would use the patterns from the DB
-	return map[string]string{
-		"full_name": name,
-		"culture":   cultureCode,
-	}, nil
+	pattern, err := s.repo.GetCulturalNamePattern(ctx, cultureCode)
+	if err != nil {
+		// Fallback if pattern not found
+		return map[string]string{
+			"full_name": name,
+			"culture":   cultureCode,
+			"parsed":    "false",
+		}, nil
+	}
+
+	re, err := regexp.Compile(pattern.Pattern)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regex pattern for culture %s: %w", cultureCode, err)
+	}
+
+	matches := re.FindStringSubmatch(name)
+	if matches == nil {
+		return map[string]string{
+			"full_name": name,
+			"culture":   cultureCode,
+			"parsed":    "false",
+		}, nil
+	}
+
+	result := make(map[string]string)
+	result["culture"] = cultureCode
+	result["full_name"] = name
+	result["parsed"] = "true"
+
+	names := re.SubexpNames()
+	for i, match := range matches {
+		if i != 0 && names[i] != "" {
+			result[names[i]] = match
+		}
+	}
+
+	return result, nil
 }

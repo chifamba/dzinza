@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/chifamba/dzinza/services/backup_recovery_service/internal/handlers"
 	"github.com/chifamba/dzinza/services/backup_recovery_service/internal/service"
 	"github.com/chifamba/dzinza/services/pkg/health"
 	"github.com/chifamba/dzinza/services/pkg/logging"
@@ -19,11 +20,18 @@ func main() {
 	svc := service.NewBackupService()
 	svc.ScheduleBackup(context.Background())
 
+	handler := handlers.NewBackupHandler(svc)
+
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(gin.Logger())
 
 	r.GET("/health", health.HealthCheckHandler("backup_recovery_service"))
+
+	api := r.Group("/api/v1/backup")
+	{
+		api.POST("/trigger", handler.TriggerBackup)
+	}
 
 	port := 8016 // Assigning 8016 for backup service
 	addr := fmt.Sprintf(":%d", port)
