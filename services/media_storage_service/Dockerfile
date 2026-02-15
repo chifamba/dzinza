@@ -1,31 +1,34 @@
-# Build stage
+# ---- Build stage ----
 FROM golang:1.26-alpine AS builder
 
-WORKDIR /app
-
-# Copy the shared package first
-COPY services/pkg /services/pkg
-
-# Copy the service code
-COPY services/media_storage_service /services/media_storage_service
-
-WORKDIR /services/media_storage_service
-
-# Build the application
-RUN go build -o /app/media_storage_service ./cmd/main.go
-
-# Runtime stage
-FROM alpine:3.19
+RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 
-COPY --from=builder /app/media_storage_service .
+# Copy shared pkg first (dependency layer)
+COPY services/pkg /app/services/pkg
 
-# Install necessary libraries for EXIF extraction if any (go-exif is pure go usually)
-# Create a non-root user
-RUN adduser -D dzinza
-USER dzinza
+# Copy go.mod/go.sum for dependency caching
+COPY services/media_storage_service/go.mod services/media_storage_service/go.sum /app/services/media_storage_service/
+
+WORKDIR /app/services/media_storage_service
+RUN go mod download
+
+# Copy source and build a fully static binary
+COPY services/media_storage_service /app/services/media_storage_service
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /media_storage_service ./cmd/main.go
+
+# ---- Runtime stage (scratch = binary only, zero attack surface) ----
+FROM scratch
+
+# TLS root certificates for outbound HTTPS
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Non-root user (numeric UID for scratch)
+USER 65534:65534
+
+COPY --from=builder /media_storage_service /media_storage_service
 
 EXPOSE 8009
 
-CMD ["./media_storage_service"]
+ENTRYPOINT ["/media_storage_service"]

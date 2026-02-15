@@ -24,7 +24,7 @@ func (h *AIHandler) Moderate(c *gin.Context) {
 		return
 	}
 
-	result, err := h.svc.ModerateContent(c.Request.Context(), req.Content, req.ContentType)
+	result, err := h.svc.ModerateContent(c.Request.Context(), &req)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "AI moderation failed")
 		return

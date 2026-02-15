@@ -1,30 +1,34 @@
-# Build stage
+# ---- Build stage ----
 FROM golang:1.26-alpine AS builder
 
-WORKDIR /app
-
-# Copy the shared package first
-COPY services/pkg /services/pkg
-
-# Copy the service code
-COPY services/notification_service /services/notification_service
-
-WORKDIR /services/notification_service
-
-# Build the application
-RUN go build -o /app/notification_service ./cmd/main.go
-
-# Runtime stage
-FROM alpine:3.19
+RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 
-COPY --from=builder /app/notification_service .
+# Copy shared pkg first (dependency layer)
+COPY services/pkg /app/services/pkg
 
-# Create a non-root user
-RUN adduser -D dzinza
-USER dzinza
+# Copy go.mod/go.sum for dependency caching
+COPY services/notification_service/go.mod services/notification_service/go.sum /app/services/notification_service/
+
+WORKDIR /app/services/notification_service
+RUN go mod download
+
+# Copy source and build a fully static binary
+COPY services/notification_service /app/services/notification_service
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /notification_service ./cmd/main.go
+
+# ---- Runtime stage (scratch = binary only, zero attack surface) ----
+FROM scratch
+
+# TLS root certificates for outbound HTTPS
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Non-root user (numeric UID for scratch)
+USER 65534:65534
+
+COPY --from=builder /notification_service /notification_service
 
 EXPOSE 8010
 
-CMD ["./notification_service"]
+ENTRYPOINT ["/notification_service"]

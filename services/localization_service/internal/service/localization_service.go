@@ -13,6 +13,7 @@ import (
 // LocalizationService defines the interface for localization operations.
 type LocalizationService interface {
 	GetTranslation(ctx context.Context, key, locale string) (*models.Translation, error)
+	GetTranslations(ctx context.Context, locale string) ([]models.Translation, error)
 	ParseCulturalName(ctx context.Context, fullName, culture string) (*models.ParsedCulturalName, error)
 }
 
@@ -27,6 +28,10 @@ func NewLocalizationService(repo repository.Repository) LocalizationService {
 
 func (s *localizationService) GetTranslation(ctx context.Context, key, locale string) (*models.Translation, error) {
 	return s.repo.GetTranslation(ctx, key, locale)
+}
+
+func (s *localizationService) GetTranslations(ctx context.Context, locale string) ([]models.Translation, error) {
+	return s.repo.ListTranslations(ctx, locale)
 }
 
 // ParseCulturalName parses a full name according to cultural naming conventions.

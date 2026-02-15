@@ -1,32 +1,34 @@
-# Build stage
+# ---- Build stage ----
 FROM golang:1.26-alpine AS builder
+
+RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 
-# Copy shared pkg first
+# Copy shared pkg first (dependency layer)
 COPY services/pkg /app/services/pkg
 
-# Copy service go.mod and go.sum
+# Copy go.mod/go.sum for dependency caching
 COPY services/search_discovery_service/go.mod services/search_discovery_service/go.sum /app/services/search_discovery_service/
 
-# Download dependencies
 WORKDIR /app/services/search_discovery_service
 RUN go mod download
 
-# Copy source code
+# Copy source and build a fully static binary
 COPY services/search_discovery_service /app/services/search_discovery_service
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /search_discovery_service ./cmd/main.go
 
-# Build
-RUN go build -o /search_discovery_service ./cmd/main.go
+# ---- Runtime stage (scratch = binary only, zero attack surface) ----
+FROM scratch
 
-# Runtime stage
-FROM alpine:3.19
+# TLS root certificates for outbound HTTPS
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-WORKDIR /app
+# Non-root user (numeric UID for scratch)
+USER 65534:65534
 
-COPY --from=builder /search_discovery_service /app/search_discovery_service
+COPY --from=builder /search_discovery_service /search_discovery_service
 
-# Expose port
 EXPOSE 8012
 
-CMD ["/app/search_discovery_service"]
+ENTRYPOINT ["/search_discovery_service"]
