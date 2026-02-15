@@ -60,3 +60,13 @@ func (h *VerificationHandler) Verify(c *gin.Context) {
 
 	response.Success(c, gin.H{"message": "Verification recorded"})
 }
+
+func (h *VerificationHandler) ListPending(c *gin.Context) {
+	suggestions, err := h.verifySvc.ListPending(c.Request.Context())
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to list pending suggestions")
+		return
+	}
+
+	response.Success(c, suggestions)
+}

@@ -27,7 +27,9 @@ func main() {
 
 	api := r.Group("/api/v1/integration")
 	{
-		api.POST("/sync/:provider", handler.Sync)
+		api.POST("/sync", handler.Sync)
+		api.GET("/providers", handler.ListProviders)
+		api.POST("/webhook/:provider", handler.Webhook)
 	}
 
 	port := 8017 // Assigning 8017 for integration service

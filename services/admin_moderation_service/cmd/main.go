@@ -63,6 +63,8 @@ func main() {
 		api.POST("/flag", modHandler.Flag)
 		api.POST("/ban", modHandler.Ban)
 		api.GET("/flagged", modHandler.ListFlagged)
+		api.POST("/review/:id", modHandler.Review)
+		api.GET("/queue", modHandler.ReviewQueue)
 	}
 
 	port := cfg.AdminModerationServicePort

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/chifamba/dzinza/services/pkg/config"
+	"github.com/chifamba/dzinza/services/pkg/events"
 	"github.com/chifamba/dzinza/services/pkg/health"
 	"github.com/chifamba/dzinza/services/pkg/logging"
 	"github.com/chifamba/dzinza/services/relationship_verification_service/internal/handlers"
@@ -13,6 +14,7 @@ import (
 	"github.com/chifamba/dzinza/services/relationship_verification_service/internal/repository"
 	"github.com/chifamba/dzinza/services/relationship_verification_service/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -39,9 +41,16 @@ func main() {
 	// Auto-migrate
 	db.AutoMigrate(&models.Suggestion{})
 
+	// Initialize Redis and Event Bus
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", cfg.RedisHost, cfg.RedisPort),
+		Password: cfg.RedisPassword,
+	})
+	eventBus := events.NewRedisBus(redisClient)
+
 	// Setup layers
 	repo := repository.NewPostgresRepository(db)
-	verifySvc := service.NewVerificationService(repo)
+	verifySvc := service.NewVerificationService(repo, eventBus)
 	verifyHandler := handlers.NewVerificationHandler(verifySvc)
 
 	r := gin.Default()
@@ -53,6 +62,7 @@ func main() {
 	{
 		api.POST("/propose", verifyHandler.Propose)
 		api.POST("/verify/:id", verifyHandler.Verify)
+		api.GET("/pending", verifyHandler.ListPending)
 	}
 
 	port := cfg.RelationshipVerificationServicePort

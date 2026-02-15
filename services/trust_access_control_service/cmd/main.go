@@ -48,7 +48,7 @@ func main() {
 
 	// Setup layers
 	trustRepo := repository.NewTrustRepository(neo4jDriver, redisClient)
-	trustSvc := service.NewTrustService(trustRepo)
+	trustSvc := service.NewTrustService(trustRepo, eventBus)
 	
 	// Start trust worker
 	worker := service.NewTrustWorker(eventBus, trustSvc)
