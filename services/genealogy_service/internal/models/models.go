@@ -26,6 +26,7 @@ type Person struct {
 	Facts              []Fact                 `json:"facts"`
 	DNATests           []DNATest              `json:"dna_tests"`
 	TreeID             string                 `json:"tree_id"`
+	CreatedBy          uuid.UUID              `json:"created_by"`
 	CreatedAt          time.Time              `json:"created_at"`
 	UpdatedAt          time.Time              `json:"updated_at"`
 }

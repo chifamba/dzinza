@@ -16,7 +16,7 @@ type Repository interface {
 	// Person operations
 	CreatePerson(ctx context.Context, person *models.Person) error
 	GetPersonByID(ctx context.Context, id uuid.UUID) (*models.Person, error)
-	UpdatePerson(ctx context.Context, person *models.Person) error
+	UpdatePerson(ctx context.Context, person *models.Person, userID uuid.UUID) error
 	DeletePerson(ctx context.Context, id uuid.UUID) error
 	ListPersonsByTree(ctx context.Context, treeID string) ([]models.Person, error)
 

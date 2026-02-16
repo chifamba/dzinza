@@ -141,11 +141,15 @@ func (r *neo4jRepository) CreatePerson(ctx context.Context, person *models.Perso
 				clan: $clan,
 				tribe: $tribe,
 				created_at: $created_at,
-				updated_at: $updated_at
+				updated_at: $updated_at,
+				created_by: $created_by
 			})
 			WITH p
 			MATCH (t:FamilyTree {id: $tree_id})
 			CREATE (p)-[:MEMBER_OF]->(t)
+			WITH p
+			MERGE (u:User {id: $created_by})
+			CREATE (u)-[:CREATED]->(p)
 			RETURN p
 		`
 		params := map[string]interface{}{
@@ -162,6 +166,7 @@ func (r *neo4jRepository) CreatePerson(ctx context.Context, person *models.Perso
 			"created_at":        person.CreatedAt.Format(time.RFC3339),
 			"updated_at":        person.UpdatedAt.Format(time.RFC3339),
 			"tree_id":           person.TreeID,
+			"created_by":        person.CreatedBy.String(),
 		}
 		_, err := tx.Run(ctx, query, params)
 		return nil, err
@@ -186,6 +191,11 @@ func (r *neo4jRepository) GetPersonByID(ctx context.Context, id uuid.UUID) (*mod
 			createdAt, _ := time.Parse(time.RFC3339, props["created_at"].(string))
 			updatedAt, _ := time.Parse(time.RFC3339, props["updated_at"].(string))
 
+			var createdBy uuid.UUID
+			if cb, ok := props["created_by"].(string); ok {
+				createdBy, _ = uuid.Parse(cb)
+			}
+
 			return &models.Person{
 				ID: id,
 				PrimaryName: models.Name{
@@ -200,6 +210,7 @@ func (r *neo4jRepository) GetPersonByID(ctx context.Context, id uuid.UUID) (*mod
 				Clan:            props["clan"].(string),
 				Tribe:           props["tribe"].(string),
 				TreeID:          treeID,
+				CreatedBy:       createdBy,
 				CreatedAt:       createdAt,
 				UpdatedAt:       updatedAt,
 			}, nil
@@ -215,7 +226,7 @@ func (r *neo4jRepository) GetPersonByID(ctx context.Context, id uuid.UUID) (*mod
 	return result.(*models.Person), nil
 }
 
-func (r *neo4jRepository) UpdatePerson(ctx context.Context, person *models.Person) error {
+func (r *neo4jRepository) UpdatePerson(ctx context.Context, person *models.Person, userID uuid.UUID) error {
 	session := r.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
@@ -232,6 +243,9 @@ func (r *neo4jRepository) UpdatePerson(ctx context.Context, person *models.Perso
 				p.clan = $clan,
 				p.tribe = $tribe,
 				p.updated_at = $updated_at
+			WITH p
+			MERGE (u:User {id: $user_id})
+			MERGE (u)-[:UPDATED]->(p)
 			RETURN p
 		`
 		params := map[string]interface{}{
@@ -246,6 +260,7 @@ func (r *neo4jRepository) UpdatePerson(ctx context.Context, person *models.Perso
 			"clan":              person.Clan,
 			"tribe":             person.Tribe,
 			"updated_at":        person.UpdatedAt.Format(time.RFC3339),
+			"user_id":           userID.String(),
 		}
 		_, err := tx.Run(ctx, query, params)
 		return nil, err

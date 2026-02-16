@@ -25,7 +25,11 @@ func (h *GenealogyHandler) CreateTree(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	ownerID, _ := uuid.Parse(ownerIDStr.(string))
+	ownerID, err := uuid.Parse(ownerIDStr.(string))
+	if err != nil {
+		response.Error(c, http.StatusUnauthorized, "invalid user id")
+		return
+	}
 
 	var req models.CreateTreeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -58,7 +62,11 @@ func (h *GenealogyHandler) ListUserTrees(c *gin.Context) {
 		response.Error(c, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	ownerID, _ := uuid.Parse(ownerIDStr.(string))
+	ownerID, err := uuid.Parse(ownerIDStr.(string))
+	if err != nil {
+		response.Error(c, http.StatusUnauthorized, "invalid user id")
+		return
+	}
 
 	trees, err := h.svc.ListUserTrees(c.Request.Context(), ownerID)
 	if err != nil {
@@ -69,13 +77,24 @@ func (h *GenealogyHandler) ListUserTrees(c *gin.Context) {
 }
 
 func (h *GenealogyHandler) AddPerson(c *gin.Context) {
+	ownerIDStr, exists := c.Get(auth.UserIDKey)
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	ownerID, err := uuid.Parse(ownerIDStr.(string))
+	if err != nil {
+		response.Error(c, http.StatusUnauthorized, "invalid user id")
+		return
+	}
+
 	var req models.CreatePersonRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	person, err := h.svc.AddPerson(c.Request.Context(), req)
+	person, err := h.svc.AddPerson(c.Request.Context(), ownerID, req)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
@@ -100,6 +119,17 @@ func (h *GenealogyHandler) GetPerson(c *gin.Context) {
 }
 
 func (h *GenealogyHandler) UpdatePerson(c *gin.Context) {
+	ownerIDStr, exists := c.Get(auth.UserIDKey)
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	ownerID, err := uuid.Parse(ownerIDStr.(string))
+	if err != nil {
+		response.Error(c, http.StatusUnauthorized, "invalid user id")
+		return
+	}
+
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, "invalid ID")
@@ -112,7 +142,7 @@ func (h *GenealogyHandler) UpdatePerson(c *gin.Context) {
 		return
 	}
 
-	person, err := h.svc.UpdatePerson(c.Request.Context(), id, req)
+	person, err := h.svc.UpdatePerson(c.Request.Context(), id, ownerID, req)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, err.Error())
 		return

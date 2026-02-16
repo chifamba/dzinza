@@ -55,17 +55,17 @@ func (r *trustRepo) GetTrustScore(ctx context.Context, userID string) (*models.T
 			node := res.Record().Values[0].(neo4j.Node)
 			props := node.Props
 
-			score, _ := props["trust_score"].(float64)
-			acceptedContribs, _ := props["accepted_contributions"].(int64)
-			rejectionRate, _ := props["rejection_rate"].(float64)
-			accountDays, _ := props["account_longevity_days"].(int64)
+			score := floatFromNeo4j(props["trust_score"])
+			acceptedContribs := intFromNeo4j(props["accepted_contributions"])
+			rejectionRate := floatFromNeo4j(props["rejection_rate"])
+			accountDays := intFromNeo4j(props["account_longevity_days"])
 
 			return &models.TrustScore{
 				UserID:                userID,
 				Score:                 score,
-				AcceptedContributions: int(acceptedContribs),
+				AcceptedContributions: acceptedContribs,
 				RejectionRate:         rejectionRate,
-				AccountLongevityDays:  int(accountDays),
+				AccountLongevityDays:  accountDays,
 			}, nil
 		}
 		return nil, nil
@@ -141,15 +141,12 @@ func (r *trustRepo) GetUserActivityStats(ctx context.Context, userID string) (*m
 			OPTIONAL MATCH (u)-[:PROPOSED]->(s:Suggestion)
 			WITH u,
 				 COUNT(CASE WHEN s.status = 'CONFIRMED' THEN 1 END) AS accepted,
-				 COUNT(CASE WHEN s.status = 'REJECTED' THEN 1 END) AS rejected,
-				 COUNT(CASE WHEN s.status IS NOT NULL THEN 1 END) AS total_suggestions
+				 COUNT(CASE WHEN s.status = 'REJECTED' THEN 1 END) AS rejected
 			OPTIONAL MATCH (u)-[:VERIFIED]->(v:Suggestion)
-			WITH u, accepted, rejected, total_suggestions,
-				 COUNT(v) AS verifications
+			WITH u, accepted, rejected, COUNT(v) AS verifications
 			OPTIONAL MATCH (u)-[:CREATED|UPDATED]->(p:Person)
 			WHERE p.updated_at > datetime() - duration({days: 30})
-			WITH u, accepted, rejected, verifications,
-				 COUNT(p) AS recent_activity
+			WITH u, accepted, rejected, verifications, COUNT(p) AS recent_activity
 			RETURN accepted, rejected, verifications, recent_activity
 		`
 		res, err := tx.Run(ctx, query, map[string]interface{}{"id": userID})
@@ -184,6 +181,9 @@ func (r *trustRepo) GetUserActivityStats(ctx context.Context, userID string) (*m
 
 // intFromNeo4j safely converts a Neo4j value to int.
 func intFromNeo4j(val interface{}) int {
+	if val == nil {
+		return 0
+	}
 	switch v := val.(type) {
 	case int64:
 		return int(v)
@@ -193,5 +193,22 @@ func intFromNeo4j(val interface{}) int {
 		return v
 	default:
 		return 0
+	}
+}
+
+// floatFromNeo4j safely converts a Neo4j value to float64.
+func floatFromNeo4j(val interface{}) float64 {
+	if val == nil {
+		return 0.0
+	}
+	switch v := val.(type) {
+	case float64:
+		return v
+	case int64:
+		return float64(v)
+	case int:
+		return float64(v)
+	default:
+		return 0.0
 	}
 }

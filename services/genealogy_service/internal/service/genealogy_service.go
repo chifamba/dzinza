@@ -65,7 +65,7 @@ func (s *genealogyService) ListUserTrees(ctx context.Context, ownerID uuid.UUID)
 	return s.repo.ListTreesByOwner(ctx, ownerID)
 }
 
-func (s *genealogyService) AddPerson(ctx context.Context, req models.CreatePersonRequest) (*models.Person, error) {
+func (s *genealogyService) AddPerson(ctx context.Context, userID uuid.UUID, req models.CreatePersonRequest) (*models.Person, error) {
 	person := &models.Person{
 		ID:                uuid.New(),
 		PrimaryName:       req.PrimaryName,
@@ -78,6 +78,7 @@ func (s *genealogyService) AddPerson(ctx context.Context, req models.CreatePerso
 		Tribe:             req.Tribe,
 		TraditionalTitles: req.TraditionalTitles,
 		TreeID:            req.TreeID,
+		CreatedBy:         userID,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	}
@@ -109,7 +110,7 @@ func (s *genealogyService) GetPerson(ctx context.Context, id uuid.UUID) (*models
 	return person, nil
 }
 
-func (s *genealogyService) UpdatePerson(ctx context.Context, id uuid.UUID, req models.CreatePersonRequest) (*models.Person, error) {
+func (s *genealogyService) UpdatePerson(ctx context.Context, id, userID uuid.UUID, req models.CreatePersonRequest) (*models.Person, error) {
 	person, err := s.repo.GetPersonByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -129,7 +130,7 @@ func (s *genealogyService) UpdatePerson(ctx context.Context, id uuid.UUID, req m
 	person.TraditionalTitles = req.TraditionalTitles
 	person.UpdatedAt = time.Now()
 
-	if err := s.repo.UpdatePerson(ctx, person); err != nil {
+	if err := s.repo.UpdatePerson(ctx, person, userID); err != nil {
 		return nil, err
 	}
 
