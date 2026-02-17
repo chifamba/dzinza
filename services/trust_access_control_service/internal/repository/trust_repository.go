@@ -147,7 +147,7 @@ func (r *trustRepo) GetUserActivityStats(ctx context.Context, userID string) (*m
 			WITH u, accepted, rejected, total_suggestions,
 				 COUNT(v) AS verifications
 			OPTIONAL MATCH (u)-[:CREATED|UPDATED]->(p:Person)
-			WHERE p.updated_at > datetime() - duration({days: 30})
+			WHERE datetime(p.updated_at) > datetime() - duration({days: 30})
 			WITH u, accepted, rejected, verifications,
 				 COUNT(p) AS recent_activity
 			RETURN accepted, rejected, verifications, recent_activity

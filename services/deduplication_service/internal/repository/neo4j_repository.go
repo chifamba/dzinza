@@ -114,28 +114,21 @@ func (r *neo4jRepo) MergePersons(ctx context.Context, survivingID, mergedID stri
 		query := `
 			MATCH (s:Person {id: $surviving_id}), (m:Person {id: $merged_id})
 			
-			// Move outgoing relationships
+			// Remove FamilyTree membership from the node to be merged (so we don't merge it)
+			OPTIONAL MATCH (m)-[r:MEMBER_OF]->(:FamilyTree)
+			DELETE r
+			
+			// Merge nodes using APOC
+			// properties: "discard" means keep 's' properties if conflict
+			// mergeRels: true means move relationships to 's'
 			WITH s, m
-			MATCH (m)-[r]->(target)
-			WHERE NOT target:FamilyTree
-			CALL apoc.merge.relationship(s, type(r), properties(r), {}, target) YIELD rel
+			CALL apoc.refactor.mergeNodes([s, m], {properties: "discard", mergeRels: true}) YIELD node
 			
-			// Move incoming relationships
-			WITH s, m
-			MATCH (source)-[r]->(m)
-			CALL apoc.merge.relationship(source, type(r), properties(r), {}, s) YIELD rel
+			// Update metadata
+			SET node.merged_from_ids = COALESCE(node.merged_from_ids, []) + $merged_id,
+				node.updated_at = $updated_at
 			
-			// Update surviving node
-			WITH s, m
-			SET s.merged_from_ids = COALESCE(s.merged_from_ids, []) + $merged_id,
-				s.updated_at = $updated_at
-			
-			// Mark merged node
-			SET m.merged_into_id = $surviving_id
-			
-			// Delete merged node and its relationships
-			DETACH DELETE m
-			RETURN s
+			RETURN node
 		`
 		params := map[string]interface{}{
 			"surviving_id": survivingID,
