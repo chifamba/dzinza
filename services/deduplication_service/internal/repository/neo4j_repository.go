@@ -114,19 +114,30 @@ func (r *neo4jRepo) MergePersons(ctx context.Context, survivingID, mergedID stri
 		query := `
 			MATCH (s:Person {id: $surviving_id}), (m:Person {id: $merged_id})
 			
-			// Move outgoing relationships
-			WITH s, m
-			MATCH (m)-[r]->(target)
-			WHERE NOT target:FamilyTree
-			CALL apoc.merge.relationship(s, type(r), properties(r), {}, target) YIELD rel
+			// Move outgoing relationships using subquery with UNION to prevent stopping
+			CALL {
+				WITH s, m
+				MATCH (m)-[r]->(target)
+				WHERE NOT target:FamilyTree
+				CALL apoc.merge.relationship(s, type(r), properties(r), {}, target) YIELD rel
+				RETURN count(rel) AS out_rels
+				UNION
+				RETURN 0 AS out_rels
+			}
+			WITH s, m, sum(out_rels) AS total_out
 			
-			// Move incoming relationships
-			WITH s, m
-			MATCH (source)-[r]->(m)
-			CALL apoc.merge.relationship(source, type(r), properties(r), {}, s) YIELD rel
+			// Move incoming relationships using subquery with UNION
+			CALL {
+				WITH s, m
+				MATCH (source)-[r]->(m)
+				CALL apoc.merge.relationship(source, type(r), properties(r), {}, s) YIELD rel
+				RETURN count(rel) AS in_rels
+				UNION
+				RETURN 0 AS in_rels
+			}
+			WITH s, m, total_out, sum(in_rels) AS total_in
 			
 			// Update surviving node
-			WITH s, m
 			SET s.merged_from_ids = COALESCE(s.merged_from_ids, []) + $merged_id,
 				s.updated_at = $updated_at
 			

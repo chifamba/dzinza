@@ -16,6 +16,7 @@ type User struct {
 	Roles          []Role         `gorm:"many2many:user_roles;" json:"roles"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
+	LastLoginAt    time.Time      `json:"last_login_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`
 }
 

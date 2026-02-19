@@ -14,4 +14,5 @@ type Service interface {
 	RefreshToken(ctx context.Context, req models.RefreshTokenRequest) (*models.TokenResponse, error)
 	AssignRole(ctx context.Context, userID uuid.UUID, roleName string) error
 	RevokeRole(ctx context.Context, userID uuid.UUID, roleName string) error
+	GetUserStats(ctx context.Context, userID uuid.UUID) (*models.UserStatsResponse, error)
 }

@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // RegisterRequest defines the payload for user registration.
 type RegisterRequest struct {
 	Email    string `json:"email" binding:"required,email"`
@@ -33,4 +35,11 @@ type BlacklistTokenRequest struct {
 type RoleRequest struct {
 	UserID string `json:"user_id" binding:"required,uuid"`
 	Role   string `json:"role" binding:"required"`
+}
+
+// UserStatsResponse defines the payload for user activity stats.
+type UserStatsResponse struct {
+	UserID      string    `json:"user_id"`
+	CreatedAt   time.Time `json:"created_at"`
+	LastLoginAt time.Time `json:"last_login_at"`
 }

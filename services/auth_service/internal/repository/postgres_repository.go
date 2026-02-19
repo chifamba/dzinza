@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/chifamba/dzinza/services/auth_service/internal/models"
 	"github.com/google/uuid"
@@ -71,4 +72,8 @@ func (r *postgresRepository) AssignRoleToUser(ctx context.Context, userID uuid.U
 
 func (r *postgresRepository) RevokeRoleFromUser(ctx context.Context, userID uuid.UUID, roleID uint) error {
 	return r.db.WithContext(ctx).Exec("DELETE FROM user_roles WHERE user_id = ? AND role_id = ?", userID, roleID).Error
+}
+
+func (r *postgresRepository) UpdateLastLogin(ctx context.Context, userID uuid.UUID, loginTime time.Time) error {
+	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Update("last_login_at", loginTime).Error
 }

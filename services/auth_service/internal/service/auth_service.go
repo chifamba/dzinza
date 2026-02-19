@@ -17,6 +17,7 @@ var (
 	ErrUserAlreadyExists  = errors.New("user already exists")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrInvalidToken       = errors.New("invalid token")
+	ErrUserNotFound       = errors.New("user not found")
 )
 
 type authService struct {
@@ -74,6 +75,11 @@ func (s *authService) LoginUser(ctx context.Context, req models.LoginRequest) (*
 	if err := bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(req.Password)); err != nil {
 		return nil, ErrInvalidCredentials
 	}
+
+	// Update last login (fire and forget)
+	go func() {
+		_ = s.repo.UpdateLastLogin(context.Background(), user.ID, time.Now())
+	}()
 
 	return s.generateTokens(user)
 }
@@ -174,4 +180,20 @@ func (s *authService) RevokeRole(ctx context.Context, userID uuid.UUID, roleName
 	}
 
 	return s.repo.RevokeRoleFromUser(ctx, userID, role.ID)
+}
+
+func (s *authService) GetUserStats(ctx context.Context, userID uuid.UUID) (*models.UserStatsResponse, error) {
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+
+	return &models.UserStatsResponse{
+		UserID:      user.ID.String(),
+		CreatedAt:   user.CreatedAt,
+		LastLoginAt: user.LastLoginAt,
+	}, nil
 }
