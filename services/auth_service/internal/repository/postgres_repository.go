@@ -72,3 +72,7 @@ func (r *postgresRepository) AssignRoleToUser(ctx context.Context, userID uuid.U
 func (r *postgresRepository) RevokeRoleFromUser(ctx context.Context, userID uuid.UUID, roleID uint) error {
 	return r.db.WithContext(ctx).Exec("DELETE FROM user_roles WHERE user_id = ? AND role_id = ?", userID, roleID).Error
 }
+
+func (r *postgresRepository) UpdateUser(ctx context.Context, user *models.User) error {
+	return r.db.WithContext(ctx).Save(user).Error
+}
