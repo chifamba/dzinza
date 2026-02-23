@@ -138,7 +138,7 @@
 ### 2.2 Trust & Access Control Service (`services/trust_access_control_service/`)
 
 - [x] **T-2.2.1** — Scaffold trust_access_control_service
-- [/] **T-2.2.2** — Implement Trust Score calculation engine (Partial: uses mock data)
+- [x] **T-2.2.2** — Implement Trust Score calculation engine
 - [x] **T-2.2.3** — Implement trust score storage
 - [x] **T-2.2.4** — Implement trust HTTP endpoints
 - [x] **T-2.2.5** — Write Dockerfile + add to `docker-compose.yml`
@@ -146,14 +146,14 @@
 ### 2.3 Relationship Verification Service (`services/relationship_verification_service/`)
 
 - [x] **T-2.3.1** — Scaffold relationship_verification_service
-- [/] **T-2.3.2** — Implement Suggestion model and workflow (Partial: simplified logic)
+- [x] **T-2.3.2** — Implement Suggestion model and workflow
 - [x] **T-2.3.3** — Implement verification HTTP endpoints
 - [x] **T-2.3.4** — Write Dockerfile + add to `docker-compose.yml`
 
 ### 2.4 Deduplication Service (`services/deduplication_service/`)
 
 - [x] **T-2.4.1** — Scaffold deduplication_service
-- [/] **T-2.4.2** — Implement duplicate detection algorithm (Partial: basic exact match)
+- [x] **T-2.4.2** — Implement duplicate detection algorithm (Added topological overlap)
 - [x] **T-2.4.3** — Implement merge logic
 - [x] **T-2.4.4** — Implement deduplication HTTP endpoints
 - [x] **T-2.4.5** — Write Dockerfile + add to `docker-compose.yml`
