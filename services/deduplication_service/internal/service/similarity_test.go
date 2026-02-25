@@ -100,20 +100,45 @@ func TestNameSimilarityScore(t *testing.T) {
 func TestComputeConfidenceScore(t *testing.T) {
 	tests := []struct {
 		name   string
-		nameSim, dateSim, placeSim float64
+		nameSim, dateSim, placeSim, topSim float64
 		expected float64
 	}{
-		{"perfect match", 1.0, 1.0, 1.0, 100.0},
-		{"no match", 0.0, 0.0, 0.0, 0.0},
-		{"name only", 1.0, 0.0, 0.0, 50.0},
-		{"name + date", 1.0, 1.0, 0.0, 80.0},
+		{"perfect match", 1.0, 1.0, 1.0, 1.0, 100.0},
+		{"no match", 0.0, 0.0, 0.0, 0.0, 0.0},
+		{"name only", 1.0, 0.0, 0.0, 0.0, 40.0},
+		{"name + date", 1.0, 1.0, 0.0, 0.0, 60.0},
+		{"topology boost", 0.5, 0.5, 0.0, 1.0, 55.0}, // 20 + 10 + 0 + 25 = 55
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			score := ComputeConfidenceScore(tc.nameSim, tc.dateSim, tc.placeSim)
+			score := ComputeConfidenceScore(tc.nameSim, tc.dateSim, tc.placeSim, tc.topSim)
 			if math.Abs(score-tc.expected) > 0.01 {
 				t.Errorf("ComputeConfidenceScore = %.2f, want %.2f", score, tc.expected)
+			}
+		})
+	}
+}
+
+func TestTopologySimilarityScore(t *testing.T) {
+	tests := []struct {
+		name   string
+		rel1   []string
+		rel2   []string
+		expected float64
+	}{
+		{"identical", []string{"A", "B"}, []string{"A", "B"}, 1.0},
+		{"disjoint", []string{"A", "B"}, []string{"C", "D"}, 0.0},
+		{"subset", []string{"A", "B"}, []string{"A", "B", "C"}, 0.66}, // 2 / 3
+		{"empty", []string{}, []string{}, 0.0},
+		{"one empty", []string{"A"}, []string{}, 0.0},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			score := TopologySimilarityScore(tc.rel1, tc.rel2)
+			if math.Abs(score-tc.expected) > 0.01 {
+				t.Errorf("TopologySimilarityScore = %.2f, want %.2f", score, tc.expected)
 			}
 		})
 	}

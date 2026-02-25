@@ -181,6 +181,8 @@ func (s *verificationService) VerifySuggestion(ctx context.Context, verifierID, 
 	if suggestion.Status == models.StatusConfirmed || suggestion.Status == models.StatusRejected {
 		pubErr := s.eventBus.Publish(ctx, events.RelationshipVerified, events.RelationshipVerifiedPayload{
 			RelationshipID: suggestion.TargetID,
+			SuggestionID:   suggestionID,
+			Payload:        suggestion.Payload,
 			VerifiedBy:     verifierID,
 			Status:         string(suggestion.Status),
 		})

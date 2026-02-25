@@ -54,6 +54,24 @@ func main() {
 	repo := repository.NewNeo4jRepository(driver)
 	svc := service.NewGenealogyService(repo, eventBus)
 	handler := handlers.NewGenealogyHandler(svc)
+	eventHandler := handlers.NewEventHandler(svc)
+
+	// Subscribe to events
+	go func() {
+		ctx := context.Background()
+		ch, err := eventBus.Subscribe(ctx, events.RelationshipVerified)
+		if err != nil {
+			logger.Error("failed to subscribe to relationship.verified", slog.Any("error", err))
+			return
+		}
+
+		logger.Info("subscribed to relationship.verified events")
+		for payload := range ch {
+			if err := eventHandler.HandleRelationshipVerified(ctx, []byte(payload)); err != nil {
+				logger.Error("failed to handle event", slog.Any("error", err))
+			}
+		}
+	}()
 
 	r := gin.New()
 	r.Use(gin.Recovery())

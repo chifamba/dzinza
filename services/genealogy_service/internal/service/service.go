@@ -28,4 +28,7 @@ type Service interface {
 	// GEDCOM operations
 	ImportGEDCOM(ctx context.Context, treeID string, data []byte) (*models.ImportSummary, error)
 	ExportGEDCOM(ctx context.Context, treeID string) ([]byte, error)
+
+	// Verification integration
+	ApplySuggestion(ctx context.Context, targetID string, payload string) error
 }
