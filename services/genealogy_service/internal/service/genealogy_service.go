@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -295,6 +296,37 @@ func (s *genealogyService) ImportGEDCOM(ctx context.Context, treeID string, data
 	}
 
 	return summary, nil
+}
+
+func (s *genealogyService) ApplySuggestion(ctx context.Context, targetID string, payload string) error {
+	var p models.SuggestionPayload
+	if err := json.Unmarshal([]byte(payload), &p); err != nil {
+		return fmt.Errorf("invalid payload: %w", err)
+	}
+
+	switch p.Action {
+	case "UPDATE_PERSON":
+		var req models.CreatePersonRequest
+		if err := json.Unmarshal(p.Data, &req); err != nil {
+			return fmt.Errorf("invalid update person data: %w", err)
+		}
+		id, err := uuid.Parse(targetID)
+		if err != nil {
+			return fmt.Errorf("invalid person ID: %w", err)
+		}
+		_, err = s.UpdatePerson(ctx, id, req)
+		return err
+
+	case "CREATE_RELATIONSHIP":
+		var req models.CreateRelationshipRequest
+		if err := json.Unmarshal(p.Data, &req); err != nil {
+			return fmt.Errorf("invalid create relationship data: %w", err)
+		}
+		return s.CreateRelationship(ctx, req)
+
+	default:
+		return fmt.Errorf("unknown action: %s", p.Action)
+	}
 }
 
 func (s *genealogyService) ExportGEDCOM(ctx context.Context, treeID string) ([]byte, error) {

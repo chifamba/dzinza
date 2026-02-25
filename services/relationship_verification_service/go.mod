@@ -1,6 +1,6 @@
 module github.com/chifamba/dzinza/services/relationship_verification_service
 
-go 1.25.0
+go 1.24
 
 replace github.com/chifamba/dzinza/services/pkg => ../pkg
 

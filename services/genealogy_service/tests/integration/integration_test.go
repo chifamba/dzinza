@@ -14,6 +14,7 @@ import (
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/models"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/repository"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/service"
+	"github.com/chifamba/dzinza/services/pkg/events"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -54,7 +55,7 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 	// 3. Setup App
 	jwtSecret := "test-secret"
 	repo := repository.NewNeo4jRepository(driver)
-	svc := service.NewGenealogyService(repo)
+	svc := service.NewGenealogyService(repo, &MockBus{})
 	handler := handlers.NewGenealogyHandler(svc)
 
 	gin.SetMode(gin.TestMode)
@@ -148,4 +149,14 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
+}
+
+type MockBus struct{}
+
+func (b *MockBus) Publish(ctx context.Context, topic events.EventType, payload interface{}) error {
+	return nil
+}
+
+func (b *MockBus) Subscribe(ctx context.Context, topic events.EventType) (<-chan string, error) {
+	return make(chan string), nil
 }

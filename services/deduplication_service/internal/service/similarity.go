@@ -154,14 +154,44 @@ func PlaceSimilarityScore(place1, place2 string) float64 {
 	return NormalizedSimilarity(normalize(place1), normalize(place2))
 }
 
+// TopologySimilarityScore computes the Jaccard index between two sets of relative IDs.
+func TopologySimilarityScore(relatives1, relatives2 []string) float64 {
+	if len(relatives1) == 0 && len(relatives2) == 0 {
+		return 0.0
+	}
+
+	set1 := make(map[string]struct{})
+	for _, id := range relatives1 {
+		set1[id] = struct{}{}
+	}
+
+	intersection := 0
+	union := len(relatives1)
+
+	for _, id := range relatives2 {
+		if _, exists := set1[id]; exists {
+			intersection++
+		} else {
+			union++
+		}
+	}
+
+	if union == 0 {
+		return 0.0
+	}
+
+	return float64(intersection) / float64(union)
+}
+
 // ComputeConfidenceScore computes an overall duplicate confidence score (0–100).
 //
 // Weights:
-//   - Name similarity: 50%
-//   - Date proximity: 30%
-//   - Place similarity: 20%
-func ComputeConfidenceScore(nameSimilarity, dateSimilarity, placeSimilarity float64) float64 {
-	score := nameSimilarity*50.0 + dateSimilarity*30.0 + placeSimilarity*20.0
+//   - Name similarity: 40%
+//   - Date proximity: 20%
+//   - Place similarity: 15%
+//   - Topology similarity: 25%
+func ComputeConfidenceScore(nameSimilarity, dateSimilarity, placeSimilarity, topologySimilarity float64) float64 {
+	score := nameSimilarity*40.0 + dateSimilarity*20.0 + placeSimilarity*15.0 + topologySimilarity*25.0
 
 	// Round to 2 decimal places
 	return math.Round(score*100) / 100

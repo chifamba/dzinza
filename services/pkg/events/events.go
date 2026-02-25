@@ -66,6 +66,8 @@ type RelationshipCreatedPayload struct {
 // RelationshipVerifiedPayload is the payload for relationship.verified
 type RelationshipVerifiedPayload struct {
 	RelationshipID string `json:"relationship_id"`
+	SuggestionID   string `json:"suggestion_id"`
+	Payload        string `json:"payload"`
 	VerifiedBy     string `json:"verified_by"`
 	Status         string `json:"status"`
 }

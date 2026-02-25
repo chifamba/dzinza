@@ -10,6 +10,7 @@ type DuplicatePair struct {
 	NameSimilarity  float64   `json:"name_similarity"`
 	DateSimilarity  float64   `json:"date_similarity"`
 	PlaceSimilarity float64   `json:"place_similarity"`
+	TopologySimilarity float64 `json:"topology_similarity"`
 	Status          string    `json:"status"` // PENDING, IGNORED, MERGED
 	DetectedAt      time.Time `json:"detected_at"`
 }

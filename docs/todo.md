@@ -24,6 +24,7 @@
 ## Final Verification (2026-02-14)
 
 - [x] **Verification** — End-to-end API testing using Docker Compose.
+- [x] **Configuration** — Downgraded Go version to 1.24 to match host environment (Docker build unavailable).
 - [x] **Bug Fix** — Resolved Redis authentication issues across services.
 - [x] **Bug Fix** — Fixed Cypher syntax in deduplication merge.
 - [x] **Enhancement** — Improved GEDCOM export for multiple parental units.
@@ -146,14 +147,14 @@
 ### 2.3 Relationship Verification Service (`services/relationship_verification_service/`)
 
 - [x] **T-2.3.1** — Scaffold relationship_verification_service
-- [/] **T-2.3.2** — Implement Suggestion model and workflow (Partial: simplified logic)
+- [x] **T-2.3.2** — Implement Suggestion model and workflow
 - [x] **T-2.3.3** — Implement verification HTTP endpoints
 - [x] **T-2.3.4** — Write Dockerfile + add to `docker-compose.yml`
 
 ### 2.4 Deduplication Service (`services/deduplication_service/`)
 
 - [x] **T-2.4.1** — Scaffold deduplication_service
-- [/] **T-2.4.2** — Implement duplicate detection algorithm (Partial: basic exact match)
+- [x] **T-2.4.2** — Implement duplicate detection algorithm (Name 40%, Date 20%, Place 15%, Topology 25%)
 - [x] **T-2.4.3** — Implement merge logic
 - [x] **T-2.4.4** — Implement deduplication HTTP endpoints
 - [x] **T-2.4.5** — Write Dockerfile + add to `docker-compose.yml`
