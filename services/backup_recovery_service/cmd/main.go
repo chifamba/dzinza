@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"time"
 
+	"github.com/chifamba/dzinza/services/backup_recovery_service/internal/handlers"
 	"github.com/chifamba/dzinza/services/backup_recovery_service/internal/service"
 	"github.com/chifamba/dzinza/services/pkg/health"
 	"github.com/chifamba/dzinza/services/pkg/logging"
-	"github.com/chifamba/dzinza/services/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,6 +19,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	backupSvc := service.NewBackupService()
+	backupHandler := handlers.NewBackupHandler(backupSvc)
 
 	// Start scheduled backup goroutine (daily at 2 AM)
 	go func() {
@@ -42,37 +42,9 @@ func main() {
 
 	api := r.Group("/api/v1/backup")
 	{
-		api.POST("/run", func(c *gin.Context) {
-			if err := backupSvc.PerformBackup(c.Request.Context()); err != nil {
-				response.Error(c, http.StatusInternalServerError, "Backup failed: "+err.Error())
-				return
-			}
-			response.Success(c, gin.H{"message": "Backup completed successfully"})
-		})
-
-		api.POST("/restore", func(c *gin.Context) {
-			var req struct {
-				Timestamp string `json:"timestamp" binding:"required"`
-			}
-			if err := c.ShouldBindJSON(&req); err != nil {
-				response.Error(c, http.StatusBadRequest, err.Error())
-				return
-			}
-			if err := backupSvc.RestoreBackup(c.Request.Context(), req.Timestamp); err != nil {
-				response.Error(c, http.StatusInternalServerError, "Restore failed: "+err.Error())
-				return
-			}
-			response.Success(c, gin.H{"message": "Restore completed successfully"})
-		})
-
-		api.GET("/list", func(c *gin.Context) {
-			backups, err := backupSvc.ListBackups(c.Request.Context())
-			if err != nil {
-				response.Error(c, http.StatusInternalServerError, "Failed to list backups")
-				return
-			}
-			response.Success(c, backups)
-		})
+		api.POST("/run", backupHandler.RunBackup)
+		api.POST("/restore", backupHandler.RestoreBackup)
+		api.GET("/list", backupHandler.ListBackups)
 	}
 
 	port := os.Getenv("BACKUP_SERVICE_PORT")
