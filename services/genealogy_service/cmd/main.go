@@ -53,7 +53,9 @@ func main() {
 	// Initialize layers
 	repo := repository.NewNeo4jRepository(driver)
 	svc := service.NewGenealogyService(repo, eventBus)
+	dnaSvc := service.NewDNAService(repo)
 	handler := handlers.NewGenealogyHandler(svc)
+	dnaHandler := handlers.NewDNAHandler(dnaSvc)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -61,7 +63,7 @@ func main() {
 
 	r.GET("/health", health.HealthCheckHandler("genealogy_service"))
 
-	handlers.RegisterRoutes(r, handler, cfg.JWTSecret)
+	handlers.RegisterRoutes(r, handler, dnaHandler, cfg.JWTSecret)
 
 	port := cfg.GenealogyServicePort
 	if port == 0 {
