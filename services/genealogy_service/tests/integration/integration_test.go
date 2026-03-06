@@ -14,6 +14,7 @@ import (
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/models"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/repository"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/service"
+	"github.com/chifamba/dzinza/services/pkg/events"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -33,7 +34,7 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 
 	// 1. Start Neo4j Container
 	neo4jContainer, err := neo4jcontainer.RunContainer(ctx,
-		testcontainers.WithImage("neo4j:2026.01.4"),
+		testcontainers.WithImage("neo4j:5.26"),
 		neo4jcontainer.WithAdminPassword("testpassword"),
 	)
 	require.NoError(t, err)
@@ -54,7 +55,12 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 	// 3. Setup App
 	jwtSecret := "test-secret"
 	repo := repository.NewNeo4jRepository(driver)
-	svc := service.NewGenealogyService(repo)
+
+	// Use mock bus
+	mockBus := &mockEventBus{
+		published: make(map[events.EventType][]interface{}),
+	}
+	svc := service.NewGenealogyService(repo, mockBus)
 	handler := handlers.NewGenealogyHandler(svc)
 
 	gin.SetMode(gin.TestMode)
@@ -144,6 +150,19 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusConflict, w.Code) // Should fail due to circular ref
 	})
+}
+
+type mockEventBus struct {
+	published map[events.EventType][]interface{}
+}
+
+func (m *mockEventBus) Publish(ctx context.Context, topic events.EventType, payload interface{}) error {
+	m.published[topic] = append(m.published[topic], payload)
+	return nil
+}
+
+func (m *mockEventBus) Subscribe(ctx context.Context, topic events.EventType) (<-chan string, error) {
+	return make(<-chan string), nil
 }
 
 func TestMain(m *testing.M) {
