@@ -201,11 +201,33 @@ func (p *ancestryProvider) Name() string { return "Ancestry" }
 
 func (p *ancestryProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
 	slog.Info("Ancestry: fetching data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{
+				"type":       "genealogy_person",
+				"first_name": "John",
+				"last_name":  "Doe",
+				"birth_year": 1900,
+				"birth_place": "London",
+			},
+		},
+	}, nil
 }
 
 func (p *ancestryProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		records = append(records, InternalRecord{
+			Type: "PERSON",
+			Extra: map[string]interface{}{
+				"first_name":  raw["first_name"],
+				"last_name":   raw["last_name"],
+				"birth_year":  raw["birth_year"],
+				"birth_place": raw["birth_place"],
+			},
+		})
+	}
+	return records, nil
 }
 
 // dna23AndMeProvider is a stub for 23andMe DNA provider.

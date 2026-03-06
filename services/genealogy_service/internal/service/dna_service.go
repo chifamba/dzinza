@@ -1,7 +1,11 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/models"
@@ -38,6 +42,33 @@ func (s *dnaService) GetDNATests(ctx context.Context, personID uuid.UUID) ([]mod
 }
 
 func (s *dnaService) SyncWithProvider(ctx context.Context, testID uuid.UUID) error {
-	// Stub for syncing with Ancestry, 23andMe, etc.
+	// Send request to integration service
+	payload := map[string]interface{}{
+		"provider": "Ancestry", // In a real implementation, determine provider from testID
+		"config":   map[string]string{},
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal sync payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "http://integration_service:8017/api/v1/integration/sync", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create sync request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to call integration service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("integration service returned error status: %d", resp.StatusCode)
+	}
+
 	return nil
 }
