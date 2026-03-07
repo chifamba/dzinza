@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/chifamba/dzinza/services/pkg/events"
+
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/handlers"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/models"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/repository"
@@ -24,6 +26,17 @@ import (
 	neo4jcontainer "github.com/testcontainers/testcontainers-go/modules/neo4j"
 )
 
+type MockEventBus struct{}
+
+func (m *MockEventBus) Publish(ctx context.Context, topic events.EventType, payload interface{}) error {
+	return nil
+}
+
+func (m *MockEventBus) Subscribe(ctx context.Context, topic events.EventType) (<-chan string, error) {
+	ch := make(chan string)
+	return ch, nil
+}
+
 func TestGenealogyServiceIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -33,7 +46,7 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 
 	// 1. Start Neo4j Container
 	neo4jContainer, err := neo4jcontainer.RunContainer(ctx,
-		testcontainers.WithImage("neo4j:2026.01.4"),
+		testcontainers.WithImage("neo4j:5.18"),
 		neo4jcontainer.WithAdminPassword("testpassword"),
 	)
 	require.NoError(t, err)
@@ -54,7 +67,8 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 	// 3. Setup App
 	jwtSecret := "test-secret"
 	repo := repository.NewNeo4jRepository(driver)
-	svc := service.NewGenealogyService(repo)
+	mockBus := &MockEventBus{}
+	svc := service.NewGenealogyService(repo, mockBus)
 	handler := handlers.NewGenealogyHandler(svc)
 
 	gin.SetMode(gin.TestMode)
