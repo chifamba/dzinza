@@ -153,7 +153,7 @@
 ### 2.4 Deduplication Service (`services/deduplication_service/`)
 
 - [x] **T-2.4.1** — Scaffold deduplication_service
-- [/] **T-2.4.2** — Implement duplicate detection algorithm (Partial: basic exact match)
+- [x] **T-2.4.2** — Implement duplicate detection algorithm
 - [x] **T-2.4.3** — Implement merge logic
 - [x] **T-2.4.4** — Implement deduplication HTTP endpoints
 - [x] **T-2.4.5** — Write Dockerfile + add to `docker-compose.yml`
