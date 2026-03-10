@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"log/slog"
 	"strings"
 	"time"
@@ -71,6 +74,7 @@ func NewIntegrationService() IntegrationService {
 	svc.registerProvider(&dna23AndMeProvider{})
 	svc.registerProvider(&dnaAncestryProvider{})
 	svc.registerProvider(&ftDNAProvider{})
+	svc.registerProvider(&genericProvider{})
 
 	return svc
 }
@@ -147,6 +151,11 @@ func (s *integrationService) ListProviders(ctx context.Context) []ProviderInfo {
 			info.Description = "FamilyTreeDNA data import"
 			info.Category = "DNA"
 			info.RequiredConfig = []string{"kit_number", "password"}
+		case "GenericAPI":
+			info.Description = "Generic JSON API integration"
+			info.Category = "RECORDS"
+			info.RequiredConfig = []string{"url", "array_path"}
+			info.Status = "AVAILABLE"
 		}
 
 		providers = append(providers, info)
@@ -263,4 +272,66 @@ func (p *ftDNAProvider) FetchData(ctx context.Context, config map[string]string)
 
 func (p *ftDNAProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
 	return nil, nil
+}
+
+// genericProvider implements a generic JSON API webhook fetcher.
+type genericProvider struct{}
+
+func (p *genericProvider) Name() string { return "GenericAPI" }
+
+func (p *genericProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
+	url, ok := config["url"]
+	if !ok || url == "" {
+		return nil, fmt.Errorf("url is required in config for GenericAPI")
+	}
+
+	slog.Info("GenericAPI: fetching data from", slog.String("url", url))
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("http get failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read body: %w", err)
+	}
+
+	var rawData []map[string]interface{}
+	// Attempt to parse as array of objects
+	if err := json.Unmarshal(body, &rawData); err != nil {
+		// Attempt to parse as an object containing a "data" array
+		var wrapper map[string]interface{}
+		if err2 := json.Unmarshal(body, &wrapper); err2 == nil {
+			if arr, ok := wrapper["data"].([]interface{}); ok {
+				for _, item := range arr {
+					if obj, isObj := item.(map[string]interface{}); isObj {
+						rawData = append(rawData, obj)
+					}
+				}
+			}
+		} else {
+			return nil, fmt.Errorf("failed to parse json response: %w", err)
+		}
+	}
+
+	return &ProviderData{Records: rawData}, nil
+}
+
+func (p *genericProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		records = append(records, InternalRecord{
+			Type: "RECORD",
+			Extra: raw,
+		})
+	}
+	return records, nil
 }

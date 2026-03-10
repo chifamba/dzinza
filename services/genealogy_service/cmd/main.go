@@ -55,13 +55,16 @@ func main() {
 	svc := service.NewGenealogyService(repo, eventBus)
 	handler := handlers.NewGenealogyHandler(svc)
 
+	dnaSvc := service.NewDNAService(repo)
+	dnaHandler := handlers.NewDNAHandler(dnaSvc)
+
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(gin.Logger())
 
 	r.GET("/health", health.HealthCheckHandler("genealogy_service"))
 
-	handlers.RegisterRoutes(r, handler, cfg.JWTSecret)
+	handlers.RegisterRoutes(r, handler, dnaHandler, cfg.JWTSecret)
 
 	port := cfg.GenealogyServicePort
 	if port == 0 {
