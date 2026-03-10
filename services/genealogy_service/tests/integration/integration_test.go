@@ -14,6 +14,7 @@ import (
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/models"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/repository"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/service"
+	"github.com/chifamba/dzinza/services/pkg/events"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -33,7 +34,7 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 
 	// 1. Start Neo4j Container
 	neo4jContainer, err := neo4jcontainer.RunContainer(ctx,
-		testcontainers.WithImage("neo4j:2026.01.4"),
+		testcontainers.WithImage("neo4j:5.12"),
 		neo4jcontainer.WithAdminPassword("testpassword"),
 	)
 	require.NoError(t, err)
@@ -54,12 +55,16 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 	// 3. Setup App
 	jwtSecret := "test-secret"
 	repo := repository.NewNeo4jRepository(driver)
-	svc := service.NewGenealogyService(repo)
+
+	// Mock event bus for tests
+	eventBus := &mockBus{}
+	svc := service.NewGenealogyService(repo, eventBus)
 	handler := handlers.NewGenealogyHandler(svc)
+	dnaHandler := handlers.NewDNAHandler(service.NewDNAService(repo))
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	handlers.RegisterRoutes(router, handler, jwtSecret)
+	handlers.RegisterRoutes(router, handler, dnaHandler, jwtSecret)
 
 	// Helper to generate token
 	ownerID := uuid.New()
@@ -148,4 +153,19 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	os.Exit(m.Run())
+}
+
+// mockBus implements events.Bus for testing
+type mockBus struct{}
+
+func (m *mockBus) Publish(ctx context.Context, eventType events.EventType, payload interface{}) error {
+	return nil
+}
+
+func (m *mockBus) Subscribe(ctx context.Context, eventType events.EventType) (<-chan string, error) {
+	return nil, nil
+}
+
+func (m *mockBus) Close() error {
+	return nil
 }
