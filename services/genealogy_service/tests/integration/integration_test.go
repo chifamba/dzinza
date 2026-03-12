@@ -14,6 +14,7 @@ import (
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/models"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/repository"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/service"
+	"github.com/chifamba/dzinza/services/pkg/events"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -23,6 +24,21 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	neo4jcontainer "github.com/testcontainers/testcontainers-go/modules/neo4j"
 )
+
+type mockBus struct{}
+
+func (m mockBus) Publish(ctx context.Context, topic events.EventType, payload interface{}) error {
+	return nil
+}
+
+func (m mockBus) Subscribe(ctx context.Context, topic events.EventType) (<-chan string, error) {
+	ch := make(chan string)
+	return ch, nil
+}
+
+func (m mockBus) Close() error {
+	return nil
+}
 
 func TestGenealogyServiceIntegration(t *testing.T) {
 	if testing.Short() {
@@ -54,7 +70,11 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 	// 3. Setup App
 	jwtSecret := "test-secret"
 	repo := repository.NewNeo4jRepository(driver)
-	svc := service.NewGenealogyService(repo)
+
+	// Create a mock bus for tests
+	mb := mockBus{}
+
+	svc := service.NewGenealogyService(repo, mb)
 	handler := handlers.NewGenealogyHandler(svc)
 
 	gin.SetMode(gin.TestMode)
