@@ -61,17 +61,32 @@ func (s *deduplicationService) DetectDuplicates(ctx context.Context) ([]models.D
 				placeSim := PlaceSimilarityScore(p1.BirthPlace, p2.BirthPlace)
 				confidence := ComputeConfidenceScore(nameSim, dateSim, placeSim)
 
-				if confidence >= s.confidenceThreshold {
-					pairs = append(pairs, models.DuplicatePair{
-						Person1ID:       p1.ID,
-						Person2ID:       p2.ID,
-						ConfidenceScore: confidence,
-						NameSimilarity:  nameSim,
-						DateSimilarity:  dateSim,
-						PlaceSimilarity: placeSim,
-						Status:          "PENDING",
-						DetectedAt:      time.Now(),
-					})
+				if confidence >= 30.0 {
+					relatives1, err := s.repo.GetPersonRelatives(ctx, p1.ID)
+					if err != nil {
+						slog.Warn("dedup: failed to get relatives for person 1", slog.String("id", p1.ID), slog.Any("error", err))
+					}
+					relatives2, err := s.repo.GetPersonRelatives(ctx, p2.ID)
+					if err != nil {
+						slog.Warn("dedup: failed to get relatives for person 2", slog.String("id", p2.ID), slog.Any("error", err))
+					}
+
+					topologySim := TopologySimilarityScore(relatives1, relatives2)
+					confidence = ComputeFinalConfidenceScore(nameSim, dateSim, placeSim, topologySim)
+
+					if confidence >= s.confidenceThreshold {
+						pairs = append(pairs, models.DuplicatePair{
+							Person1ID:          p1.ID,
+							Person2ID:          p2.ID,
+							ConfidenceScore:    confidence,
+							NameSimilarity:     nameSim,
+							DateSimilarity:     dateSim,
+							PlaceSimilarity:    placeSim,
+							TopologySimilarity: topologySim,
+							Status:             "PENDING",
+							DetectedAt:         time.Now(),
+						})
+					}
 				}
 			}
 		}

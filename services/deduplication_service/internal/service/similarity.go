@@ -156,15 +156,62 @@ func PlaceSimilarityScore(place1, place2 string) float64 {
 
 // ComputeConfidenceScore computes an overall duplicate confidence score (0–100).
 //
-// Weights:
+// Weights (preliminary):
 //   - Name similarity: 50%
 //   - Date proximity: 30%
 //   - Place similarity: 20%
+//
+// Note: If topology is added later, weights become 40/20/15/25
 func ComputeConfidenceScore(nameSimilarity, dateSimilarity, placeSimilarity float64) float64 {
 	score := nameSimilarity*50.0 + dateSimilarity*30.0 + placeSimilarity*20.0
 
 	// Round to 2 decimal places
 	return math.Round(score*100) / 100
+}
+
+// ComputeFinalConfidenceScore computes the final duplicate confidence score (0–100) including topology.
+//
+// Weights:
+//   - Name similarity: 40%
+//   - Date proximity: 20%
+//   - Place similarity: 15%
+//   - Topology similarity: 25%
+func ComputeFinalConfidenceScore(nameSimilarity, dateSimilarity, placeSimilarity, topologySimilarity float64) float64 {
+	score := nameSimilarity*40.0 + dateSimilarity*20.0 + placeSimilarity*15.0 + topologySimilarity*25.0
+
+	// Round to 2 decimal places
+	return math.Round(score*100) / 100
+}
+
+// TopologySimilarityScore computes the Jaccard index for two sets of string IDs.
+func TopologySimilarityScore(relatives1, relatives2 []string) float64 {
+	if len(relatives1) == 0 && len(relatives2) == 0 {
+		return 0.0
+	}
+
+	set1 := make(map[string]bool)
+	for _, id := range relatives1 {
+		set1[id] = true
+	}
+
+	set2 := make(map[string]bool)
+	for _, id := range relatives2 {
+		set2[id] = true
+	}
+
+	intersection := 0
+	for id := range set1 {
+		if set2[id] {
+			intersection++
+		}
+	}
+
+	union := len(set1) + len(set2) - intersection
+	if union == 0 {
+		return 0.0
+	}
+
+	return float64(intersection) / float64(union)
 }
 
 func min(a, b, c int) int {
