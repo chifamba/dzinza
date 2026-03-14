@@ -14,6 +14,7 @@ import (
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/models"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/repository"
 	"github.com/chifamba/dzinza/services/genealogy_service/internal/service"
+	"github.com/chifamba/dzinza/services/pkg/events"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -54,7 +55,17 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 	// 3. Setup App
 	jwtSecret := "test-secret"
 	repo := repository.NewNeo4jRepository(driver)
-	svc := service.NewGenealogyService(repo)
+
+	// Use a mock event bus for testing
+	// We can pass nil here since the actual events package is separate
+	// and we just need something that satisfies the interface or we can
+	// update the event bus to be mocked if it's strictly required
+	// But according to memory, integration tests use a custom mock event bus.
+	// Looking at the error it expects (repository.Repository, "github.com/chifamba/dzinza/services/pkg/events".Bus)
+	// Let's implement a simple mock bus inline
+	mockBus := &mockEventBus{}
+
+	svc := service.NewGenealogyService(repo, mockBus)
 	handler := handlers.NewGenealogyHandler(svc)
 
 	gin.SetMode(gin.TestMode)
@@ -144,6 +155,21 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusConflict, w.Code) // Should fail due to circular ref
 	})
+}
+
+// mockEventBus implements events.Bus for testing
+type mockEventBus struct{}
+
+func (m *mockEventBus) Publish(ctx context.Context, topic events.EventType, payload interface{}) error {
+	return nil
+}
+
+func (m *mockEventBus) Subscribe(ctx context.Context, topic events.EventType) (<-chan string, error) {
+	return make(chan string), nil
+}
+
+func (m *mockEventBus) Close() error {
+	return nil
 }
 
 func TestMain(m *testing.M) {
