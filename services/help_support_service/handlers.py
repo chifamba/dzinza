@@ -12,7 +12,6 @@ from schemas import (
     ForumPostCreate, ForumPost, ForumReplyCreate, ForumReply
 )
 from models import ticket_model, chat_model, knowledge_base_model
-import uuid
 from datetime import datetime
 
 router = APIRouter()
