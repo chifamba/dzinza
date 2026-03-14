@@ -9,7 +9,6 @@ from .metadata import (
 )
 from .exif_utils import extract_exif
 from .image_utils import compress_image, generate_thumbnail
-import subprocess
 
 router = APIRouter()
 
