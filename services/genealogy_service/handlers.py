@@ -473,39 +473,46 @@ def get_family_tree_timeline(id: str):
             """,
             id=id
         )
-        persons = [dict(record) for record in result]
+        persons_map = {}
+        for record in result:
+            pid = record["person_id"]
+            name = f"{record.get('given_name', '')} {record.get('surname', '')}".strip()
+            persons_map[pid] = name
 
-        # For each person, get facts and relationship events
-        for person in persons:
-            pid = person["person_id"]
-            name = f"{person.get('given_name', '')} {person.get('surname', '')}".strip()
-            # Facts
+        if persons_map:
+            # Bulk fetch facts
             facts_result = session.run(
                 """
-                MATCH (p:Person {id: $id})-[:HAS_FACT]->(f:Fact)
-                RETURN f
+                MATCH (t:FamilyTree {id: $id})-[:HAS_MEMBER]->(p:Person)-[:HAS_FACT]->(f:Fact)
+                RETURN p.id AS person_id, f
                 """,
-                id=pid
+                id=id
             )
             for record in facts_result:
+                pid = record["person_id"]
                 fact_node = record["f"]
                 fact_data = dict(fact_node)
                 fact_data["event_type"] = "Fact"
                 fact_data["person_id"] = pid
-                fact_data["person_name"] = name
+                fact_data["person_name"] = persons_map.get(pid, "")
                 timeline.append(fact_data)
-            # Relationship events
+
+            # Bulk fetch relationship events
             rel_result = session.run(
                 """
-                MATCH (p:Person {id: $id})-[r:RELATIONSHIP]-(other:Person)
-                RETURN r
+                MATCH (t:FamilyTree {id: $id})-[:HAS_MEMBER]->(p:Person)-[r:RELATIONSHIP]-(other:Person)
+                RETURN p.id AS person_id, r
                 """,
-                id=pid
+                id=id
             )
             for record in rel_result:
+                pid = record["person_id"]
                 relationship_node = record["r"]
                 events_json = relationship_node.get("events", "[]")
+                if not events_json or events_json == "[]":
+                    continue
                 events_data = json.loads(events_json)
+                name = persons_map.get(pid, "")
                 for event_data in events_data:
                     event_data["event_type"] = event_data.get("event_type", "Relationship Event")
                     event_data["person_id"] = pid
