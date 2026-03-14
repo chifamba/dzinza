@@ -1,7 +1,7 @@
 """Request handlers for trust_access_control_service service."""
 
 from fastapi import APIRouter
-from typing import Dict, Optional
+from typing import Dict
 
 router = APIRouter()
 
