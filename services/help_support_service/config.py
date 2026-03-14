@@ -26,6 +26,7 @@ MONGODB_HELP_DB = os.getenv("MONGODB_HELP_DB", "dzinza_help")
 # Service Configuration
 SERVICE_NAME = "help_support_service"
 SERVICE_PORT = int(os.getenv("SERVICE_PORT", "8000"))
+ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if origin.strip()]
 
 # Email Configuration
 SMTP_HOST = os.getenv("SMTP_HOST", "localhost")
