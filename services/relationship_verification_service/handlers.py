@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, UploadFile, File
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 
 router = APIRouter()
 
