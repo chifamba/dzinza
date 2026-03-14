@@ -13,9 +13,11 @@ app = FastAPI()
 logger = setup_logging("auth_service")
 
 from fastapi.middleware.cors import CORSMiddleware
+from config import CORS_ALLOWED_ORIGINS
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify the frontend domain
+    allow_origins=CORS_ALLOWED_ORIGINS,  # Securely configured via environment variables
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
