@@ -1,13 +1,26 @@
 """Handlers for Notification Service."""
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request, Header, Depends
 import time
 from collections import deque
 from pydantic import BaseModel, EmailStr
 import smtplib
 import os
+import jwt
+from config import JWT_SECRET
 
 router = APIRouter()
+
+def get_current_user(authorization: str = Header(...)):
+    """Extract user ID from JWT token in Authorization header."""
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise HTTPException(status_code=401, detail="Invalid auth scheme")
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        return payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 SMTP_HOST = os.getenv("SMTP_HOST", "localhost")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "1025"))
@@ -55,7 +68,7 @@ _templates = {
 _priority_queue = deque()
 
 @router.post("/notify/email/")
-def send_email_notification(notification: EmailNotification, background_tasks: BackgroundTasks, user_id: str = "anon", priority: int = 0, template: str = None, template_vars: dict = None):
+def send_email_notification(notification: EmailNotification, background_tasks: BackgroundTasks, user_id: str = Depends(get_current_user), priority: int = 0, template: str = None, template_vars: dict = None):
     if not check_rate_limit(user_id):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     if template:

@@ -9,6 +9,9 @@ logger = setup_logging("notification_service")
 
 app.include_router(get_healthcheck_router("notification_service"))
 
+from handlers import router as handlers_router
+app.include_router(handlers_router)
+
 if __name__ == "__main__":
     import uvicorn
     logger.info("Starting notification_service service...")
