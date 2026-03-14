@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 router = APIRouter()
 
