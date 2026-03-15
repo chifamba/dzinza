@@ -1,6 +1,6 @@
 module github.com/chifamba/dzinza/services/localization_service
 
-go 1.24.3
+go 1.24.0
 
 replace github.com/chifamba/dzinza/services/pkg => ../pkg
 
