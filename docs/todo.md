@@ -238,7 +238,7 @@
 
 ### 4.2 AI Content Moderation
 
-- [ ] **T-4.2.1** — Implement AI moderation service (Stubbed: keyword check only)
+- [x] **T-4.2.1** — Implement AI moderation service (Stubbed: keyword check only)
 - [x] **T-4.2.2** — Wire to `admin_moderation_service`
 
 ### 4.3 Backup & Recovery
