@@ -1,9 +1,15 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"log/slog"
 	"math"
+	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -47,9 +53,115 @@ var moderationDict = map[string]map[string]float64{
 	},
 }
 
+// openAIModerationRequest is the request payload for the OpenAI Moderation API.
+type openAIModerationRequest struct {
+	Input string `json:"input"`
+	Model string `json:"model,omitempty"`
+}
+
+// openAIModerationResponse is the response payload from the OpenAI Moderation API.
+type openAIModerationResponse struct {
+	ID      string `json:"id"`
+	Model   string `json:"model"`
+	Results []struct {
+		Categories     map[string]bool    `json:"categories"`
+		CategoryScores map[string]float64 `json:"category_scores"`
+		Flagged        bool               `json:"flagged"`
+	} `json:"results"`
+}
+
 // ModerateContent performs multi-category content analysis with configurable severity scoring.
 func (s *aiService) ModerateContent(ctx context.Context, req *models.ModerationRequest) (*models.ModerationResponse, error) {
-	content := strings.ToLower(req.Content)
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey != "" {
+		slog.Info("using OpenAI moderation API")
+		res, err := s.moderateWithOpenAI(ctx, req.Content, apiKey)
+		if err == nil {
+			return res, nil
+		}
+		slog.Warn("OpenAI moderation failed, falling back to keyword check", slog.Any("error", err))
+	} else {
+		slog.Info("no OPENAI_API_KEY provided, using keyword moderation fallback")
+	}
+
+	return s.moderateWithKeywords(req.Content)
+}
+
+func (s *aiService) moderateWithOpenAI(ctx context.Context, content string, apiKey string) (*models.ModerationResponse, error) {
+	openAIReq := openAIModerationRequest{
+		Input: content,
+	}
+
+	bodyBytes, err := json.Marshal(openAIReq)
+	if err != nil {
+		return nil, err
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.openai.com/v1/moderations", bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		slog.Error("OpenAI API error", slog.Int("status", resp.StatusCode), slog.String("body", string(respBody)))
+		return nil, fmt.Errorf("API error: %d", resp.StatusCode)
+	}
+
+	var openAIResp openAIModerationResponse
+	if err := json.NewDecoder(resp.Body).Decode(&openAIResp); err != nil {
+		return nil, err
+	}
+
+	if len(openAIResp.Results) == 0 {
+		return nil, fmt.Errorf("no results returned from OpenAI API")
+	}
+
+	result := openAIResp.Results[0]
+	var categories []string
+	var details []models.CategoryDetail
+	var maxScore float64
+
+	for cat, flagged := range result.Categories {
+		score := result.CategoryScores[cat]
+		if score > maxScore {
+			maxScore = score
+		}
+		if flagged {
+			categories = append(categories, cat)
+			details = append(details, models.CategoryDetail{
+				Category: cat,
+				Score:    math.Round(score*100) / 100,
+			})
+		}
+	}
+
+	reason := ""
+	if result.Flagged {
+		reason = "Detected by OpenAI Moderation API: " + strings.Join(categories, ", ")
+	}
+
+	return &models.ModerationResponse{
+		IsFlagged:   result.Flagged,
+		Score:       math.Round(maxScore*100) / 100,
+		Categories:  categories,
+		Details:     details,
+		Reason:      reason,
+		ProcessedAt: time.Now(),
+	}, nil
+}
+
+func (s *aiService) moderateWithKeywords(content string) (*models.ModerationResponse, error) {
+	content = strings.ToLower(content)
 
 	var (
 		categories []string

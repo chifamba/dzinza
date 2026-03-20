@@ -54,7 +54,8 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 	// 3. Setup App
 	jwtSecret := "test-secret"
 	repo := repository.NewNeo4jRepository(driver)
-	svc := service.NewGenealogyService(repo)
+	mockBus := &mockEventBus{} // or implement a simple mock
+	svc := service.NewGenealogyService(repo, mockBus)
 	handler := handlers.NewGenealogyHandler(svc)
 
 	gin.SetMode(gin.TestMode)
