@@ -21,7 +21,12 @@ security = HTTPBearer()
 def verify_jwt(credentials: HTTPAuthorizationCredentials = Depends(security)):
     import jwt
     import os
-    secret = os.getenv("JWT_SECRET", "testsecret")
+    secret = os.getenv("JWT_SECRET")
+    if not secret:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="JWT_SECRET is not configured"
+        )
     try:
         payload = jwt.decode(credentials.credentials, secret, algorithms=["HS256"])
         return payload
@@ -33,7 +38,7 @@ def verify_jwt(credentials: HTTPAuthorizationCredentials = Depends(security)):
 
 # GraphQL setup
 schema = strawberry.Schema(query=Query)
-graphql_app = GraphQLRouter(schema, graphiql=True)
+graphql_app = GraphQLRouter(schema, graphql_ide="graphiql")
 
 import time
 
@@ -60,7 +65,10 @@ async def auth_middleware(request: Request, call_next):
                 raise ValueError()
             import jwt
             import os
-            secret = os.getenv("JWT_SECRET", "testsecret")
+            from fastapi.responses import JSONResponse
+            secret = os.getenv("JWT_SECRET")
+            if not secret:
+                return JSONResponse(status_code=500, content={"detail": "JWT_SECRET is not configured"})
             payload = jwt.decode(token, secret, algorithms=["HS256"])
             # Authorization: require role claim
             if "role" not in payload or payload["role"] not in ["user", "admin"]:
