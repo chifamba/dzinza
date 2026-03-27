@@ -352,6 +352,7 @@ services:
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=testpassword
       - GENEALOGY_SERVICE_PORT=8006
+      - INTEGRATION_SERVICE_URL=http://integration_service:8017
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
       - REDIS_HOST=redis
       - REDIS_PORT=6379
