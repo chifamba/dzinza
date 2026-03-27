@@ -115,3 +115,24 @@ func (h *AuthHandler) RevokeRole(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"status": "role revoked"})
 }
+
+func (h *AuthHandler) GetUserStats(c *gin.Context) {
+	userIDStr := c.Param("id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	res, err := h.svc.GetUserStats(c.Request.Context(), userID)
+	if err != nil {
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/chifamba/dzinza/services/auth_service/internal/models"
 	"github.com/google/uuid"
@@ -16,4 +17,5 @@ type Repository interface {
 	GetRoleByName(ctx context.Context, name string) (*models.Role, error)
 	AssignRoleToUser(ctx context.Context, userID uuid.UUID, roleID uint) error
 	RevokeRoleFromUser(ctx context.Context, userID uuid.UUID, roleID uint) error
+	UpdateLastLogin(ctx context.Context, userID uuid.UUID, loginTime time.Time) error
 }

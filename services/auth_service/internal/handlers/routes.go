@@ -19,6 +19,11 @@ func RegisterRoutes(r *gin.Engine, authHandler *AuthHandler, cfg *config.Config,
 	r.POST("/login", authHandler.Login)
 	r.POST("/refresh-token", authHandler.RefreshToken)
 
+	// Internal Service routes
+	// TODO: SEC-001: This endpoint is currently public to allow trust_service to call it.
+	// In production, this must be protected by internal service authentication (e.g., mTLS or API Key).
+	r.GET("/api/v1/users/:id/stats", authHandler.GetUserStats)
+
 	// Protected routes
 	protected := r.Group("/")
 	protected.Use(auth.AuthMiddleware(cfg.JWTSecret))
