@@ -318,3 +318,10 @@ Before generating or modifying code, **ALWAYS verify:**
 - [ ] Proper HTTP status codes, rate limiting, CORS
 
 **Remember:** Quality over speed. Never build or test outside of containers.
+---
+
+## Architectural and Implementation Decisions (2026-02-14)
+
+1. **Integration Provider Mocking:** The missing generic and DNA integration stubs (`ancestryProvider`, `dnaAncestryProvider`, and `ftDNAProvider`) in `integration_service` have been updated to return mock records, instead of empty ones, to better support end-to-end frontend testing and workflow simulation until real 3rd party API integrations are built.
+2. **Cultural Naming Extension:** `shonaTotemSet` and `ndebeleClanSet` in `localization_service` have been extended with 15 common values each to properly validate naming conventions and remove the "Stubbed" status of the implementation.
+3. **S3 Backup Restore Logic:** `backup_recovery_service` now correctly downloads S3 files matching a backup timestamp prefix using `s3Client.ListObjectsV2` and `io.Copy` to standard local filesystem outputs, ensuring database restores (`RestoreBackup`) function end-to-end instead of returning an unimplemented error.

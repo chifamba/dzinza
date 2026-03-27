@@ -228,6 +228,21 @@ var shonaTotemSet = map[string]bool{
 	"dube":     true,
 	"mhara":    true, // impala
 	"soko":     true, // monkey
+	"hwesa":    true, // striped mouse
+	"bonga":    true, // wild cat
+	"humba":    true, // wild pig
+	"nguruve":  true, // pig
+	"beta":     true, // termite
+	"gwai":     true, // sheep
+	"nhewa":    true, // leopard
+	"mbeva":    true, // mouse
+	"shiri":    true, // bird
+	"honga":    true, // rock rabbit
+	"chirombowe": true, // kind of lion
+	"ndoro":    true, // white shell
+	"bimha":    true, // reedbuck
+	"mheta":    true, // python
+	"shokosha": true, // baboon
 }
 
 func isShonaTotem(name string) bool {
@@ -250,6 +265,21 @@ var ndebeleClanSet = map[string]bool{
 	"tshuma":   true,
 	"ngwenya":  true,
 	"mhlanga":  true,
+	"bhebhe":   true,
+	"siziba":   true,
+	"maphosa":  true,
+	"sigogo":   true,
+	"masuku":   true,
+	"hlonzi":   true,
+	"hlabangana": true,
+	"gumbo":    true,
+	"msipha":   true,
+	"mabuza":   true,
+	"gwabalanda": true,
+	"khanye":   true,
+	"lusinga":  true,
+	"mahangu":  true,
+	"mkhwananzi": true,
 }
 
 func isNdebeleClanName(name string) bool {

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -219,10 +220,56 @@ func (s *backupService) RestoreBackup(ctx context.Context, backupTimestamp strin
 		if s.s3Client != nil {
 			slog.Info("backup not found locally, downloading from S3",
 				slog.String("timestamp", backupTimestamp))
-			// In a real implementation, this would download from S3
-			return fmt.Errorf("S3 restore not yet implemented, backup not found locally")
+
+			// Create local directory
+			if err := os.MkdirAll(backupSubDir, 0755); err != nil {
+				return fmt.Errorf("failed to create backup directory for restore: %w", err)
+			}
+
+			prefix := fmt.Sprintf("backups/%s/", backupTimestamp)
+			listOutput, err := s.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+				Bucket: aws.String(s.bucketName),
+				Prefix: aws.String(prefix),
+			})
+			if err != nil {
+				return fmt.Errorf("failed to list backup files in S3: %w", err)
+			}
+
+			if len(listOutput.Contents) == 0 {
+				return fmt.Errorf("backup %s not found locally or in S3", backupTimestamp)
+			}
+
+			for _, obj := range listOutput.Contents {
+				getOutput, err := s.s3Client.GetObject(ctx, &s3.GetObjectInput{
+					Bucket: aws.String(s.bucketName),
+					Key:    obj.Key,
+				})
+				if err != nil {
+					return fmt.Errorf("failed to download %s from S3: %w", *obj.Key, err)
+				}
+
+				// The key is backups/<timestamp>/<filename>
+				fileName := filepath.Base(*obj.Key)
+				localFilePath := filepath.Join(backupSubDir, fileName)
+
+				outFile, err := os.Create(localFilePath)
+				if err != nil {
+					getOutput.Body.Close()
+					return fmt.Errorf("failed to create local file %s: %w", localFilePath, err)
+				}
+
+				_, copyErr := io.Copy(outFile, getOutput.Body)
+				outFile.Close()
+				getOutput.Body.Close()
+
+				if copyErr != nil {
+					return fmt.Errorf("failed to write data to %s: %w", localFilePath, copyErr)
+				}
+				slog.Info("downloaded backup file from S3", slog.String("file", fileName))
+			}
+		} else {
+			return fmt.Errorf("backup %s not found (S3 client not configured)", backupTimestamp)
 		}
-		return fmt.Errorf("backup %s not found", backupTimestamp)
 	}
 
 	slog.Info("starting restore", slog.String("timestamp", backupTimestamp))
