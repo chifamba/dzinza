@@ -157,11 +157,12 @@ func PlaceSimilarityScore(place1, place2 string) float64 {
 // ComputeConfidenceScore computes an overall duplicate confidence score (0–100).
 //
 // Weights:
-//   - Name similarity: 50%
-//   - Date proximity: 30%
-//   - Place similarity: 20%
-func ComputeConfidenceScore(nameSimilarity, dateSimilarity, placeSimilarity float64) float64 {
-	score := nameSimilarity*50.0 + dateSimilarity*30.0 + placeSimilarity*20.0
+//   - Name similarity: 40%
+//   - Date proximity: 20%
+//   - Place similarity: 15%
+//   - Topology similarity: 25%
+func ComputeConfidenceScore(nameSimilarity, dateSimilarity, placeSimilarity, topologySimilarity float64) float64 {
+	score := nameSimilarity*40.0 + dateSimilarity*20.0 + placeSimilarity*15.0 + topologySimilarity*25.0
 
 	// Round to 2 decimal places
 	return math.Round(score*100) / 100

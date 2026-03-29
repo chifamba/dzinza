@@ -7,6 +7,7 @@ replace github.com/chifamba/dzinza/services/pkg => ../pkg
 require (
 	github.com/chifamba/dzinza/services/pkg v0.0.0-00010101000000-000000000000
 	github.com/gin-gonic/gin v1.11.0
+	github.com/neo4j/neo4j-go-driver/v5 v5.28.4
 	github.com/redis/go-redis/v9 v9.17.3
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
