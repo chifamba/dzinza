@@ -116,14 +116,28 @@ func (r *neo4jRepo) MergePersons(ctx context.Context, survivingID, mergedID stri
 			
 			// Move outgoing relationships
 			WITH s, m
-			MATCH (m)-[r]->(target)
-			WHERE NOT target:FamilyTree
-			CALL apoc.merge.relationship(s, type(r), properties(r), {}, target) YIELD rel
-			
+			OPTIONAL MATCH (m)-[r]->(target)
+			WHERE target IS NOT NULL AND NOT target:FamilyTree
+			WITH s, m, collect({r:r, target:target}) AS out_rels
+			CALL apoc.do.when(size(out_rels) > 0,
+				'UNWIND out_rels AS item
+				 CALL apoc.merge.relationship(s, type(item.r), properties(item.r), {}, item.target) YIELD rel
+				 RETURN count(rel) AS c',
+				'RETURN 0 AS c',
+				{s:s, out_rels:out_rels}
+			) YIELD value AS val1
+
 			// Move incoming relationships
 			WITH s, m
-			MATCH (source)-[r]->(m)
-			CALL apoc.merge.relationship(source, type(r), properties(r), {}, s) YIELD rel
+			OPTIONAL MATCH (source)-[r]->(m)
+			WITH s, m, collect({r:r, source:source}) AS in_rels
+			CALL apoc.do.when(size(in_rels) > 0,
+				'UNWIND in_rels AS item
+				 CALL apoc.merge.relationship(item.source, type(item.r), properties(item.r), {}, s) YIELD rel
+				 RETURN count(rel) AS c',
+				'RETURN 0 AS c',
+				{s:s, in_rels:in_rels}
+			) YIELD value AS val2
 			
 			// Update surviving node
 			WITH s, m

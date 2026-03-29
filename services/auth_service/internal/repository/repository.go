@@ -16,4 +16,5 @@ type Repository interface {
 	GetRoleByName(ctx context.Context, name string) (*models.Role, error)
 	AssignRoleToUser(ctx context.Context, userID uuid.UUID, roleID uint) error
 	RevokeRoleFromUser(ctx context.Context, userID uuid.UUID, roleID uint) error
+	UpdateUser(ctx context.Context, user *models.User) error
 }
