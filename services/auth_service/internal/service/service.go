@@ -12,6 +12,7 @@ type Service interface {
 	RegisterUser(ctx context.Context, req models.RegisterRequest) (*models.TokenResponse, error)
 	LoginUser(ctx context.Context, req models.LoginRequest) (*models.TokenResponse, error)
 	RefreshToken(ctx context.Context, req models.RefreshTokenRequest) (*models.TokenResponse, error)
+	GetUserStats(ctx context.Context, userID uuid.UUID) (*models.UserStatsResponse, error)
 	AssignRole(ctx context.Context, userID uuid.UUID, roleName string) error
 	RevokeRole(ctx context.Context, userID uuid.UUID, roleName string) error
 }

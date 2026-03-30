@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/chifamba/dzinza/services/auth_service/internal/models"
@@ -75,7 +76,29 @@ func (s *authService) LoginUser(ctx context.Context, req models.LoginRequest) (*
 		return nil, ErrInvalidCredentials
 	}
 
+	// Update LastLoginAt
+	user.LastLoginAt = time.Now()
+	if err := s.repo.UpdateUser(ctx, user); err != nil {
+		slog.Warn("failed to update last login time", slog.String("user_id", user.ID.String()), slog.Any("error", err))
+	}
+
 	return s.generateTokens(user)
+}
+
+func (s *authService) GetUserStats(ctx context.Context, userID uuid.UUID) (*models.UserStatsResponse, error) {
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+
+	return &models.UserStatsResponse{
+		UserID:      user.ID.String(),
+		CreatedAt:   user.CreatedAt,
+		LastLoginAt: user.LastLoginAt,
+	}, nil
 }
 
 func (s *authService) RefreshToken(ctx context.Context, req models.RefreshTokenRequest) (*models.TokenResponse, error) {

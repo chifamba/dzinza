@@ -14,6 +14,7 @@ type User struct {
 	HashedPassword string         `gorm:"not null" json:"-"`
 	Name           string         `gorm:"not null" json:"name"`
 	Roles          []Role         `gorm:"many2many:user_roles;" json:"roles"`
+	LastLoginAt    time.Time      `json:"last_login_at"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`

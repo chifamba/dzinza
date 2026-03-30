@@ -74,6 +74,23 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+func (h *AuthHandler) GetUserStats(c *gin.Context) {
+	userIDStr := c.Param("id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	stats, err := h.svc.GetUserStats(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
+
 func (h *AuthHandler) AssignRole(c *gin.Context) {
 	var req models.RoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

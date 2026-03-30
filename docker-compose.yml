@@ -523,6 +523,9 @@ services:
       - DB_NAME=${DB_NAME:-dzinza_db}
       - DB_USER=${DB_USER:-dzinza_user}
       - VERIFICATION_SERVICE_PORT=8011
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=testpassword
     secrets:
       - db_password
       - jwt_secret
@@ -531,6 +534,8 @@ services:
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      neo4j:
         condition: service_healthy
 
   deduplication_service:

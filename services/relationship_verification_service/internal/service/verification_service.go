@@ -32,16 +32,18 @@ type Config struct {
 
 type verificationService struct {
 	repo       repository.VerificationRepository
+	neo4jRepo  repository.Neo4jRepository
 	eventBus   events.Bus
 	httpClient *http.Client
 	config     Config
 }
 
 // NewVerificationService creates a verification service with event bus and trust score integration.
-func NewVerificationService(repo repository.VerificationRepository, eventBus events.Bus) VerificationService {
+func NewVerificationService(repo repository.VerificationRepository, neo4jRepo repository.Neo4jRepository, eventBus events.Bus) VerificationService {
 	return &verificationService{
-		repo:     repo,
-		eventBus: eventBus,
+		repo:      repo,
+		neo4jRepo: neo4jRepo,
+		eventBus:  eventBus,
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
@@ -92,7 +94,13 @@ func (s *verificationService) ProposeChange(ctx context.Context, proposerID, tar
 	}
 
 	if err := s.repo.CreateSuggestion(ctx, suggestion); err != nil {
-		return nil, fmt.Errorf("failed to create suggestion: %w", err)
+		return nil, fmt.Errorf("failed to create suggestion in postgres: %w", err)
+	}
+
+	if err := s.neo4jRepo.CreateSuggestion(ctx, suggestion); err != nil {
+		slog.Error("failed to create suggestion in neo4j", slog.Any("error", err))
+		// We could rollback postgres, or rely on eventual consistency / reconciliation.
+		// For now, logging error.
 	}
 
 	return suggestion, nil
@@ -175,6 +183,16 @@ func (s *verificationService) VerifySuggestion(ctx context.Context, verifierID, 
 
 	if err := s.repo.UpdateSuggestion(ctx, suggestion); err != nil {
 		return fmt.Errorf("failed to update suggestion: %w", err)
+	}
+
+	// Sync to Neo4j: Record verification
+	if err := s.neo4jRepo.VerifySuggestion(ctx, verifierID, suggestionID); err != nil {
+		slog.Error("failed to record verification in neo4j", slog.Any("error", err))
+	}
+
+	// Sync to Neo4j: Update status
+	if err := s.neo4jRepo.UpdateSuggestionStatus(ctx, suggestionID, string(suggestion.Status)); err != nil {
+		slog.Error("failed to update suggestion status in neo4j", slog.Any("error", err))
 	}
 
 	// Publish event if suggestion reached a final state

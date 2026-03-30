@@ -44,6 +44,10 @@ func (r *postgresRepository) GetUserByID(ctx context.Context, id uuid.UUID) (*mo
 	return &user, nil
 }
 
+func (r *postgresRepository) UpdateUser(ctx context.Context, user *models.User) error {
+	return r.db.WithContext(ctx).Save(user).Error
+}
+
 func (r *postgresRepository) EmailExists(ctx context.Context, email string) (bool, error) {
 	var count int64
 	if err := r.db.WithContext(ctx).Model(&models.User{}).Where("email = ?", email).Count(&count).Error; err != nil {

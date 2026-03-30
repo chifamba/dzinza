@@ -19,6 +19,9 @@ func RegisterRoutes(r *gin.Engine, authHandler *AuthHandler, cfg *config.Config,
 	r.POST("/login", authHandler.Login)
 	r.POST("/refresh-token", authHandler.RefreshToken)
 
+	// Internal routes (should be protected in prod, but keeping simple for now)
+	r.GET("/api/v1/users/:id/stats", authHandler.GetUserStats)
+
 	// Protected routes
 	protected := r.Group("/")
 	protected.Use(auth.AuthMiddleware(cfg.JWTSecret))
