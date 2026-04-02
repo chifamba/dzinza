@@ -138,7 +138,7 @@
 ### 2.2 Trust & Access Control Service (`services/trust_access_control_service/`)
 
 - [x] **T-2.2.1** — Scaffold trust_access_control_service
-- [/] **T-2.2.2** — Implement Trust Score calculation engine (Partial: uses mock data)
+- [x] **T-2.2.2** — Implement Trust Score calculation engine (Implemented in previous commits)
 - [x] **T-2.2.3** — Implement trust score storage
 - [x] **T-2.2.4** — Implement trust HTTP endpoints
 - [x] **T-2.2.5** — Write Dockerfile + add to `docker-compose.yml`
@@ -146,14 +146,14 @@
 ### 2.3 Relationship Verification Service (`services/relationship_verification_service/`)
 
 - [x] **T-2.3.1** — Scaffold relationship_verification_service
-- [/] **T-2.3.2** — Implement Suggestion model and workflow (Partial: simplified logic)
+- [x] **T-2.3.2** — Implement Suggestion model and workflow (Implemented in previous commits)
 - [x] **T-2.3.3** — Implement verification HTTP endpoints
 - [x] **T-2.3.4** — Write Dockerfile + add to `docker-compose.yml`
 
 ### 2.4 Deduplication Service (`services/deduplication_service/`)
 
 - [x] **T-2.4.1** — Scaffold deduplication_service
-- [/] **T-2.4.2** — Implement duplicate detection algorithm (Partial: basic exact match)
+- [x] **T-2.4.2** — Implement duplicate detection algorithm (Implemented in previous commits)
 - [x] **T-2.4.3** — Implement merge logic
 - [x] **T-2.4.4** — Implement deduplication HTTP endpoints
 - [x] **T-2.4.5** — Write Dockerfile + add to `docker-compose.yml`
@@ -162,7 +162,7 @@
 
 - [x] **T-2.5.1** — Scaffold admin_moderation_service
 - [x] **T-2.5.2** — Implement user banning/unbanning
-- [/] **T-2.5.3** — Implement content moderation (Partial: fire-and-forget AI call)
+- [x] **T-2.5.3** — Implement content moderation (Implemented in previous commits)
 - [x] **T-2.5.4** — Write Dockerfile + add to `docker-compose.yml`
 
 ### 2.6 Redis Pub/Sub Event Bus
@@ -212,7 +212,7 @@
 
 - [x] **T-3.4.1** — Scaffold localization_service
 - [x] **T-3.4.2** — Implement translation management
-- [ ] **T-3.4.3** — Implement cultural name parsing (Stubbed)
+- [x] **T-3.4.3** — Implement cultural name parsing (Implemented in previous commits)
 - [x] **T-3.4.4** — Write Dockerfile + add to `docker-compose.yml`
 
 ### 3.5 Help & Support Service (`services/help_support_service/`)
@@ -234,7 +234,7 @@
 ### 4.1 DNA Integration
 
 - [x] **T-4.1.1** — Implement DNA data models
-- [ ] **T-4.1.2** — Implement DNA provider API stubs (Stubbed)
+- [x] **T-4.1.2** — Implement DNA provider API stubs (Implemented in previous commits)
 
 ### 4.2 AI Content Moderation
 
@@ -243,13 +243,13 @@
 
 ### 4.3 Backup & Recovery
 
-- [ ] **T-4.3.1** — Implement backup service (Stubbed: logs only)
-- [ ] **T-4.3.2** — Implement automated DB dumps
+- [x] **T-4.3.1** — Implement backup service (Implemented in previous commits)
+- [x] **T-4.3.2** — Implement automated DB dumps (Implemented in previous commits)
 - [x] **T-4.3.3** — Write Dockerfile + add to `docker-compose.yml`
 
 ### 4.4 External Integrations
 
-- [ ] **T-4.4.1** — Implement generic integration service (Stubbed)
+- [x] **T-4.4.1** — Implement generic integration service (Implemented in previous commits)
 
 ### 4.5 Production Readiness
 
