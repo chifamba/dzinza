@@ -14,9 +14,9 @@ type Service interface {
 	ListUserTrees(ctx context.Context, ownerID uuid.UUID) ([]models.FamilyTree, error)
 
 	// Person management
-	AddPerson(ctx context.Context, req models.CreatePersonRequest) (*models.Person, error)
+	AddPerson(ctx context.Context, userID uuid.UUID, req models.CreatePersonRequest) (*models.Person, error)
 	GetPerson(ctx context.Context, id uuid.UUID) (*models.Person, error)
-	UpdatePerson(ctx context.Context, id uuid.UUID, req models.CreatePersonRequest) (*models.Person, error)
+	UpdatePerson(ctx context.Context, id, userID uuid.UUID, req models.CreatePersonRequest) (*models.Person, error)
 	DeletePerson(ctx context.Context, id uuid.UUID) error
 	ListTreePersons(ctx context.Context, treeID string) ([]models.Person, error)
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/chifamba/dzinza/services/relationship_verification_service/internal/repository"
 	"github.com/chifamba/dzinza/services/relationship_verification_service/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -41,6 +43,15 @@ func main() {
 	// Auto-migrate
 	db.AutoMigrate(&models.Suggestion{})
 
+	// Initialize Neo4j
+	ctx := context.Background()
+	neo4jDriver, err := neo4j.NewDriverWithContext(cfg.Neo4jURI, neo4j.BasicAuth(cfg.Neo4jUser, cfg.Neo4jPassword, ""))
+	if err != nil {
+		logger.Error("Failed to connect to Neo4j", "error", err)
+		os.Exit(1)
+	}
+	defer neo4jDriver.Close(ctx)
+
 	// Initialize Redis and Event Bus
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", cfg.RedisHost, cfg.RedisPort),
@@ -49,8 +60,9 @@ func main() {
 	eventBus := events.NewRedisBus(redisClient)
 
 	// Setup layers
-	repo := repository.NewPostgresRepository(db)
-	verifySvc := service.NewVerificationService(repo, eventBus)
+	pgRepo := repository.NewPostgresRepository(db)
+	neoRepo := repository.NewNeo4jRepository(neo4jDriver)
+	verifySvc := service.NewVerificationService(pgRepo, neoRepo, eventBus)
 	verifyHandler := handlers.NewVerificationHandler(verifySvc)
 
 	r := gin.Default()
