@@ -13,6 +13,10 @@ from .schemas import Query
 app = FastAPI()
 logger = setup_logging("graph_query_service")
 
+def sanitize_log(val) -> str:
+    """Sanitize data for logging to prevent log injection."""
+    return str(val).replace("\n", "\\n").replace("\r", "\\r")
+
 app.include_router(get_healthcheck_router("graph_query_service"))
 
 # Auth middleware
@@ -76,7 +80,7 @@ async def auth_middleware(request: Request, call_next):
             query = body.get("query", "")
             # Log queries
             user = payload.get("sub", "unknown")
-            logger.info(f"GraphQL query by user={user}: {query}")
+            logger.info(f"GraphQL query by user={sanitize_log(user)}: {sanitize_log(query)}")
             # Query analytics
             global _query_field_counter
             if "_query_field_counter" not in globals():
@@ -97,7 +101,7 @@ async def auth_middleware(request: Request, call_next):
                 return HTTPException(status_code=400, detail="Query complexity limit exceeded")
             response = await call_next(request)
             duration = _time.time() - start_time
-            logger.info(f"GraphQL query by user={user} took {duration:.3f}s")
+            logger.info(f"GraphQL query by user={sanitize_log(user)} took {duration:.3f}s")
             return response
     response = await call_next(request)
     return response
@@ -106,7 +110,7 @@ from fastapi.responses import JSONResponse
 
 @app.exception_handler(Exception)
 async def graphql_error_handler(request, exc):
-    logger.error(f"GraphQL error: {exc}")
+    logger.error(f"GraphQL error: {sanitize_log(exc)}")
     return JSONResponse(
         status_code=500,
         content={"errors": [{"message": str(exc)}]}
