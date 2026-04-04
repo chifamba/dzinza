@@ -1,8 +1,10 @@
 """Request handlers for media_storage_service."""
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from starlette.concurrency import run_in_threadpool
 from minio import Minio
 import os
+import asyncio
 from .metadata import (
     add_tag, get_tags, add_to_album, get_album,
     search_by_tag, add_media_date, get_media_timeline
@@ -28,13 +30,14 @@ minio_client = Minio(
 @router.post("/upload/")
 async def upload_media(file: UploadFile = File(...), folder: str = None):
     try:
-        if not minio_client.bucket_exists(MINIO_BUCKET):
-            minio_client.make_bucket(MINIO_BUCKET)
+        if not await run_in_threadpool(minio_client.bucket_exists, MINIO_BUCKET):
+            await run_in_threadpool(minio_client.make_bucket, MINIO_BUCKET)
         content = await file.read()
         filename = file.filename
         if folder:
             filename = f"{folder}/{filename}"
-        minio_client.put_object(
+        await run_in_threadpool(
+            minio_client.put_object,
             MINIO_BUCKET,
             filename,
             content,
@@ -47,24 +50,26 @@ async def upload_media(file: UploadFile = File(...), folder: str = None):
 
 @router.post("/upload/bulk/")
 async def bulk_upload(files: list[UploadFile] = File(...), folder: str = None):
-    results = []
-    for file in files:
+    async def process_file(file: UploadFile):
         try:
             content = await file.read()
             filename = file.filename
             if folder:
                 filename = f"{folder}/{filename}"
-            minio_client.put_object(
+            await run_in_threadpool(
+                minio_client.put_object,
                 MINIO_BUCKET,
                 filename,
                 content,
                 length=len(content),
                 content_type=file.content_type,
             )
-            results.append({"filename": filename, "status": "uploaded"})
+            return {"filename": filename, "status": "uploaded"}
         except Exception as e:
-            results.append({"filename": file.filename, "status": "error", "error": str(e)})
-    return results
+            return {"filename": file.filename, "status": "error", "error": str(e)}
+
+    results = await asyncio.gather(*(process_file(file) for file in files))
+    return list(results)
 
 @router.get("/media/{filename}")
 def get_media(filename: str, token: str = None, decrypt: bool = False, user: str = None):
