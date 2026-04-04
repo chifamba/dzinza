@@ -99,19 +99,20 @@ func TestNameSimilarityScore(t *testing.T) {
 
 func TestComputeConfidenceScore(t *testing.T) {
 	tests := []struct {
-		name   string
-		nameSim, dateSim, placeSim float64
-		expected float64
+		name                                 string
+		nameSim, dateSim, placeSim, topoSim  float64
+		expected                             float64
 	}{
-		{"perfect match", 1.0, 1.0, 1.0, 100.0},
-		{"no match", 0.0, 0.0, 0.0, 0.0},
-		{"name only", 1.0, 0.0, 0.0, 50.0},
-		{"name + date", 1.0, 1.0, 0.0, 80.0},
+		{"perfect match", 1.0, 1.0, 1.0, 1.0, 100.0},
+		{"no match", 0.0, 0.0, 0.0, 0.0, 0.0},
+		{"name only", 1.0, 0.0, 0.0, 0.0, 40.0},
+		{"name + date", 1.0, 1.0, 0.0, 0.0, 60.0},
+		{"name + date + place", 1.0, 1.0, 1.0, 0.0, 75.0},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			score := ComputeConfidenceScore(tc.nameSim, tc.dateSim, tc.placeSim)
+			score := ComputeConfidenceScore(tc.nameSim, tc.dateSim, tc.placeSim, tc.topoSim)
 			if math.Abs(score-tc.expected) > 0.01 {
 				t.Errorf("ComputeConfidenceScore = %.2f, want %.2f", score, tc.expected)
 			}

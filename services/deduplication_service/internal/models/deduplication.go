@@ -6,11 +6,12 @@ import "time"
 type DuplicatePair struct {
 	Person1ID       string    `json:"person1_id"`
 	Person2ID       string    `json:"person2_id"`
-	ConfidenceScore float64   `json:"confidence_score"`
-	NameSimilarity  float64   `json:"name_similarity"`
-	DateSimilarity  float64   `json:"date_similarity"`
-	PlaceSimilarity float64   `json:"place_similarity"`
-	Status          string    `json:"status"` // PENDING, IGNORED, MERGED
+	ConfidenceScore    float64   `json:"confidence_score"`
+	NameSimilarity     float64   `json:"name_similarity"`
+	DateSimilarity     float64   `json:"date_similarity"`
+	PlaceSimilarity    float64   `json:"place_similarity"`
+	TopologySimilarity float64   `json:"topology_similarity"`
+	Status             string    `json:"status"` // PENDING, IGNORED, MERGED
 	DetectedAt      time.Time `json:"detected_at"`
 }
 
