@@ -1,5 +1,6 @@
 """Main entry point for genealogy_service service."""
 
+import os
 from fastapi import FastAPI
 from shared.app_logging import setup_logging
 from shared.healthcheck import get_healthcheck_router
@@ -11,7 +12,7 @@ logger = setup_logging("genealogy_service")
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify the frontend domain
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
