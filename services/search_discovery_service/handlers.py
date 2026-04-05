@@ -1,7 +1,7 @@
 """Request handlers for search_discovery_service service."""
 
 from fastapi import APIRouter
-from typing import List, Dict, Optional
+from typing import Dict
 
 router = APIRouter()
 
