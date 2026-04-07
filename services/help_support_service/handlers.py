@@ -8,7 +8,7 @@ from typing import List, Optional
 from schemas import (
     TicketCreate, TicketUpdate, Ticket, MessageCreate, Message,
     ChatSessionCreate, ChatSession, ChatMessage,
-    KnowledgeBaseCreate, KnowledgeBaseUpdate, KnowledgeBase,
+    KnowledgeBaseCreate, KnowledgeBase,
     ForumPostCreate, ForumPost, ForumReplyCreate, ForumReply
 )
 from models import ticket_model, chat_model, knowledge_base_model
