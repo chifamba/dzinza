@@ -3,6 +3,7 @@ Help Support Service Handlers
 Provides ticketing system, live chat, knowledge base, and community forums.
 """
 
+import asyncio
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from typing import List, Optional
 from schemas import (
@@ -125,15 +126,38 @@ async def chat_websocket(websocket: WebSocket, session_id: str):
     if not chat_model.get_session(session_id):
         await websocket.close(code=4004, reason="Session not found")
         return
+
+    send_queue = asyncio.Queue()
+    active_tasks = set()
+
+    async def process_message(msg_data: str):
+        # In production, this would handle routing to agents
+        # For now, we just echo the message back
+        await send_queue.put(f"Echo: {msg_data}")
+
+    async def send_messages():
+        try:
+            while True:
+                msg = await send_queue.get()
+                await websocket.send_text(msg)
+                send_queue.task_done()
+        except asyncio.CancelledError:
+            pass
+
+    send_task = asyncio.create_task(send_messages())
     
     try:
         while True:
             data = await websocket.receive_text()
-            # Echo the message back for demo purposes
-            # In production, this would handle routing to agents
-            await websocket.send_text(f"Echo: {data}")
+            task = asyncio.create_task(process_message(data))
+            active_tasks.add(task)
+            task.add_done_callback(active_tasks.discard)
     except WebSocketDisconnect:
         pass
+    finally:
+        send_task.cancel()
+        for task in active_tasks:
+            task.cancel()
 
 # Knowledge Base
 @router.post("/knowledge-base", response_model=KnowledgeBase)
