@@ -1,6 +1,6 @@
 """Handlers for Audit History Service."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from sqlalchemy.orm import Session
 from .models import AuditLog
 from pydantic import BaseModel
