@@ -1,6 +1,6 @@
 """Pydantic schemas for genealogy_service service."""
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, HttpUrl
 from typing import List, Optional, Any
 from uuid import UUID
 from enum import Enum
