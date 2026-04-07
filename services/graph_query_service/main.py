@@ -113,7 +113,7 @@ async def graphql_error_handler(request, exc):
     logger.error(f"GraphQL error: {sanitize_log(exc)}")
     return JSONResponse(
         status_code=500,
-        content={"errors": [{"message": str(exc)}]}
+        content={"errors": [{"message": "Internal server error"}]}
     )
 
 app.include_router(graphql_app, prefix="/graphql")
