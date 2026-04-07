@@ -3,6 +3,8 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from minio import Minio
 import os
+import jwt
+from .config import JWT_SECRET
 from .metadata import (
     add_tag, get_tags, add_to_album, get_album,
     search_by_tag, add_media_date, get_media_timeline
@@ -71,11 +73,25 @@ def get_media(filename: str, token: str = None, decrypt: bool = False, user: str
     """
     Secure media access placeholder. In production, validate token and permissions.
     """
-    # TODO: Validate token and user permissions for secure access
-    # Simple ACL check
     acl = _media_acl.get(filename, set())
-    if acl and user and user not in acl:
-        raise HTTPException(status_code=403, detail="Access denied")
+
+    # If the file is protected by ACL, require a valid token to identify the user
+    if acl:
+        if not token:
+            raise HTTPException(status_code=401, detail="Authentication token required")
+        if not JWT_SECRET:
+            raise HTTPException(status_code=500, detail="JWT_SECRET is not configured")
+
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+            # Override any user parameter with the authenticated identity from the token
+            user = payload.get("sub")
+        except jwt.PyJWTError:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        if not user or user not in acl:
+            raise HTTPException(status_code=403, detail="Access denied")
+
     try:
         response = minio_client.get_object(MINIO_BUCKET, filename)
         data = response.read()
