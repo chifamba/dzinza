@@ -15,11 +15,16 @@ from .config import JWT_SECRET, REDIS_URL
 import redis
 import json
 
+import httpx
+
 router = APIRouter()
 JWT_ALGORITHM = "HS256"
 
 # Initialize Redis client
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+
+# Initialize global HTTP client
+http_client = httpx.AsyncClient()
 
 def create_jwt(user_id: str, expires_delta: timedelta):
     payload = {
@@ -151,9 +156,11 @@ def find_or_create_social_user(email: str, db: Session) -> models.User:
     return user
 
 @router.post("/login/google", response_model=schemas.TokenResponse)
-def login_google(payload: schemas.GoogleLoginRequest, db: Session = Depends(get_db)):
-    from config import GOOGLE_CLIENT_ID
-    resp = requests.get("https://oauth2.googleapis.com/tokeninfo", params={"id_token": payload.id_token})
+async def login_google(payload: schemas.GoogleLoginRequest, db: Session = Depends(get_db)):
+    from .config import GOOGLE_CLIENT_ID
+
+    resp = await http_client.get("https://oauth2.googleapis.com/tokeninfo", params={"id_token": payload.id_token})
+
     if resp.status_code != 200:
         raise HTTPException(status_code=401, detail="Invalid Google ID token")
     data = resp.json()
