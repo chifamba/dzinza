@@ -1,6 +1,6 @@
 """Handlers for Notification Service."""
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 import time
 from collections import deque
 from pydantic import BaseModel, EmailStr
