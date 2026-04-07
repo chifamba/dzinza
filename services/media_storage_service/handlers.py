@@ -1,6 +1,8 @@
 """Request handlers for media_storage_service."""
 
+import asyncio
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from starlette.concurrency import run_in_threadpool
 from minio import Minio
 import os
 from .metadata import (
@@ -47,23 +49,27 @@ async def upload_media(file: UploadFile = File(...), folder: str = None):
 
 @router.post("/upload/bulk/")
 async def bulk_upload(files: list[UploadFile] = File(...), folder: str = None):
-    results = []
-    for file in files:
+    async def process_file(file: UploadFile):
         try:
             content = await file.read()
             filename = file.filename
             if folder:
                 filename = f"{folder}/{filename}"
-            minio_client.put_object(
+
+            await run_in_threadpool(
+                minio_client.put_object,
                 MINIO_BUCKET,
                 filename,
                 content,
                 length=len(content),
                 content_type=file.content_type,
             )
-            results.append({"filename": filename, "status": "uploaded"})
+            return {"filename": filename, "status": "uploaded"}
         except Exception as e:
-            results.append({"filename": file.filename, "status": "error", "error": str(e)})
+            return {"filename": file.filename, "status": "error", "error": str(e)}
+
+    tasks = [process_file(file) for file in files]
+    results = await asyncio.gather(*tasks)
     return results
 
 @router.get("/media/{filename}")
