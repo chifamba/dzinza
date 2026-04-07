@@ -9,7 +9,7 @@ from schemas import (
     TicketCreate, TicketUpdate, Ticket, MessageCreate, Message,
     ChatSessionCreate, ChatSession, ChatMessage,
     KnowledgeBaseCreate, KnowledgeBaseUpdate, KnowledgeBase,
-    ForumPostCreate, ForumPost, ForumReplyCreate, ForumReply
+    ForumPostCreate, ForumPost, ForumReply
 )
 from models import ticket_model, chat_model, knowledge_base_model
 import uuid
