@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File,
 import jwt
 from config import JWT_SECRET
 from uuid import uuid4
-from schemas import FamilyTreeCreate, FamilyTree, PersonCreate, Person, Relationship, RelationshipType, RelationshipEvent, Fact, DNAData, HistoricalRecord
+from schemas import FamilyTreeCreate, FamilyTree, PersonCreate, Person, Relationship, RelationshipType, RelationshipEvent, DNAData, HistoricalRecord
 from typing import List, Any
 from fastapi import Response
 from models import get_neo4j_driver
