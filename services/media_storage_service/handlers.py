@@ -11,12 +11,9 @@ from .exif_utils import extract_exif
 from .image_utils import compress_image, generate_thumbnail
 import subprocess
 
-router = APIRouter()
+from .config import MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET
 
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "garage1:39000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
-MINIO_BUCKET = os.getenv("MINIO_BUCKET", "media")
+router = APIRouter()
 
 minio_client = Minio(
     MINIO_ENDPOINT,
