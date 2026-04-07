@@ -11,7 +11,7 @@ import jwt
 from datetime import datetime, timedelta
 import requests
 import os
-from .config import JWT_SECRET, REDIS_URL
+from config import JWT_SECRET, REDIS_URL
 import redis
 import json
 
