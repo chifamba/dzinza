@@ -3,6 +3,7 @@ Help Support Service
 Provides ticketing system, live chat, knowledge base, and community forums.
 """
 
+from config import CORS_ALLOWED_ORIGINS
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from handlers import router
@@ -13,10 +14,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Parse allowed origins from environment. Default is empty (fails secure).
+allowed_origins = [
+    origin.strip()
+    for origin in CORS_ALLOWED_ORIGINS.split(",")
+    if origin.strip()
+]
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

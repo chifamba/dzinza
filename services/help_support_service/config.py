@@ -36,3 +36,9 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 # Chat Configuration
 CHAT_MAX_CONNECTIONS = int(os.getenv("CHAT_MAX_CONNECTIONS", "100"))
 CHAT_TIMEOUT_MINUTES = int(os.getenv("CHAT_TIMEOUT_MINUTES", "30"))
+
+# Security Configuration
+# Comma-separated list of allowed origins for CORS.
+# E.g., "https://example.com,https://app.example.com"
+# Fails secure by defaulting to an empty string (no allowed origins).
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "")
