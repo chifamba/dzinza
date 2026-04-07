@@ -2,6 +2,8 @@
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Request
 import time
+import asyncio
+from starlette.concurrency import run_in_threadpool
 from collections import deque
 from pydantic import BaseModel, EmailStr
 import smtplib
@@ -79,11 +81,10 @@ def process_priority_queue():
     return {"processed": processed}
 
 @router.post("/notify/email/schedule/")
-def schedule_marketing_email(notification: EmailNotification, delay_seconds: int, background_tasks: BackgroundTasks):
-    import time
-    def delayed_send():
-        time.sleep(delay_seconds)
-        _send_email(notification)
+async def schedule_marketing_email(notification: EmailNotification, delay_seconds: int, background_tasks: BackgroundTasks):
+    async def delayed_send():
+        await asyncio.sleep(delay_seconds)
+        await run_in_threadpool(_send_email, notification)
     background_tasks.add_task(delayed_send)
     return {"status": "scheduled", "delay_seconds": delay_seconds}
 
