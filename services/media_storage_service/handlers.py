@@ -3,6 +3,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from minio import Minio
 import os
+import jwt
 from .metadata import (
     add_tag, get_tags, add_to_album, get_album,
     search_by_tag, add_media_date, get_media_timeline
@@ -69,13 +70,31 @@ async def bulk_upload(files: list[UploadFile] = File(...), folder: str = None):
 @router.get("/media/{filename}")
 def get_media(filename: str, token: str = None, decrypt: bool = False, user: str = None):
     """
-    Secure media access placeholder. In production, validate token and permissions.
+    Secure media access. Validates token and permissions for secured resources.
     """
-    # TODO: Validate token and user permissions for secure access
-    # Simple ACL check
     acl = _media_acl.get(filename, set())
-    if acl and user and user not in acl:
-        raise HTTPException(status_code=403, detail="Access denied")
+    if acl:
+        if not token:
+            raise HTTPException(status_code=401, detail="Authentication token required for secured media")
+        import services.media_storage_service.config
+        secret = services.media_storage_service.config.JWT_SECRET
+        if not secret:
+            raise HTTPException(status_code=500, detail="JWT_SECRET not configured")
+        try:
+            payload = jwt.decode(token, secret, algorithms=["HS256"])
+            token_user = payload.get("sub")
+        except jwt.PyJWTError:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+        if not token_user:
+            raise HTTPException(status_code=401, detail="Invalid token payload")
+
+        if user and user != token_user:
+            raise HTTPException(status_code=403, detail="User parameter does not match token identity")
+
+        if token_user not in acl:
+            raise HTTPException(status_code=403, detail="Access denied")
+
     try:
         response = minio_client.get_object(MINIO_BUCKET, filename)
         data = response.read()
