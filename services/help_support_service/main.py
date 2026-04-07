@@ -6,6 +6,7 @@ Provides ticketing system, live chat, knowledge base, and community forums.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from handlers import router
+from config import ALLOWED_ORIGINS
 
 app = FastAPI(
     title="Help Support Service",
@@ -16,7 +17,7 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=ALLOWED_ORIGINS,  # Use allowed origins from config
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
