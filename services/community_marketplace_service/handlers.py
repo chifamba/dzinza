@@ -107,8 +107,6 @@ _reviews = {}
 _review_flags = {}
 _review_responses = {}
 
-from typing import Any
-
 class Rating(BaseModel):
     user_id: str
     seller_id: str
