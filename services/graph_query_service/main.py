@@ -24,10 +24,9 @@ security = HTTPBearer()
 
 def verify_jwt(credentials: HTTPAuthorizationCredentials = Depends(security)):
     import jwt
-    import os
-    secret = os.getenv("JWT_SECRET", "testsecret")
+    from config import JWT_SECRET
     try:
-        payload = jwt.decode(credentials.credentials, secret, algorithms=["HS256"])
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=["HS256"])
         return payload
     except Exception:
         raise HTTPException(
@@ -63,9 +62,8 @@ async def auth_middleware(request: Request, call_next):
             if scheme.lower() != "bearer":
                 raise ValueError()
             import jwt
-            import os
-            secret = os.getenv("JWT_SECRET", "testsecret")
-            payload = jwt.decode(token, secret, algorithms=["HS256"])
+            from config import JWT_SECRET
+            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
             # Authorization: require role claim
             if "role" not in payload or payload["role"] not in ["user", "admin"]:
                 raise HTTPException(status_code=403, detail="Insufficient permissions")
