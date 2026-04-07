@@ -5,7 +5,9 @@ import redis
 
 REDIS_HOST = os.getenv("REDIS_HOST", "redis")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "redis_secure_password_789")
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
+if not REDIS_PASSWORD:
+    raise RuntimeError("REDIS_PASSWORD environment variable must be set")
 
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, decode_responses=True)
 
