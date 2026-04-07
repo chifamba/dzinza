@@ -1,5 +1,4 @@
 import requests
-import sys
 
 AUTH_URL = "http://localhost:8003"
 GENEALOGY_URL = "http://localhost:8006"
