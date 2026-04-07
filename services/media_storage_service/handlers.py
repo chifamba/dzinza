@@ -14,9 +14,12 @@ import subprocess
 router = APIRouter()
 
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "garage1:39000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 MINIO_BUCKET = os.getenv("MINIO_BUCKET", "media")
+
+if not MINIO_ACCESS_KEY or not MINIO_SECRET_KEY:
+    raise RuntimeError("MINIO_ACCESS_KEY and MINIO_SECRET_KEY environment variables must be set.")
 
 minio_client = Minio(
     MINIO_ENDPOINT,
