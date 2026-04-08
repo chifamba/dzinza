@@ -473,44 +473,56 @@ def get_family_tree_timeline(id: str):
             """,
             id=id
         )
-        persons = [dict(record) for record in result]
+        persons = {record["person_id"]: dict(record) for record in result}
 
-        # For each person, get facts and relationship events
-        for person in persons:
-            pid = person["person_id"]
-            name = f"{person.get('given_name', '')} {person.get('surname', '')}".strip()
-            # Facts
-            facts_result = session.run(
-                """
-                MATCH (p:Person {id: $id})-[:HAS_FACT]->(f:Fact)
-                RETURN f
-                """,
-                id=pid
-            )
-            for record in facts_result:
-                fact_node = record["f"]
-                fact_data = dict(fact_node)
-                fact_data["event_type"] = "Fact"
-                fact_data["person_id"] = pid
-                fact_data["person_name"] = name
-                timeline.append(fact_data)
-            # Relationship events
-            rel_result = session.run(
-                """
-                MATCH (p:Person {id: $id})-[r:RELATIONSHIP]-(other:Person)
-                RETURN r
-                """,
-                id=pid
-            )
-            for record in rel_result:
-                relationship_node = record["r"]
-                events_json = relationship_node.get("events", "[]")
-                events_data = json.loads(events_json)
-                for event_data in events_data:
-                    event_data["event_type"] = event_data.get("event_type", "Relationship Event")
-                    event_data["person_id"] = pid
-                    event_data["person_name"] = name
-                    timeline.append(event_data)
+        if not persons:
+            return []
+
+        # Facts for all persons in tree
+        facts_result = session.run(
+            """
+            MATCH (t:FamilyTree {id: $id})-[:HAS_MEMBER]->(p:Person)-[:HAS_FACT]->(f:Fact)
+            RETURN p.id AS person_id, f
+            """,
+            id=id
+        )
+        for record in facts_result:
+            pid = record["person_id"]
+            if pid not in persons:
+                continue
+            name = f"{persons[pid].get('given_name', '')} {persons[pid].get('surname', '')}".strip()
+            fact_node = record["f"]
+            fact_data = dict(fact_node)
+            fact_data["event_type"] = "Fact"
+            fact_data["person_id"] = pid
+            fact_data["person_name"] = name
+            timeline.append(fact_data)
+
+        # Relationship events for all persons in tree
+        rel_result = session.run(
+            """
+            MATCH (t:FamilyTree {id: $id})-[:HAS_MEMBER]->(p:Person)-[r:RELATIONSHIP]-(other:Person)
+            RETURN p.id AS person_id, r
+            """,
+            id=id
+        )
+        for record in rel_result:
+            pid = record["person_id"]
+            if pid not in persons:
+                continue
+            name = f"{persons[pid].get('given_name', '')} {persons[pid].get('surname', '')}".strip()
+            relationship_node = record["r"]
+            events_json = relationship_node.get("events")
+
+            if not events_json or events_json == "[]":
+                continue
+
+            events_data = json.loads(events_json)
+            for event_data in events_data:
+                event_data["event_type"] = event_data.get("event_type", "Relationship Event")
+                event_data["person_id"] = pid
+                event_data["person_name"] = name
+                timeline.append(event_data)
 
     # Sort timeline by date
     def get_date(event):
