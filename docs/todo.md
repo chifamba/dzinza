@@ -212,7 +212,7 @@
 
 - [x] **T-3.4.1** — Scaffold localization_service
 - [x] **T-3.4.2** — Implement translation management
-- [ ] **T-3.4.3** — Implement cultural name parsing (Stubbed)
+- [x] **T-3.4.3** — Implement cultural name parsing (Implemented in 23362387b0cc0cf2115ad94ba6b2d0ed3bc0fa82)
 - [x] **T-3.4.4** — Write Dockerfile + add to `docker-compose.yml`
 
 ### 3.5 Help & Support Service (`services/help_support_service/`)
@@ -234,7 +234,7 @@
 ### 4.1 DNA Integration
 
 - [x] **T-4.1.1** — Implement DNA data models
-- [ ] **T-4.1.2** — Implement DNA provider API stubs (Stubbed)
+- [x] **T-4.1.2** — Implement DNA provider API integrations
 
 ### 4.2 AI Content Moderation
 
@@ -243,13 +243,13 @@
 
 ### 4.3 Backup & Recovery
 
-- [ ] **T-4.3.1** — Implement backup service (Stubbed: logs only)
-- [ ] **T-4.3.2** — Implement automated DB dumps
+- [x] **T-4.3.1** — Implement backup service (Implemented in 23362387b0cc0cf2115ad94ba6b2d0ed3bc0fa82)
+- [x] **T-4.3.2** — Implement automated DB dumps (Implemented in 23362387b0cc0cf2115ad94ba6b2d0ed3bc0fa82)
 - [x] **T-4.3.3** — Write Dockerfile + add to `docker-compose.yml`
 
 ### 4.4 External Integrations
 
-- [ ] **T-4.4.1** — Implement generic integration service (Stubbed)
+- [x] **T-4.4.1** — Implement generic integration service API integrations
 
 ### 4.5 Production Readiness
 
