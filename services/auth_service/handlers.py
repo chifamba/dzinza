@@ -118,8 +118,8 @@ def get_user_by_email(email: str, db: Session):
 @router.post("/enable_email_mfa")
 def enable_email_mfa(payload: schemas.EnableEmailMFARequest, db: Session = Depends(get_db)):
     user = get_user_by_email(payload.email, db)
-    import random
-    code = f"{random.randint(100000, 999999)}"
+    import secrets
+    code = f"{secrets.SystemRandom().randint(100000, 999999)}"
     
     # Store code in Redis with 10 minute expiration
     redis_client.setex(f"email_mfa:{payload.email}", 600, code)
