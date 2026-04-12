@@ -418,3 +418,123 @@ func (r *neo4jRepository) ListRelationshipsByTree(ctx context.Context, treeID st
 	}
 	return result.([]models.Relationship), nil
 }
+
+func (r *neo4jRepository) CreateDNATest(ctx context.Context, test *models.DNATest) error {
+	session := r.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+		query := `
+			MATCH (p:Person {id: $person_id})
+			CREATE (d:DNATest {
+				id: $id,
+				person_id: $person_id,
+				provider: $provider,
+				test_type: $test_type,
+				kit_id: $kit_id,
+				result_url: $result_url,
+				haplogroup_p: $haplogroup_p,
+				haplogroup_m: $haplogroup_m,
+				raw_data_s3_key: $raw_data_s3_key,
+				created_at: $created_at
+			})
+			CREATE (p)-[:HAS_DNA]->(d)
+			RETURN d
+		`
+		params := map[string]interface{}{
+			"id":              test.ID.String(),
+			"person_id":       test.PersonID.String(),
+			"provider":        test.Provider,
+			"test_type":       test.TestType,
+			"kit_id":          test.KitID,
+			"result_url":      test.ResultURL,
+			"haplogroup_p":    test.HaplogroupP,
+			"haplogroup_m":    test.HaplogroupM,
+			"raw_data_s3_key": test.RawDataS3Key,
+			"created_at":      test.CreatedAt.Format(time.RFC3339),
+		}
+		_, err := tx.Run(ctx, query, params)
+		return nil, err
+	})
+	return err
+}
+
+func (r *neo4jRepository) ListDNATestsByPerson(ctx context.Context, personID uuid.UUID) ([]models.DNATest, error) {
+	session := r.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close(ctx)
+
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+		query := `MATCH (p:Person {id: $person_id})-[:HAS_DNA]->(d:DNATest) RETURN d`
+		res, err := tx.Run(ctx, query, map[string]interface{}{"person_id": personID.String()})
+		if err != nil {
+			return nil, err
+		}
+		var tests []models.DNATest
+		for res.Next(ctx) {
+			node := res.Record().Values[0].(neo4j.Node)
+			props := node.Props
+			id, _ := uuid.Parse(props["id"].(string))
+			pID, _ := uuid.Parse(props["person_id"].(string))
+			createdAt, _ := time.Parse(time.RFC3339, props["created_at"].(string))
+
+			test := models.DNATest{
+				ID:           id,
+				PersonID:     pID,
+				Provider:     props["provider"].(string),
+				TestType:     props["test_type"].(string),
+				KitID:        props["kit_id"].(string),
+				ResultURL:    props["result_url"].(string),
+				CreatedAt:    createdAt,
+			}
+
+			if v, ok := props["haplogroup_p"]; ok {
+				test.HaplogroupP = v.(string)
+			}
+			if v, ok := props["haplogroup_m"]; ok {
+				test.HaplogroupM = v.(string)
+			}
+			if v, ok := props["raw_data_s3_key"]; ok {
+				test.RawDataS3Key = v.(string)
+			}
+
+			tests = append(tests, test)
+		}
+		return tests, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.([]models.DNATest), nil
+}
+
+func (r *neo4jRepository) UpdateDNATest(ctx context.Context, test *models.DNATest) error {
+	session := r.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+		query := `
+			MATCH (d:DNATest {id: $id})
+			SET d.provider = $provider,
+				d.test_type = $test_type,
+				d.kit_id = $kit_id,
+				d.result_url = $result_url,
+				d.haplogroup_p = $haplogroup_p,
+				d.haplogroup_m = $haplogroup_m,
+				d.raw_data_s3_key = $raw_data_s3_key
+			RETURN d
+		`
+		params := map[string]interface{}{
+			"id":              test.ID.String(),
+			"provider":        test.Provider,
+			"test_type":       test.TestType,
+			"kit_id":          test.KitID,
+			"result_url":      test.ResultURL,
+			"haplogroup_p":    test.HaplogroupP,
+			"haplogroup_m":    test.HaplogroupM,
+			"raw_data_s3_key": test.RawDataS3Key,
+		}
+		_, err := tx.Run(ctx, query, params)
+		return nil, err
+	})
+	return err
+}
