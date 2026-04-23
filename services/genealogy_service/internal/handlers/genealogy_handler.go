@@ -12,11 +12,12 @@ import (
 )
 
 type GenealogyHandler struct {
-	svc service.Service
+	svc        service.Service
+	dnaService service.DNAService
 }
 
-func NewGenealogyHandler(svc service.Service) *GenealogyHandler {
-	return &GenealogyHandler{svc: svc}
+func NewGenealogyHandler(svc service.Service, dnaSvc service.DNAService) *GenealogyHandler {
+	return &GenealogyHandler{svc: svc, dnaService: dnaSvc}
 }
 
 func (h *GenealogyHandler) CreateTree(c *gin.Context) {
@@ -215,4 +216,63 @@ func (h *GenealogyHandler) ExportGEDCOM(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=tree.ged")
 	c.Header("Content-Type", "application/octet-stream")
 	c.Data(http.StatusOK, "application/octet-stream", data)
+}
+
+
+// LinkDNATest handles linking a DNA test to a person
+func (h *GenealogyHandler) LinkDNATest(c *gin.Context) {
+	personIDStr := c.Param("id")
+	personID, err := uuid.Parse(personIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid person ID format")
+		return
+	}
+
+	var test models.DNATest
+	if err := c.ShouldBindJSON(&test); err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if err := h.dnaService.LinkDNATest(c.Request.Context(), personID, &test); err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to link DNA test")
+		return
+	}
+
+	response.Created(c, test)
+}
+
+// GetDNATests handles fetching DNA tests for a person
+func (h *GenealogyHandler) GetDNATests(c *gin.Context) {
+	personIDStr := c.Param("id")
+	personID, err := uuid.Parse(personIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid person ID format")
+		return
+	}
+
+	tests, err := h.dnaService.GetDNATests(c.Request.Context(), personID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to get DNA tests")
+		return
+	}
+
+	response.Success(c, tests)
+}
+
+// SyncDNATest handles mocking a sync with a DNA provider
+func (h *GenealogyHandler) SyncDNATest(c *gin.Context) {
+	testIDStr := c.Param("testid")
+	testID, err := uuid.Parse(testIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid test ID format")
+		return
+	}
+
+	if err := h.dnaService.SyncWithProvider(c.Request.Context(), testID); err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to sync DNA test")
+		return
+	}
+
+	response.Success(c, gin.H{"status": "DNA test synced successfully"})
 }

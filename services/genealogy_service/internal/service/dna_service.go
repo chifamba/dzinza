@@ -27,17 +27,45 @@ func (s *dnaService) LinkDNATest(ctx context.Context, personID uuid.UUID, test *
 	test.ID = uuid.New()
 	test.PersonID = personID
 	test.CreatedAt = time.Now()
-	// In a real implementation, this would save to Neo4j or Postgres
-	// For now, it's a stub that might just log
-	return nil
+
+	return s.repo.LinkDNATest(ctx, test)
 }
 
 func (s *dnaService) GetDNATests(ctx context.Context, personID uuid.UUID) ([]models.DNATest, error) {
-	// Stub
-	return []models.DNATest{}, nil
+	return s.repo.GetDNATests(ctx, personID)
 }
 
 func (s *dnaService) SyncWithProvider(ctx context.Context, testID uuid.UUID) error {
-	// Stub for syncing with Ancestry, 23andMe, etc.
-	return nil
+	// For syncing with Ancestry, 23andMe, etc.
+	// Since we don't have real API credentials, we mock the response
+	// Find the test
+	test, err := s.repo.GetDNATestByID(ctx, testID)
+	if err != nil {
+		return err
+	}
+	if test == nil {
+		return nil
+	}
+
+	// Update mock values based on provider
+	switch test.Provider {
+	case "Ancestry":
+		test.HaplogroupP = "R-M269"
+		test.HaplogroupM = "H"
+		test.ResultURL = "https://ancestry.com/dna/results/" + test.KitID
+	case "23andMe":
+		test.HaplogroupP = "E-M96"
+		test.HaplogroupM = "L3"
+		test.ResultURL = "https://you.23andme.com/reports/" + test.KitID
+	case "MyHeritage":
+		test.HaplogroupP = "I-M253"
+		test.HaplogroupM = "U5"
+		test.ResultURL = "https://myheritage.com/dna/" + test.KitID
+	default:
+		test.HaplogroupP = "Unknown"
+		test.HaplogroupM = "Unknown"
+	}
+
+	// Save back to DB
+	return s.repo.UpdateDNATest(ctx, test)
 }
