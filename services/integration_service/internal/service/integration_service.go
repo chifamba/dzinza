@@ -228,6 +228,7 @@ func (p *dna23AndMeProvider) MapToInternal(data *ProviderData) ([]InternalRecord
 		records = append(records, InternalRecord{
 			Type: "PERSON",
 			Extra: map[string]interface{}{
+				"provider":       "23andMe",
 				"dna_match_name": raw["name"],
 				"shared_cm":      raw["shared_cm"],
 				"confidence":     raw["confidence"],
@@ -244,11 +245,41 @@ func (p *dnaAncestryProvider) Name() string { return "AncestryDNA" }
 
 func (p *dnaAncestryProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
 	slog.Info("AncestryDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{
+				"type":        "dna_match",
+				"match_name":  "Ancestry Match 1",
+				"shared_cm":   245,
+				"segments":    12,
+				"tree_status": "public",
+			},
+			{
+				"type":        "dna_match",
+				"match_name":  "Ancestry Match 2",
+				"shared_cm":   110,
+				"segments":    6,
+				"tree_status": "unlinked",
+			},
+		},
+	}, nil
 }
 
 func (p *dnaAncestryProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		records = append(records, InternalRecord{
+			Type: "PERSON",
+			Extra: map[string]interface{}{
+				"provider":       "AncestryDNA",
+				"dna_match_name": raw["match_name"],
+				"shared_cm":      raw["shared_cm"],
+				"segments":       raw["segments"],
+				"tree_status":    raw["tree_status"],
+			},
+		})
+	}
+	return records, nil
 }
 
 // ftDNAProvider is a stub for FamilyTreeDNA provider.
@@ -258,9 +289,32 @@ func (p *ftDNAProvider) Name() string { return "FTDNA" }
 
 func (p *ftDNAProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
 	slog.Info("FTDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{
+				"type":            "dna_match",
+				"match_name":      "FTDNA Match 1",
+				"shared_cm":       310,
+				"y_dna_haplogroup": "R-M269",
+				"mt_dna_haplogroup": "H1",
+			},
+		},
+	}, nil
 }
 
 func (p *ftDNAProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		records = append(records, InternalRecord{
+			Type: "PERSON",
+			Extra: map[string]interface{}{
+				"provider":          "FTDNA",
+				"dna_match_name":    raw["match_name"],
+				"shared_cm":         raw["shared_cm"],
+				"y_dna_haplogroup":  raw["y_dna_haplogroup"],
+				"mt_dna_haplogroup": raw["mt_dna_haplogroup"],
+			},
+		})
+	}
+	return records, nil
 }
