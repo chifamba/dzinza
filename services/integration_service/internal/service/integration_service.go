@@ -228,6 +228,7 @@ func (p *dna23AndMeProvider) MapToInternal(data *ProviderData) ([]InternalRecord
 		records = append(records, InternalRecord{
 			Type: "PERSON",
 			Extra: map[string]interface{}{
+				"provider":       p.Name(),
 				"dna_match_name": raw["name"],
 				"shared_cm":      raw["shared_cm"],
 				"confidence":     raw["confidence"],
@@ -244,11 +245,27 @@ func (p *dnaAncestryProvider) Name() string { return "AncestryDNA" }
 
 func (p *dnaAncestryProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
 	slog.Info("AncestryDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{"type": "dna_match", "name": "Ancestry DNA Match", "shared_cm": 200, "confidence": 0.90},
+		},
+	}, nil
 }
 
 func (p *dnaAncestryProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		records = append(records, InternalRecord{
+			Type: "PERSON",
+			Extra: map[string]interface{}{
+				"provider":       p.Name(),
+				"dna_match_name": raw["name"],
+				"shared_cm":      raw["shared_cm"],
+				"confidence":     raw["confidence"],
+			},
+		})
+	}
+	return records, nil
 }
 
 // ftDNAProvider is a stub for FamilyTreeDNA provider.
@@ -258,9 +275,25 @@ func (p *ftDNAProvider) Name() string { return "FTDNA" }
 
 func (p *ftDNAProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
 	slog.Info("FTDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{"type": "dna_match", "name": "FTDNA Match", "shared_cm": 100, "confidence": 0.80},
+		},
+	}, nil
 }
 
 func (p *ftDNAProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		records = append(records, InternalRecord{
+			Type: "PERSON",
+			Extra: map[string]interface{}{
+				"provider":       p.Name(),
+				"dna_match_name": raw["name"],
+				"shared_cm":      raw["shared_cm"],
+				"confidence":     raw["confidence"],
+			},
+		})
+	}
+	return records, nil
 }
