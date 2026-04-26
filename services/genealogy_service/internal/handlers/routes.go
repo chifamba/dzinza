@@ -33,5 +33,13 @@ func RegisterRoutes(r *gin.Engine, h *GenealogyHandler, jwtSecret string) {
 
 		// Relationship management
 		api.POST("/relationships", h.CreateRelationship)
+
+		// DNA management
+		dna := api.Group("/dna")
+		{
+			dna.POST("/persons/:id/tests", h.LinkDNATest)
+			dna.GET("/persons/:id/tests", h.GetDNATests)
+			dna.POST("/tests/:id/sync", h.SyncDNATest)
+		}
 	}
 }

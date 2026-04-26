@@ -12,11 +12,15 @@ import (
 )
 
 type GenealogyHandler struct {
-	svc service.Service
+	svc        service.Service
+	dnaService service.DNAService
 }
 
-func NewGenealogyHandler(svc service.Service) *GenealogyHandler {
-	return &GenealogyHandler{svc: svc}
+func NewGenealogyHandler(svc service.Service, dnaSvc service.DNAService) *GenealogyHandler {
+	return &GenealogyHandler{
+		svc:        svc,
+		dnaService: dnaSvc,
+	}
 }
 
 func (h *GenealogyHandler) CreateTree(c *gin.Context) {
@@ -215,4 +219,95 @@ func (h *GenealogyHandler) ExportGEDCOM(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=tree.ged")
 	c.Header("Content-Type", "application/octet-stream")
 	c.Data(http.StatusOK, "application/octet-stream", data)
+}
+
+// DNA Endpoints
+
+// LinkDNATest godoc
+// @Summary Link a DNA test to a person
+// @Description Adds a new DNA test record to a person
+// @Tags dna
+// @Accept json
+// @Produce json
+// @Param id path string true "Person ID"
+// @Param test body models.DNATest true "DNA Test Info"
+// @Success 201 {object} models.DNATest
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Router /api/v1/dna/persons/{id}/tests [post]
+func (h *GenealogyHandler) LinkDNATest(c *gin.Context) {
+	personIDStr := c.Param("id")
+	personID, err := uuid.Parse(personIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid person ID")
+		return
+	}
+
+	var test models.DNATest
+	if err := c.ShouldBindJSON(&test); err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	err = h.dnaService.LinkDNATest(c.Request.Context(), personID, &test)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to link DNA test")
+		return
+	}
+
+	response.Created(c, test)
+}
+
+// GetDNATests godoc
+// @Summary Get DNA tests for a person
+// @Description Retrieves all DNA tests linked to a person
+// @Tags dna
+// @Produce json
+// @Param id path string true "Person ID"
+// @Success 200 {object} []models.DNATest
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Router /api/v1/dna/persons/{id}/tests [get]
+func (h *GenealogyHandler) GetDNATests(c *gin.Context) {
+	personIDStr := c.Param("id")
+	personID, err := uuid.Parse(personIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid person ID")
+		return
+	}
+
+	tests, err := h.dnaService.GetDNATests(c.Request.Context(), personID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to retrieve DNA tests")
+		return
+	}
+
+	response.Success(c, tests)
+}
+
+// SyncDNATest godoc
+// @Summary Sync DNA test with provider
+// @Description Fetches latest data from the DNA provider API (stub)
+// @Tags dna
+// @Produce json
+// @Param id path string true "Test ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Router /api/v1/dna/tests/{id}/sync [post]
+func (h *GenealogyHandler) SyncDNATest(c *gin.Context) {
+	testIDStr := c.Param("id")
+	testID, err := uuid.Parse(testIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid test ID")
+		return
+	}
+
+	err = h.dnaService.SyncWithProvider(c.Request.Context(), testID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to sync with provider: "+err.Error())
+		return
+	}
+
+	response.Success(c, gin.H{"message": "DNA test synchronized successfully"})
 }
