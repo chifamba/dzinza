@@ -27,17 +27,40 @@ func (s *dnaService) LinkDNATest(ctx context.Context, personID uuid.UUID, test *
 	test.ID = uuid.New()
 	test.PersonID = personID
 	test.CreatedAt = time.Now()
-	// In a real implementation, this would save to Neo4j or Postgres
-	// For now, it's a stub that might just log
-	return nil
+
+	// Delegate to the repository
+	return s.repo.CreateDNATest(ctx, test)
 }
 
 func (s *dnaService) GetDNATests(ctx context.Context, personID uuid.UUID) ([]models.DNATest, error) {
-	// Stub
-	return []models.DNATest{}, nil
+	return s.repo.GetDNATestsByPerson(ctx, personID)
 }
 
 func (s *dnaService) SyncWithProvider(ctx context.Context, testID uuid.UUID) error {
-	// Stub for syncing with Ancestry, 23andMe, etc.
-	return nil
+	test, err := s.repo.GetDNATestByID(ctx, testID)
+	if err != nil {
+		return err
+	}
+
+	// Functional mock logic to simulate external provider synchronization
+	// without executing real HTTP requests to unauthenticated endpoints.
+	switch test.Provider {
+	case "Ancestry":
+		test.HaplogroupM = "H1a"
+		test.TestType = "Autosomal"
+		test.ResultURL = "https://ancestry.com/mock/results/" + test.KitID
+	case "23andMe":
+		test.HaplogroupP = "R-M269"
+		test.HaplogroupM = "L3"
+		test.TestType = "Combined"
+		test.ResultURL = "https://23andme.com/mock/results/" + test.KitID
+	default:
+		// Generic mock data for other providers
+		test.HaplogroupP = "E-M2"
+		test.TestType = "Y-DNA"
+		test.ResultURL = "https://provider.com/mock/results/" + test.KitID
+	}
+
+	// Update the synchronized data in the database
+	return s.repo.UpdateDNATest(ctx, test)
 }
