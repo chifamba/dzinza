@@ -27,17 +27,21 @@ func (s *dnaService) LinkDNATest(ctx context.Context, personID uuid.UUID, test *
 	test.ID = uuid.New()
 	test.PersonID = personID
 	test.CreatedAt = time.Now()
-	// In a real implementation, this would save to Neo4j or Postgres
-	// For now, it's a stub that might just log
+
+	err := s.repo.CreateDNATest(ctx, personID, test)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *dnaService) GetDNATests(ctx context.Context, personID uuid.UUID) ([]models.DNATest, error) {
-	// Stub
-	return []models.DNATest{}, nil
+	return s.repo.ListDNATests(ctx, personID)
 }
 
 func (s *dnaService) SyncWithProvider(ctx context.Context, testID uuid.UUID) error {
 	// Stub for syncing with Ancestry, 23andMe, etc.
+	// The sync logic would normally fetch the test via its ID, extract credentials or link tokens,
+	// and invoke the integration_service.
 	return nil
 }
