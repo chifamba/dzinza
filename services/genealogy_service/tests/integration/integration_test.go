@@ -56,7 +56,8 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 	repo := repository.NewNeo4jRepository(driver)
 	mockBus := &mockEventBus{} // or implement a simple mock
 	svc := service.NewGenealogyService(repo, mockBus)
-	handler := handlers.NewGenealogyHandler(svc)
+	dnaSvc := service.NewDNAService(repo)
+	handler := handlers.NewGenealogyHandler(svc, dnaSvc)
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -144,6 +145,7 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+tokenString)
 		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusConflict, w.Code) // Should fail due to circular ref
+
 	})
 }
 

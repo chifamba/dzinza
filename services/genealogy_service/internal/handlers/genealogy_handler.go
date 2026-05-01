@@ -12,11 +12,12 @@ import (
 )
 
 type GenealogyHandler struct {
-	svc service.Service
+	svc    service.Service
+	dnaSvc service.DNAService
 }
 
-func NewGenealogyHandler(svc service.Service) *GenealogyHandler {
-	return &GenealogyHandler{svc: svc}
+func NewGenealogyHandler(svc service.Service, dnaSvc service.DNAService) *GenealogyHandler {
+	return &GenealogyHandler{svc: svc, dnaSvc: dnaSvc}
 }
 
 func (h *GenealogyHandler) CreateTree(c *gin.Context) {
@@ -215,4 +216,62 @@ func (h *GenealogyHandler) ExportGEDCOM(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=tree.ged")
 	c.Header("Content-Type", "application/octet-stream")
 	c.Data(http.StatusOK, "application/octet-stream", data)
+}
+
+func (h *GenealogyHandler) LinkDNATest(c *gin.Context) {
+	personID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid person ID")
+		return
+	}
+
+	var req models.LinkDNATestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	test := &models.DNATest{
+		Provider: req.Provider,
+		TestType: req.TestType,
+		KitID:    req.KitID,
+	}
+
+	if err := h.dnaSvc.LinkDNATest(c.Request.Context(), personID, test); err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusCreated, test)
+}
+
+func (h *GenealogyHandler) GetDNATests(c *gin.Context) {
+	personID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid person ID")
+		return
+	}
+
+	tests, err := h.dnaSvc.GetDNATests(c.Request.Context(), personID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, tests)
+}
+
+func (h *GenealogyHandler) SyncDNATest(c *gin.Context) {
+	testID, err := uuid.Parse(c.Param("test_id"))
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid test ID")
+		return
+	}
+
+	if err := h.dnaSvc.SyncWithProvider(c.Request.Context(), testID); err != nil {
+		response.Error(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "synchronized"})
 }
