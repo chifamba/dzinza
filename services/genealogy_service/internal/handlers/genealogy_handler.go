@@ -12,11 +12,15 @@ import (
 )
 
 type GenealogyHandler struct {
-	svc service.Service
+	svc    service.Service
+	dnaSvc service.DNAService
 }
 
-func NewGenealogyHandler(svc service.Service) *GenealogyHandler {
-	return &GenealogyHandler{svc: svc}
+func NewGenealogyHandler(svc service.Service, dnaSvc service.DNAService) *GenealogyHandler {
+	return &GenealogyHandler{
+		svc:    svc,
+		dnaSvc: dnaSvc,
+	}
 }
 
 func (h *GenealogyHandler) CreateTree(c *gin.Context) {
