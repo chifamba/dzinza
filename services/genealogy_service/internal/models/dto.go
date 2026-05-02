@@ -28,3 +28,12 @@ type CreateRelationshipRequest struct {
 	Type      string                 `json:"type" binding:"required,oneof=PARENT_OF SPOUSE_OF SIBLING_OF"`
 	Metadata  map[string]interface{} `json:"metadata"`
 }
+
+// LinkDNATestRequest defines the payload for adding a DNA test to a person.
+type LinkDNATestRequest struct {
+	Provider     string `json:"provider" binding:"required"`
+	TestType     string `json:"test_type" binding:"required"`
+	KitID        string `json:"kit_id" binding:"required"`
+	ResultURL    string `json:"result_url"`
+	RawDataS3Key string `json:"raw_data_s3_key"`
+}
