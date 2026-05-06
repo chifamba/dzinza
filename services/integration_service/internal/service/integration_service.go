@@ -217,7 +217,9 @@ func (p *dna23AndMeProvider) FetchData(ctx context.Context, config map[string]st
 	slog.Info("23andMe: fetching DNA data (stub mode)")
 	return &ProviderData{
 		Records: []map[string]interface{}{
-			{"type": "dna_match", "name": "DNA Match", "shared_cm": 150, "confidence": 0.85},
+			{"type": "dna_match", "name": "Relative A", "shared_cm": 3500, "confidence": 0.99, "relationship": "Parent"},
+			{"type": "dna_match", "name": "Relative B", "shared_cm": 1700, "confidence": 0.95, "relationship": "Sibling"},
+			{"type": "dna_match", "name": "Relative C", "shared_cm": 850, "confidence": 0.90, "relationship": "1st Cousin"},
 		},
 	}, nil
 }
@@ -225,13 +227,25 @@ func (p *dna23AndMeProvider) FetchData(ctx context.Context, config map[string]st
 func (p *dna23AndMeProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
 	var records []InternalRecord
 	for _, raw := range data.Records {
+		extra := make(map[string]interface{})
+		if name, ok := raw["name"].(string); ok {
+			extra["dna_match_name"] = name
+		}
+		if sharedCM, ok := raw["shared_cm"].(int); ok {
+			extra["shared_cm"] = sharedCM
+		} else if sharedCM, ok := raw["shared_cm"].(float64); ok { // JSON unmarshals numbers to float64
+			extra["shared_cm"] = sharedCM
+		}
+		if confidence, ok := raw["confidence"].(float64); ok {
+			extra["confidence"] = confidence
+		}
+		if relationship, ok := raw["relationship"].(string); ok {
+			extra["relationship"] = relationship
+		}
+
 		records = append(records, InternalRecord{
-			Type: "PERSON",
-			Extra: map[string]interface{}{
-				"dna_match_name": raw["name"],
-				"shared_cm":      raw["shared_cm"],
-				"confidence":     raw["confidence"],
-			},
+			Type:  "PERSON",
+			Extra: extra,
 		})
 	}
 	return records, nil
@@ -244,11 +258,47 @@ func (p *dnaAncestryProvider) Name() string { return "AncestryDNA" }
 
 func (p *dnaAncestryProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
 	slog.Info("AncestryDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{"type": "dna_match", "given_name": "John", "surname": "Doe", "shared_segments": 25, "shared_cm": 1200},
+			{"type": "dna_match", "given_name": "Jane", "surname": "Smith", "shared_segments": 10, "shared_cm": 400},
+		},
+	}, nil
 }
 
 func (p *dnaAncestryProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		extra := make(map[string]interface{})
+		if sharedSegments, ok := raw["shared_segments"].(int); ok {
+			extra["shared_segments"] = sharedSegments
+		} else if sharedSegments, ok := raw["shared_segments"].(float64); ok {
+			extra["shared_segments"] = sharedSegments
+		}
+		if sharedCM, ok := raw["shared_cm"].(int); ok {
+			extra["shared_cm"] = sharedCM
+		} else if sharedCM, ok := raw["shared_cm"].(float64); ok {
+			extra["shared_cm"] = sharedCM
+		}
+
+		givenName := ""
+		if gn, ok := raw["given_name"].(string); ok {
+			givenName = gn
+		}
+
+		surname := ""
+		if sn, ok := raw["surname"].(string); ok {
+			surname = sn
+		}
+
+		records = append(records, InternalRecord{
+			Type:      "PERSON",
+			GivenName: givenName,
+			Surname:   surname,
+			Extra:     extra,
+		})
+	}
+	return records, nil
 }
 
 // ftDNAProvider is a stub for FamilyTreeDNA provider.
@@ -258,9 +308,37 @@ func (p *ftDNAProvider) Name() string { return "FTDNA" }
 
 func (p *ftDNAProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
 	slog.Info("FTDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{"type": "y_dna_match", "match_name": "Y-DNA Match 1", "genetic_distance": 1, "haplogroup": "R-M269"},
+			{"type": "mt_dna_match", "match_name": "mtDNA Match 1", "genetic_distance": 0, "haplogroup": "H1a"},
+		},
+	}, nil
 }
 
 func (p *ftDNAProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		extra := make(map[string]interface{})
+		if matchName, ok := raw["match_name"].(string); ok {
+			extra["dna_match_name"] = matchName
+		}
+		if geneticDistance, ok := raw["genetic_distance"].(int); ok {
+			extra["genetic_distance"] = geneticDistance
+		} else if geneticDistance, ok := raw["genetic_distance"].(float64); ok {
+			extra["genetic_distance"] = geneticDistance
+		}
+		if haplogroup, ok := raw["haplogroup"].(string); ok {
+			extra["haplogroup"] = haplogroup
+		}
+		if recordType, ok := raw["type"].(string); ok {
+			extra["test_type"] = recordType
+		}
+
+		records = append(records, InternalRecord{
+			Type:  "PERSON",
+			Extra: extra,
+		})
+	}
+	return records, nil
 }
