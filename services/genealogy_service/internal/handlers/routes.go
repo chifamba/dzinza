@@ -29,6 +29,16 @@ func RegisterRoutes(r *gin.Engine, h *GenealogyHandler, jwtSecret string) {
 			persons.GET("/:id", h.GetPerson)
 			persons.PUT("/:id", h.UpdatePerson)
 			persons.DELETE("/:id", h.DeletePerson)
+
+			// DNA integration
+			persons.POST("/:id/dna_tests", h.LinkDNATest)
+			persons.GET("/:id/dna_tests", h.GetDNATests)
+		}
+
+		// DNA test syncing
+		dnaTests := api.Group("/dna_tests")
+		{
+			dnaTests.POST("/:id/sync", h.SyncDNATest)
 		}
 
 		// Relationship management

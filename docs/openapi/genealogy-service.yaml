@@ -708,6 +708,90 @@ paths:
         '404':
           description: Person not found
 
+  /persons/{id}/dna_tests:
+    post:
+      summary: Link a DNA test to a person
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: DNA test creation object
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider:
+                  type: string
+                  example: "Ancestry"
+                test_type:
+                  type: string
+                  example: "Autosomal"
+                kit_id:
+                  type: string
+                result_url:
+                  type: string
+                haplogroup_p:
+                  type: string
+                haplogroup_m:
+                  type: string
+                raw_data_s3_key:
+                  type: string
+              required:
+                - provider
+                - test_type
+      responses:
+        '200':
+          description: DNA test linked successfully
+        '400':
+          description: Invalid request body
+        '404':
+          description: Person not found
+
+    get:
+      summary: Get DNA tests for a person
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of DNA tests
+        '400':
+          description: Invalid person ID
+
+  /dna_tests/{id}/sync:
+    post:
+      summary: Sync DNA test data with provider
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: DNA test synchronized successfully
+        '400':
+          description: Invalid test ID
+        '404':
+          description: DNA test not found
+
   /relationships:
     post:
       summary: Create a new relationship between two persons
