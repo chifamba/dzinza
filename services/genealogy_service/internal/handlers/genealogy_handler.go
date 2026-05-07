@@ -12,11 +12,12 @@ import (
 )
 
 type GenealogyHandler struct {
-	svc service.Service
+	svc    service.Service
+	dnaSvc service.DNAService
 }
 
-func NewGenealogyHandler(svc service.Service) *GenealogyHandler {
-	return &GenealogyHandler{svc: svc}
+func NewGenealogyHandler(svc service.Service, dnaSvc service.DNAService) *GenealogyHandler {
+	return &GenealogyHandler{svc: svc, dnaSvc: dnaSvc}
 }
 
 func (h *GenealogyHandler) CreateTree(c *gin.Context) {
@@ -215,4 +216,77 @@ func (h *GenealogyHandler) ExportGEDCOM(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=tree.ged")
 	c.Header("Content-Type", "application/octet-stream")
 	c.Data(http.StatusOK, "application/octet-stream", data)
+}
+
+func (h *GenealogyHandler) LinkDNATest(c *gin.Context) {
+	personIDStr := c.Param("id")
+	personID, err := uuid.Parse(personIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid person ID")
+		return
+	}
+
+	var req models.CreateDNATestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	test := &models.DNATest{
+		Provider:     req.Provider,
+		TestType:     req.TestType,
+		KitID:        req.KitID,
+		ResultURL:    req.ResultURL,
+		HaplogroupP:  req.HaplogroupP,
+		HaplogroupM:  req.HaplogroupM,
+		RawDataS3Key: req.RawDataS3Key,
+	}
+
+	if err := h.dnaSvc.LinkDNATest(c.Request.Context(), personID, test); err != nil {
+		if err.Error() == "person not found" {
+			response.Error(c, http.StatusNotFound, "person not found")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "failed to link DNA test")
+		return
+	}
+
+	response.Success(c, test)
+}
+
+func (h *GenealogyHandler) GetDNATests(c *gin.Context) {
+	personIDStr := c.Param("id")
+	personID, err := uuid.Parse(personIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid person ID")
+		return
+	}
+
+	tests, err := h.dnaSvc.GetDNATests(c.Request.Context(), personID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "failed to get DNA tests")
+		return
+	}
+
+	response.Success(c, tests)
+}
+
+func (h *GenealogyHandler) SyncDNATest(c *gin.Context) {
+	testIDStr := c.Param("id")
+	testID, err := uuid.Parse(testIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid test ID")
+		return
+	}
+
+	if err := h.dnaSvc.SyncWithProvider(c.Request.Context(), testID); err != nil {
+		if err == service.ErrPersonNotFound {
+			response.Error(c, http.StatusNotFound, "DNA test not found")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "failed to sync DNA test")
+		return
+	}
+
+	response.Success(c, map[string]string{"message": "DNA test synchronized successfully"})
 }
