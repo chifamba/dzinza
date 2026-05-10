@@ -12,11 +12,12 @@ import (
 )
 
 type GenealogyHandler struct {
-	svc service.Service
+	svc    service.Service
+	dnaSvc service.DNAService
 }
 
-func NewGenealogyHandler(svc service.Service) *GenealogyHandler {
-	return &GenealogyHandler{svc: svc}
+func NewGenealogyHandler(svc service.Service, dnaSvc service.DNAService) *GenealogyHandler {
+	return &GenealogyHandler{svc: svc, dnaSvc: dnaSvc}
 }
 
 func (h *GenealogyHandler) CreateTree(c *gin.Context) {
@@ -215,4 +216,44 @@ func (h *GenealogyHandler) ExportGEDCOM(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename=tree.ged")
 	c.Header("Content-Type", "application/octet-stream")
 	c.Data(http.StatusOK, "application/octet-stream", data)
+}
+
+// DNA Handlers
+func (h *GenealogyHandler) LinkDNATest(c *gin.Context) {
+	personIDStr := c.Param("id")
+	personID, err := uuid.Parse(personIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid person ID format")
+		return
+	}
+
+	var test models.DNATest
+	if err := c.ShouldBindJSON(&test); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.dnaSvc.LinkDNATest(c.Request.Context(), personID, &test); err != nil {
+		response.Error(c, http.StatusInternalServerError, "failed to link DNA test")
+		return
+	}
+
+	c.JSON(http.StatusCreated, test)
+}
+
+func (h *GenealogyHandler) GetDNATests(c *gin.Context) {
+	personIDStr := c.Param("id")
+	personID, err := uuid.Parse(personIDStr)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid person ID format")
+		return
+	}
+
+	tests, err := h.dnaSvc.GetDNATests(c.Request.Context(), personID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "failed to fetch DNA tests")
+		return
+	}
+
+	c.JSON(http.StatusOK, tests)
 }

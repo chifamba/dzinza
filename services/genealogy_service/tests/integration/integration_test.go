@@ -56,7 +56,8 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 	repo := repository.NewNeo4jRepository(driver)
 	mockBus := &mockEventBus{} // or implement a simple mock
 	svc := service.NewGenealogyService(repo, mockBus)
-	handler := handlers.NewGenealogyHandler(svc)
+	dnaSvc := service.NewDNAService(repo)
+	handler := handlers.NewGenealogyHandler(svc, dnaSvc)
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -65,7 +66,7 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 	// Helper to generate token
 	ownerID := uuid.New()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": ownerID.String(),
+		"sub": ownerID.String(),
 		"roles":   []string{"user"},
 		"exp":     time.Now().Add(time.Hour).Unix(),
 	})
