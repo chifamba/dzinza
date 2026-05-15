@@ -126,6 +126,10 @@ func (s *integrationService) ListProviders(ctx context.Context) []ProviderInfo {
 			Status: "STUB",
 		}
 
+		if p.Name() == "23andMe" || p.Name() == "AncestryDNA" || p.Name() == "FTDNA" {
+			info.Status = "AVAILABLE"
+		}
+
 		switch p.Name() {
 		case "FamilySearch":
 			info.Description = "FamilySearch.org genealogy data integration"
@@ -184,11 +188,15 @@ func (p *familySearchProvider) FetchData(ctx context.Context, config map[string]
 func (p *familySearchProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
 	var records []InternalRecord
 	for _, raw := range data.Records {
+		givenName, _ := raw["given_name"].(string)
+		surname, _ := raw["surname"].(string)
+		birthDate, _ := raw["birth_date"].(string)
+
 		records = append(records, InternalRecord{
 			Type:      "PERSON",
-			GivenName: fmt.Sprint(raw["given_name"]),
-			Surname:   fmt.Sprint(raw["surname"]),
-			BirthDate: fmt.Sprint(raw["birth_date"]),
+			GivenName: givenName,
+			Surname:   surname,
+			BirthDate: birthDate,
 		})
 	}
 	return records, nil
@@ -225,12 +233,29 @@ func (p *dna23AndMeProvider) FetchData(ctx context.Context, config map[string]st
 func (p *dna23AndMeProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
 	var records []InternalRecord
 	for _, raw := range data.Records {
+		var name string
+		if v, ok := raw["name"].(string); ok {
+			name = v
+		}
+
+		var sharedCM float64
+		if v, ok := raw["shared_cm"].(float64); ok {
+			sharedCM = v
+		} else if v, ok := raw["shared_cm"].(int); ok {
+			sharedCM = float64(v)
+		}
+
+		var confidence float64
+		if v, ok := raw["confidence"].(float64); ok {
+			confidence = v
+		}
+
 		records = append(records, InternalRecord{
 			Type: "PERSON",
 			Extra: map[string]interface{}{
-				"dna_match_name": raw["name"],
-				"shared_cm":      raw["shared_cm"],
-				"confidence":     raw["confidence"],
+				"dna_match_name": name,
+				"shared_cm":      sharedCM,
+				"confidence":     confidence,
 			},
 		})
 	}
@@ -244,11 +269,44 @@ func (p *dnaAncestryProvider) Name() string { return "AncestryDNA" }
 
 func (p *dnaAncestryProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
 	slog.Info("AncestryDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{"type": "dna_match", "name": "Ancestry Match 1", "shared_cm": 200, "confidence": 0.90},
+			{"type": "dna_match", "name": "Ancestry Match 2", "shared_cm": 50, "confidence": 0.60},
+		},
+	}, nil
 }
 
 func (p *dnaAncestryProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		var name string
+		if v, ok := raw["name"].(string); ok {
+			name = v
+		}
+
+		var sharedCM float64
+		if v, ok := raw["shared_cm"].(float64); ok {
+			sharedCM = v
+		} else if v, ok := raw["shared_cm"].(int); ok {
+			sharedCM = float64(v)
+		}
+
+		var confidence float64
+		if v, ok := raw["confidence"].(float64); ok {
+			confidence = v
+		}
+
+		records = append(records, InternalRecord{
+			Type: "PERSON",
+			Extra: map[string]interface{}{
+				"dna_match_name": name,
+				"shared_cm":      sharedCM,
+				"confidence":     confidence,
+			},
+		})
+	}
+	return records, nil
 }
 
 // ftDNAProvider is a stub for FamilyTreeDNA provider.
@@ -258,9 +316,41 @@ func (p *ftDNAProvider) Name() string { return "FTDNA" }
 
 func (p *ftDNAProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
 	slog.Info("FTDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{"type": "dna_match", "name": "FTDNA Match 1", "shared_cm": 300, "confidence": 0.95},
+		},
+	}, nil
 }
 
 func (p *ftDNAProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		var name string
+		if v, ok := raw["name"].(string); ok {
+			name = v
+		}
+
+		var sharedCM float64
+		if v, ok := raw["shared_cm"].(float64); ok {
+			sharedCM = v
+		} else if v, ok := raw["shared_cm"].(int); ok {
+			sharedCM = float64(v)
+		}
+
+		var confidence float64
+		if v, ok := raw["confidence"].(float64); ok {
+			confidence = v
+		}
+
+		records = append(records, InternalRecord{
+			Type: "PERSON",
+			Extra: map[string]interface{}{
+				"dna_match_name": name,
+				"shared_cm":      sharedCM,
+				"confidence":     confidence,
+			},
+		})
+	}
+	return records, nil
 }
