@@ -25,4 +25,8 @@ type Repository interface {
 	DeleteRelationship(ctx context.Context, p1, p2 uuid.UUID, relType string) error
 	CheckCircularReference(ctx context.Context, p1, p2 uuid.UUID, relType string) (bool, error)
 	ListRelationshipsByTree(ctx context.Context, treeID string) ([]models.Relationship, error)
+
+	// DNA Operations
+	LinkDNATest(ctx context.Context, personID uuid.UUID, test *models.DNATest) error
+	GetDNATests(ctx context.Context, personID uuid.UUID) ([]models.DNATest, error)
 }
