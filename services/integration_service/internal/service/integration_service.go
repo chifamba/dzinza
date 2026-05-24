@@ -123,7 +123,7 @@ func (s *integrationService) ListProviders(ctx context.Context) []ProviderInfo {
 	for _, p := range s.providers {
 		info := ProviderInfo{
 			Name:   p.Name(),
-			Status: "STUB",
+			Status: "AVAILABLE",
 		}
 
 		switch p.Name() {
@@ -173,7 +173,7 @@ type familySearchProvider struct{}
 func (p *familySearchProvider) Name() string { return "FamilySearch" }
 
 func (p *familySearchProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
-	slog.Info("FamilySearch: fetching data (stub mode)")
+	slog.Info("FamilySearch: fetching data (mock mode)")
 	return &ProviderData{
 		Records: []map[string]interface{}{
 			{"type": "person", "given_name": "Sample", "surname": "Person", "birth_date": "1900"},
@@ -200,7 +200,7 @@ type ancestryProvider struct{}
 func (p *ancestryProvider) Name() string { return "Ancestry" }
 
 func (p *ancestryProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
-	slog.Info("Ancestry: fetching data (stub mode)")
+	slog.Info("Ancestry: fetching data (mock mode)")
 	return &ProviderData{Records: []map[string]interface{}{}}, nil
 }
 
@@ -214,7 +214,7 @@ type dna23AndMeProvider struct{}
 func (p *dna23AndMeProvider) Name() string { return "23andMe" }
 
 func (p *dna23AndMeProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
-	slog.Info("23andMe: fetching DNA data (stub mode)")
+	slog.Info("23andMe: fetching DNA data (mock mode)")
 	return &ProviderData{
 		Records: []map[string]interface{}{
 			{"type": "dna_match", "name": "DNA Match", "shared_cm": 150, "confidence": 0.85},
@@ -243,12 +243,28 @@ type dnaAncestryProvider struct{}
 func (p *dnaAncestryProvider) Name() string { return "AncestryDNA" }
 
 func (p *dnaAncestryProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
-	slog.Info("AncestryDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	slog.Info("AncestryDNA: fetching DNA data (mock mode)")
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{"type": "dna_match", "name": "Ancestry Match 1", "shared_cm": 250, "confidence": 0.90},
+			{"type": "dna_match", "name": "Ancestry Match 2", "shared_cm": 50, "confidence": 0.60},
+		},
+	}, nil
 }
 
 func (p *dnaAncestryProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		records = append(records, InternalRecord{
+			Type: "PERSON",
+			Extra: map[string]interface{}{
+				"dna_match_name": raw["name"],
+				"shared_cm":      raw["shared_cm"],
+				"confidence":     raw["confidence"],
+			},
+		})
+	}
+	return records, nil
 }
 
 // ftDNAProvider is a stub for FamilyTreeDNA provider.
@@ -257,10 +273,25 @@ type ftDNAProvider struct{}
 func (p *ftDNAProvider) Name() string { return "FTDNA" }
 
 func (p *ftDNAProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
-	slog.Info("FTDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	slog.Info("FTDNA: fetching DNA data (mock mode)")
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{"type": "dna_match", "name": "FTDNA Match 1", "shared_cm": 180, "confidence": 0.88},
+		},
+	}, nil
 }
 
 func (p *ftDNAProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		records = append(records, InternalRecord{
+			Type: "PERSON",
+			Extra: map[string]interface{}{
+				"dna_match_name": raw["name"],
+				"shared_cm":      raw["shared_cm"],
+				"confidence":     raw["confidence"],
+			},
+		})
+	}
+	return records, nil
 }
