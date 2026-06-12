@@ -138,14 +138,17 @@ func (s *integrationService) ListProviders(ctx context.Context) []ProviderInfo {
 		case "23andMe":
 			info.Description = "23andMe DNA match import"
 			info.Category = "DNA"
+			info.Status = "AVAILABLE"
 			info.RequiredConfig = []string{"access_token"}
 		case "AncestryDNA":
 			info.Description = "AncestryDNA match import"
 			info.Category = "DNA"
+			info.Status = "AVAILABLE"
 			info.RequiredConfig = []string{"api_key"}
 		case "FTDNA":
 			info.Description = "FamilyTreeDNA data import"
 			info.Category = "DNA"
+			info.Status = "AVAILABLE"
 			info.RequiredConfig = []string{"kit_number", "password"}
 		}
 
@@ -225,13 +228,20 @@ func (p *dna23AndMeProvider) FetchData(ctx context.Context, config map[string]st
 func (p *dna23AndMeProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
 	var records []InternalRecord
 	for _, raw := range data.Records {
+		extra := make(map[string]interface{})
+		if name, ok := raw["name"]; ok {
+			extra["dna_match_name"] = name
+		}
+		if sharedCM, ok := raw["shared_cm"]; ok {
+			extra["shared_cm"] = sharedCM
+		}
+		if confidence, ok := raw["confidence"]; ok {
+			extra["confidence"] = confidence
+		}
+
 		records = append(records, InternalRecord{
-			Type: "PERSON",
-			Extra: map[string]interface{}{
-				"dna_match_name": raw["name"],
-				"shared_cm":      raw["shared_cm"],
-				"confidence":     raw["confidence"],
-			},
+			Type:  "PERSON",
+			Extra: extra,
 		})
 	}
 	return records, nil
@@ -244,11 +254,33 @@ func (p *dnaAncestryProvider) Name() string { return "AncestryDNA" }
 
 func (p *dnaAncestryProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
 	slog.Info("AncestryDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{"type": "dna_match", "name": "DNA Match", "shared_cm": 150, "confidence": 0.85},
+		},
+	}, nil
 }
 
 func (p *dnaAncestryProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		extra := make(map[string]interface{})
+		if name, ok := raw["name"]; ok {
+			extra["dna_match_name"] = name
+		}
+		if sharedCM, ok := raw["shared_cm"]; ok {
+			extra["shared_cm"] = sharedCM
+		}
+		if confidence, ok := raw["confidence"]; ok {
+			extra["confidence"] = confidence
+		}
+
+		records = append(records, InternalRecord{
+			Type:  "PERSON",
+			Extra: extra,
+		})
+	}
+	return records, nil
 }
 
 // ftDNAProvider is a stub for FamilyTreeDNA provider.
@@ -258,9 +290,31 @@ func (p *ftDNAProvider) Name() string { return "FTDNA" }
 
 func (p *ftDNAProvider) FetchData(ctx context.Context, config map[string]string) (*ProviderData, error) {
 	slog.Info("FTDNA: fetching DNA data (stub mode)")
-	return &ProviderData{Records: []map[string]interface{}{}}, nil
+	return &ProviderData{
+		Records: []map[string]interface{}{
+			{"type": "dna_match", "name": "DNA Match", "shared_cm": 150, "confidence": 0.85},
+		},
+	}, nil
 }
 
 func (p *ftDNAProvider) MapToInternal(data *ProviderData) ([]InternalRecord, error) {
-	return nil, nil
+	var records []InternalRecord
+	for _, raw := range data.Records {
+		extra := make(map[string]interface{})
+		if name, ok := raw["name"]; ok {
+			extra["dna_match_name"] = name
+		}
+		if sharedCM, ok := raw["shared_cm"]; ok {
+			extra["shared_cm"] = sharedCM
+		}
+		if confidence, ok := raw["confidence"]; ok {
+			extra["confidence"] = confidence
+		}
+
+		records = append(records, InternalRecord{
+			Type:  "PERSON",
+			Extra: extra,
+		})
+	}
+	return records, nil
 }
