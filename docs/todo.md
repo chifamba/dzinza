@@ -234,7 +234,7 @@
 ### 4.1 DNA Integration
 
 - [x] **T-4.1.1** — Implement DNA data models
-- [ ] **T-4.1.2** — Implement DNA provider API stubs (Stubbed)
+- [x] **T-4.1.2** — Implement DNA provider API stubs (Stubbed) (Implemented in functional mock data)
 
 ### 4.2 AI Content Moderation
 
