@@ -1,40 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { Login } from './Login';
-import { Register } from './Register';
-import { FamilyTree } from './FamilyTree';
+import { useEffect, useState, type ReactElement } from "react";
+import { Link, Route, Routes, useNavigate, useLocation, Navigate } from "react-router-dom";
+import { api, ApiError } from "./api/client";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import TreeView from "./pages/TreeView";
+import PersonDetail from "./pages/PersonDetail";
+import Sources from "./pages/Sources";
 
-function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    if (localStorage.getItem('token')) {
-      setIsLoggedIn(true);
-    }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setIsLoggedIn(false);
-  };
-
+function TopBar({ onLogout }: { onLogout: () => void }) {
   return (
-    <div style={{ padding: '2rem', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Dzinza Family Tree</h1>
-      {isLoggedIn ? (
-        <div>
-          <button onClick={handleLogout}>Logout</button>
-          <hr />
-          <FamilyTree />
-        </div>
-      ) : (
-        <div style={{ display: 'flex', gap: '2rem' }}>
-          <Login onLogin={() => setIsLoggedIn(true)} />
-          <div style={{ borderLeft: '1px solid #ccc' }}></div>
-          <Register />
-        </div>
-      )}
-    </div>
+    <header className="topbar">
+      <Link to="/" className="brand">
+        Dzinza
+      </Link>
+      <nav>
+        <Link to="/">Trees</Link>
+      </nav>
+      <div className="spacer" />
+      <button className="ghost small-btn" onClick={onLogout}>
+        Log out
+      </button>
+    </header>
   );
 }
 
-export default App;
+function RequireAuth({ children }: { children: ReactElement }) {
+  const [state, setState] = useState<"checking" | "ok" | "denied">("checking");
+  const location = useLocation();
+
+  useEffect(() => {
+    let alive = true;
+    api
+      .me()
+      .then(() => alive && setState("ok"))
+      .catch((e) => {
+        if (alive) setState(e instanceof ApiError && e.status === 401 ? "denied" : "denied");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [location.pathname]);
+
+  if (state === "checking") return <div className="page muted">Checking session…</div>;
+  if (state === "denied") return <Navigate to="/login" replace />;
+  return children;
+}
+
+export default function App() {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+    } finally {
+      navigate("/login");
+    }
+  };
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/*"
+        element={
+          <RequireAuth>
+            <>
+              <TopBar onLogout={handleLogout} />
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/trees/:treeId" element={<TreeView />} />
+                <Route path="/trees/:treeId/sources" element={<Sources />} />
+                <Route path="/persons/:personId" element={<PersonDetail />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </>
+          </RequireAuth>
+        }
+      />
+    </Routes>
+  );
+}
