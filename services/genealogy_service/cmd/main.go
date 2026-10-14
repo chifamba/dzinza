@@ -53,7 +53,8 @@ func main() {
 	// Initialize layers
 	repo := repository.NewNeo4jRepository(driver)
 	svc := service.NewGenealogyService(repo, eventBus)
-	handler := handlers.NewGenealogyHandler(svc)
+	dnaSvc := service.NewDNAService(repo)
+	handler := handlers.NewGenealogyHandler(svc, dnaSvc)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
