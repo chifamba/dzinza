@@ -56,7 +56,8 @@ func TestGenealogyServiceIntegration(t *testing.T) {
 	repo := repository.NewNeo4jRepository(driver)
 	mockBus := &mockEventBus{} // or implement a simple mock
 	svc := service.NewGenealogyService(repo, mockBus)
-	handler := handlers.NewGenealogyHandler(svc)
+	dnaSvc := service.NewDNAService(repo)
+	handler := handlers.NewGenealogyHandler(svc, dnaSvc)
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
