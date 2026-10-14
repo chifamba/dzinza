@@ -2,8 +2,8 @@
 
 from uuid import uuid4
 
-from ..db.serialize import from_record, to_properties
-from ..models import (
+from api.db.serialize import from_record, to_properties
+from api.models import (
     Confidence,
     Fact,
     FamilyTree,

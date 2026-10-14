@@ -30,7 +30,7 @@ pytestmark = pytest.mark.skipif(
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from ..main import app  # noqa: E402
+from api.main import app  # noqa: E402
 
 
 @pytest.fixture(scope="module")

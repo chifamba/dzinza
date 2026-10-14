@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -35,6 +36,22 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Dzinza", version="2.0.0", lifespan=lifespan)
+
+allowed_origins_env = os.environ.get("ALLOWED_ORIGINS") or os.environ.get("CORS_ALLOWED_ORIGINS")
+origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()] if allowed_origins_env else [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth_router)
 app.include_router(trees.router)

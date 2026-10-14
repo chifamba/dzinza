@@ -4,7 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from ..models import (
+from api.models import (
     Confidence,
     Fact,
     FamilyTree,
