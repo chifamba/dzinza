@@ -7,6 +7,7 @@ replace github.com/chifamba/dzinza/services/pkg => ../pkg
 require (
 	github.com/chifamba/dzinza/services/pkg v0.0.0-00010101000000-000000000000
 	github.com/gin-gonic/gin v1.11.0
+	github.com/stretchr/testify v1.12.1
 )
 
 require (
@@ -32,6 +33,7 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	go.uber.org/mock v0.5.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/arch v0.20.0 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/mod v0.26.0 // indirect

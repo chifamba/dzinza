@@ -525,7 +525,7 @@ Secrets are stored as plain text files in `/secrets/` (git-ignored) and mounted 
 
 | Priority | Task | Status |
 |----------|------|--------|
-| P2 | DNA integration partnerships | `[ ]` Stubbed |
+| P2 | DNA integration partnerships | ✅ Done |
 | P2 | `content_moderation_ai_service` — AI content review | `[ ]` Stubbed |
 | P2 | Mobile applications (PWA or React Native) | `[ ]` Not Started |
 | P3 | `backup_recovery_service` — Automated backups | `[ ]` Stubbed |
