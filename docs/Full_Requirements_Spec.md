@@ -525,11 +525,11 @@ Secrets are stored as plain text files in `/secrets/` (git-ignored) and mounted 
 
 | Priority | Task | Status |
 |----------|------|--------|
-| P2 | DNA integration partnerships | `[ ]` Stubbed |
+| P2 | DNA integration partnerships | `[x]` Done |
 | P2 | `content_moderation_ai_service` — AI content review | `[ ]` Stubbed |
 | P2 | Mobile applications (PWA or React Native) | `[ ]` Not Started |
 | P3 | `backup_recovery_service` — Automated backups | `[ ]` Stubbed |
-| P3 | `integration_service` — External API integrations | `[ ]` Stubbed |
+| P3 | `integration_service` — External API integrations | `[x]` Done |
 | P3 | Production deployment — Kubernetes, TLS, CDN | ✅ Done |
 
 ---
