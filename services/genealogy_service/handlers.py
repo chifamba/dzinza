@@ -762,6 +762,52 @@ def delete_family_member(id: str):
         if not record or record["deleted_count"] == 0:
             raise HTTPException(status_code=404, detail="Person not found")
     return
+def _check_circular_relationship(session, person1_id: str, person2_id: str):
+    """Check for circular relationships (e.g., becoming your own ancestor)."""
+    result = session.run(
+        """
+        MATCH (p1:Person {id: $person1_id}), (p2:Person {id: $person2_id})
+        MATCH path = (p2)-[:RELATIONSHIP*]->(p1)
+        WHERE all(r in relationships(path) WHERE r.type = 'PARENT_CHILD')
+        RETURN path
+        """,
+        person1_id=person1_id,
+        person2_id=person2_id
+    )
+    if result.single():
+        raise HTTPException(status_code=400, detail="Circular parent-child relationship detected.")
+
+def _check_already_married(session, person1_id: str, person2_id: str):
+    """Check if spouses are already married."""
+    result = session.run(
+        """
+        MATCH (p1:Person {id: $person1_id})-[r:RELATIONSHIP]-(p2:Person {id: $person2_id})
+        WHERE r.type = 'SPOUSE' AND r.spousal_status = 'MARRIED'
+        RETURN r
+        """,
+        person1_id=person1_id,
+        person2_id=person2_id
+    )
+    if result.single():
+        raise HTTPException(status_code=400, detail="A 'MARRIED' spousal relationship already exists between these two people.")
+
+def _verify_entities_exist(session, person1_id: str, person2_id: str, tree_id: str):
+    """Check if persons and tree exist."""
+    result = session.run(
+        """
+        MATCH (p1:Person {id: $person1_id})
+        MATCH (p2:Person {id: $person2_id})
+        MATCH (t:FamilyTree {id: $tree_id})
+        RETURN p1, p2, t
+        """,
+        person1_id=person1_id,
+        person2_id=person2_id,
+        tree_id=tree_id
+    )
+    record = result.single()
+    if not record:
+        raise HTTPException(status_code=404, detail="One or more entities not found")
+
 @router.post("/relationships", response_model=Relationship, status_code=status.HTTP_201_CREATED)
 def add_relationship(payload: Relationship):
     # Validation
@@ -769,55 +815,20 @@ def add_relationship(payload: Relationship):
         raise HTTPException(status_code=400, detail="Cannot create a relationship with oneself.")
 
     driver = get_neo4j_driver()
-
-    if payload.relationship_type == RelationshipType.PARENT_CHILD:
-        # Check for circular relationships (e.g., becoming your own ancestor)
-        with driver.session() as session:
-            result = session.run(
-                """
-                MATCH (p1:Person {id: $person1_id}), (p2:Person {id: $person2_id})
-                MATCH path = (p2)-[:RELATIONSHIP*]->(p1)
-                WHERE all(r in relationships(path) WHERE r.type = 'PARENT_CHILD')
-                RETURN path
-                """,
-                person1_id=str(payload.person1_id),
-                person2_id=str(payload.person2_id)
-            )
-            if result.single():
-                raise HTTPException(status_code=400, detail="Circular parent-child relationship detected.")
-
-    if payload.relationship_type == RelationshipType.SPOUSE:
-        # Check if already married
-        with driver.session() as session:
-            result = session.run(
-                """
-                MATCH (p1:Person {id: $person1_id})-[r:RELATIONSHIP]-(p2:Person {id: $person2_id})
-                WHERE r.type = 'SPOUSE' AND r.spousal_status = 'MARRIED'
-                RETURN r
-                """,
-                person1_id=str(payload.person1_id),
-                person2_id=str(payload.person2_id)
-            )
-            if result.single():
-                raise HTTPException(status_code=400, detail="A 'MARRIED' spousal relationship already exists between these two people.")
-
     relationship_id = str(uuid4())
+
     with driver.session() as session:
-        # Check if persons and tree exist
-        result = session.run(
-            """
-            MATCH (p1:Person {id: $person1_id})
-            MATCH (p2:Person {id: $person2_id})
-            MATCH (t:FamilyTree {id: $tree_id})
-            RETURN p1, p2, t
-            """,
-            person1_id=str(payload.person1_id),
-            person2_id=str(payload.person2_id),
-            tree_id=str(payload.tree_id)
-        )
-        record = result.single()
-        if not record:
-            raise HTTPException(status_code=404, detail="One or more entities not found")
+        person1_id_str = str(payload.person1_id)
+        person2_id_str = str(payload.person2_id)
+        tree_id_str = str(payload.tree_id)
+
+        if payload.relationship_type == RelationshipType.PARENT_CHILD:
+            _check_circular_relationship(session, person1_id_str, person2_id_str)
+
+        if payload.relationship_type == RelationshipType.SPOUSE:
+            _check_already_married(session, person1_id_str, person2_id_str)
+
+        _verify_entities_exist(session, person1_id_str, person2_id_str, tree_id_str)
 
         # Serialize events to JSON string
         events_json = json.dumps([event.dict() for event in payload.events])
